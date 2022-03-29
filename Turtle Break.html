@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>Turtle Break</title>
+   <meta charset="UTF-8">
+   <style>
+	body {
+		background-color: #333333;
+		color: #EEEEEE;
+		font-size: 30px;
+		overflow: hidden;
+	}
+	
+	input {
+		width: 35px;
+		height: 25px;
+		position: relative;
+		top: -4px;
+	}
+   </style>
+ </head>
+ <body>
+ <a style="font-size: 160px; margin-top: -15px; margin-left: 22px; position: absolute;pointer-events: none; cursor: default;">🐢🐢🐢🐢🐢🐢🐢🐢</a>
+ <div style="width: 100%; text-align: center;">
+ Break time: <input type="number" value="0" id="defHId"></input>h <input type="number" value="25" id="defMId"></input>m <input type="number" value="0" id="defSId"></input>s<br>
+ 
+ <br><br><br><br><br>
+ 
+ <a id="breakId">Break in: </a><input type="number" id="hId"></input>h <input type="number"id="mId"></input>m <input type="number" id="sId"></input>s
+ <button onclick="startTime()">Start</button> <button id="pauseId" onclick="pauseButton()">Unpause</button>
+ </div>
+  <script>
+	let isStart = false;
+	
+	function getInput(name){
+		return document.getElementById(name).value;
+	}
+	
+	function changeInput(name, value){
+		document.getElementById(name).value = value;
+	}
+	
+	
+	function refreshPauseButton(){
+		if (isStart){
+			document.getElementById("pauseId").innerHTML = "Pause";
+		} else{
+			document.getElementById("pauseId").innerHTML = "Unpause";
+			
+			document.body.style.background = "#333333";
+		}
+	}
+	
+	
+	function startTime(){
+		changeInput("hId",getInput("defHId"));
+		changeInput("mId",getInput("defMId"));
+		changeInput("sId",getInput("defSId"));
+		
+		isStart = true;
+		
+		refreshPauseButton();
+	}
+	
+	function pauseButton(){
+		isStart = 1 - isStart;
+		
+		refreshPauseButton();
+	}
+	
+	
+	function getTimeInSeconds(){
+		return (Number(getInput("hId"))*60 + Number(getInput("mId")))*60 + Number(getInput("sId"));
+	}
+	
+	function setTimeFromSeconds(s){
+		let h = Math.floor(s/3600);
+		let m = Math.floor(s/60) % 60;
+		s %= 60;
+		
+		changeInput("hId", h);
+		changeInput("mId", m);
+		changeInput("sId", s);
+	}
+	
+	
+	function nextFrame(){
+		if (isStart){
+			let time = getTimeInSeconds();
+			
+			time--;
+			
+			if (time < 0){
+				let t = new Date().getTime();
+				
+				document.body.style.background = "hsl(" + (Math.floor(t/1000) * 10) % 256 + ",80%,30%";
+				document.getElementById("breakId").innerHTML = "Breakin' ";
+			} else{
+				setTimeFromSeconds(time);
+				
+				document.body.style.background = "#333333";
+				document.getElementById("breakId").innerHTML = "Break in: ";
+			}
+		}
+		
+		setTimeout(nextFrame,1000);
+	}
+	nextFrame();
+  </script>
+ </body>
+</html>
