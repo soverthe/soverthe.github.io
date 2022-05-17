@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>Stardew Guess Who</title>
+   <meta charset="UTF-8">
+   <style>
+	html, body { height: 100%; margin: 0; }
+	body {
+		//overflow: hidden;
+		background-color: gray;
+	}
+   </style>
+ </head>
+ <body>
+ <section hidden>
+	<div id="picturesId"></div>
+ </section>
+ 
+ <canvas id="canvas1"></canvas>
+  <script>
+	var canvas = document.getElementById("canvas1");
+	var ctx = canvas.getContext("2d");
+	//canvas.oncontextmenu = function(){return false;}
+	canvas.height = 5760;//window.innerHeight; //969
+	canvas.width = 5760;//window.innerWidth; //1920
+	
+	let fps = 60;
+	
+	let names = ["Abigail","Alex","Birdie","Bouncer","Caroline","Clint","Demetrius","Dwarf","Elliott","Emily","Evelyn","George","Gil","Governor","Grandpa","Gunther","Gus","Haley","Harvey","Henchman","Jas","Jodi","Kent","Krobus","Leah","Leo","Lewis","Linus","Marlon","Marnie","Maru","Morris","Pam","Penny","Pierre","Qi","Robin","Sam","Sandy","Sebastian","Shane","Snail","Vincent","Willy","Wizard"];
+	
+	let characters = {
+		Abigail: {p1: {x: 40, y: 54}, p2: {x: 64, y: 86}},
+		Alex: {p1: {x: 30, y: 52}, p2: {x: 56, y: 90}},
+		Birdie: {p1: {x: 46, y: 64}, p2: {x: 62, y: 92}},
+		Bouncer: {p1: {x: 40, y: 58}, p2: {x: 58, y: 92}},
+		Caroline: {p1: {x: 50, y: 50}, p2: {x: 74, y: 82}},
+		Clint: {p1: {x: 34, y: 50}, p2: {x: 58, y: 90}},
+		Demetrius: {p1: {x: 46, y: 50}, p2: {x: 78, y: 94}},
+		Dwarf: {p1: {x: 42, y: 92}, p2: {x: 78, y: 126}},
+		Elliott: {p1: {x: 42, y: 40}, p2: {x: 52, y: 76}},
+		Emily: {p1: {x: 54, y: 58}, p2: {x: 78, y: 92}},
+		Evelyn: {p1: {x: 37, y: 64}, p2: {x: 57, y: 90}}, //Why so odd, Batman?
+		George: {p1: {x: 50, y: 60}, p2: {x: 74, y: 96}},
+		Gil: {p1: {x: 34, y: 50}, p2: {x: 58, y: 88}},
+		Governor: {p1: {x: 26, y: 82}, p2: {x: 102, y: 120}},
+		Grandpa: {p1: {x: 32, y: 58}, p2: {x: 100, y: 92}},
+		Gunther: {p1: {x: 52, y: 58}, p2: {x: 48, y: 94}},
+		Gus: {p1: {x: 36, y: 46}, p2: {x: 68, y: 90}},
+		Haley: {p1: {x: 46, y: 56}, p2: {x: 74, y: 88}},
+		Harvey: {p1: {x: 42, y: 48}, p2: {x: 70, y: 86}},
+		Henchman: {p1: {x: 28, y: 72}, p2: {x: 56, y: 112}},
+		Jas: {p1: {x: 46, y: 76}, p2: {x: 80, y: 106}},
+		Jodi: {p1: {x: 48, y: 52}, p2: {x: 78, y: 90}},
+		Kent: {p1: {x: 38, y: 52}, p2: {x: 62, y: 88}},
+		Krobus: {p1: {x: 34, y: 68}, p2: {x: 88, y: 116}},
+		Leah: {p1: {x: 38, y: 58}, p2: {x: 62, y: 92}},
+		Leo: {p1: {x: 59, y: 84}, p2: {x: 77, y: 96}}, //odd...
+		Lewis: {p1: {x: 32, y: 52}, p2: {x: 60, y: 88}},
+		Linus: {p1: {x: 48, y: 52}, p2: {x: 76, y: 90}},
+		Marlon: {p1: {x: 34, y: 52}, p2: {x: 60, y: 92}},
+		Marnie: {p1: {x: 40, y: 56}, p2: {x: 64, y: 88}},
+		Maru: {p1: {x: 48, y: 50}, p2: {x: 76, y: 88}},
+		Morris: {p1: {x: 44, y: 66}, p2: {x: 76, y: 108}},
+		Pam: {p1: {x: 44, y: 64}, p2: {x: 70, y: 98}},
+		Penny: {p1: {x: 40, y: 48}, p2: {x: 62, y: 80}},
+		Pierre: {p1: {x: 36, y: 50}, p2: {x: 58, y: 92}},
+		Qi: {p1: {x: 48, y: 62}, p2: {x: 80, y: 98}},
+		Robin: {p1: {x: 36, y: 54}, p2: {x: 58, y: 92}},
+		Sam: {p1: {x: 48, y: 66}, p2: {x: 74, y: 100}},
+		Sandy: {p1: {x: 58, y: 46}, p2: {x: 34, y: 74}},
+		Sebastian: {p1: {x: 50, y: 48}, p2: {x: 76, y: 86}},
+		Shane: {p1: {x: 50, y: 50}, p2: {x: 76, y: 84}},
+		Snail: {p1: {x: 34, y: 68}, p2: {x: 62, y: 106}},
+		Vincent: {p1: {x: 40, y: 72}, p2: {x: 72, y: 106}},
+		Willy: {p1: {x: 48, y: 62}, p2: {x: 74, y: 100}},
+		Wizard: {p1: {x: 44, y: 84}, p2: {x: 80, y: 116}}
+	};
+	
+	
+	function setPictures(){
+		for (let i in characters){
+			document.getElementById("picturesId").innerHTML += "<img id='" + i + "' src='Characters\\" + i + ".png'/>";
+			document.getElementById("picturesId").innerHTML += "<img id='" + (i + "Face") + "' src='Faces\\" + i + ".png'/>";
+		}
+	}
+	setPictures();
+	
+	
+	function randomNum(min, max){
+		return Math.floor(Math.random() * (max - min + 1) + min);
+	}
+	
+	
+//Draw
+	
+	
+	function drawCharacterMix(body, face, x, y){
+		ctx.drawImage(document.getElementById(body), x, y);
+		
+		let pos = {
+			x: characters[body].p1.x - characters[face].p1.x,
+			y: characters[body].p1.y - characters[face].p1.y,
+			
+			w: 128 - (characters[face].p2.x - characters[face].p1.x) + (characters[body].p2.x - characters[body].p1.x),
+			h: 128 - (characters[face].p2.y - characters[face].p1.y) + (characters[body].p2.y - characters[body].p1.y)
+		};
+		
+		ctx.drawImage(document.getElementById(face + "Face"), x + pos.x, y + pos.y, pos.w, pos.h);
+	}
+	
+	function draw(){
+		canvas.width |= 0;
+		
+		let x = 0; let y = 0;
+		
+		for (let i in characters){
+			for (let j in characters){
+				drawCharacterMix(i, j, x * 128, y * 128);
+				
+				x++;
+			}
+			x = 0;
+			y++;
+		}
+		
+		//drawCharacterMix(names[randomNum(0, names.length - 1)], names[randomNum(0, names.length - 1)], 100, 100);
+		
+	}
+	
+	
+//Listeners
+	
+	//Resize
+	
+	/*function onResize(){
+		canvas.height = window.innerHeight;
+		canvas.width = window.innerWidth;
+		
+		draw();
+	}
+	
+	window.addEventListener("resize",onResize);*/
+	
+	
+	//Inputs
+	
+	let inputs = []; //ex: inputs.KeyW
+	
+	function setKeyDown(e){
+		e = e || window.event;
+		inputs[e.code] = true;
+	}
+	
+	function setKeyUp(e){
+		e = e || window.event;
+		inputs[e.code] = false;
+	}
+	
+	document.onkeydown = setKeyDown;
+	document.onkeyup = setKeyUp;
+	
+	
+	//Mouse
+	
+	function onMouseDown(event){
+		let pos = getMousePos(canvas, event);
+		
+	}
+	
+	function onMouseUp(event){
+	
+	}
+	
+	function onMouseMove(event){
+	
+	}
+	
+	function getMousePos(canvas, event) {
+		let rect = canvas.getBoundingClientRect();
+		
+		return {
+			x: event.clientX - rect.left,
+			y: event.clientY - rect.top
+		};
+	}
+	
+	canvas.addEventListener("mousedown", onMouseDown);
+	canvas.addEventListener("mouseup", onMouseUp);
+	canvas.addEventListener('mousemove',onMouseMove);
+	
+	setTimeout(draw, 100);
+  </script>
+ </body>
+</html>
