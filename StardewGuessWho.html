@@ -15,13 +15,17 @@
 	<div id="picturesId"></div>
  </section>
  
+ <select id="selectId">
+	<option value="Grayscale">Grayscale</option>
+	<option value="GrayOverlay">Gray Overlay</option>
+ </select>
  <canvas id="canvas1"></canvas>
   <script>
 	var canvas = document.getElementById("canvas1");
 	var ctx = canvas.getContext("2d");
 	//canvas.oncontextmenu = function(){return false;}
-	canvas.height = 8640;//window.innerHeight; //969
-	canvas.width = 8640;//window.innerWidth; //1920
+	canvas.height = 965;//window.innerHeight; //969
+	canvas.width = 1920;//window.innerWidth; //1920
 	
 	let fps = 60;
 		
@@ -33,7 +37,7 @@
 		Caroline: {p1: {x: 50, y: 52}, p2: {x: 74, y: 82}},
 		Clint: {p1: {x: 34, y: 50}, p2: {x: 58, y: 90}},
 		Demetrius: {p1: {x: 46, y: 44}, p2: {x: 78, y: 94}},
-		Dwarf: {p1: {x: 42, y: 92}, p2: {x: 78, y: 126}},
+		Dwarf: {p1: {x: 42, y: 92}, p2: {x: 84, y: 126}},
 		Elliott: {p1: {x: 38, y: 44}, p2: {x: 52, y: 76}},
 		Emily: {p1: {x: 54, y: 58}, p2: {x: 78, y: 92}},
 		Evelyn: {p1: {x: 47, y: 64}, p2: {x: 45, y: 90}}, //Why so odd, Batman?
@@ -48,9 +52,9 @@
 		Henchman: {p1: {x: 28, y: 72}, p2: {x: 70, y: 106}},
 		Jas: {p1: {x: 46, y: 76}, p2: {x: 80, y: 106}},
 		Jodi: {p1: {x: 48, y: 52}, p2: {x: 78, y: 90}},
-		Kent: {p1: {x: 38, y: 52}, p2: {x: 62, y: 88}},
+		Kent: {p1: {x: 42, y: 52}, p2: {x: 62, y: 88}},
 		Krobus: {p1: {x: 34, y: 68}, p2: {x: 88, y: 116}},
-		Leah: {p1: {x: 38, y: 58}, p2: {x: 62, y: 92}},
+		Leah: {p1: {x: 44, y: 58}, p2: {x: 58, y: 92}},
 		Leo: {p1: {x: 53, y: 84}, p2: {x: 77, y: 96}}, //odd...
 		Lewis: {p1: {x: 32, y: 52}, p2: {x: 60, y: 88}},
 		Linus: {p1: {x: 48, y: 52}, p2: {x: 76, y: 90}},
@@ -64,7 +68,7 @@
 		Qi: {p1: {x: 48, y: 62}, p2: {x: 80, y: 98}},
 		Robin: {p1: {x: 36, y: 54}, p2: {x: 58, y: 92}},
 		Sam: {p1: {x: 48, y: 66}, p2: {x: 74, y: 100}},
-		Sandy: {p1: {x: 58, y: 46}, p2: {x: 34, y: 74}},
+		Sandy: {p1: {x: 48, y: 46}, p2: {x: 46, y: 74}},
 		Sebastian: {p1: {x: 50, y: 48}, p2: {x: 76, y: 86}},
 		Shane: {p1: {x: 50, y: 50}, p2: {x: 76, y: 84}},
 		Snail: {p1: {x: 34, y: 68}, p2: {x: 62, y: 106}},
@@ -75,6 +79,8 @@
 	
 	
 	let grid = [];
+	
+	let gridPos = {x: 300, y: 100, w: 7, h: 4}
 	
 	
 	let names = [];
@@ -96,15 +102,71 @@
 	setPictures();
 	
 	
+//Hitbox
+	
+	
+	function isVertexInRect(v, r){
+		return (v.x >= r.x && v.x <= r.x + r.w &&
+				v.y >= r.y && v.y <= r.y + r.h);
+	}
+	
+	
+//Random
+	
+	
 	function randomNum(min, max){
 		return Math.floor(Math.random() * (max - min + 1) + min);
+	}
+	
+	
+	function getRandomCharacter(excludeArr){
+		let isExcluded = true;
+		let name = "";
+		
+		while (isExcluded && excludeArr.length < names.length){
+			name = names[randomNum(0, names.length - 1)];
+			
+			isExcluded = false;
+			for (let i of excludeArr){
+				if (i == name){
+					isExcluded = true;
+				}
+			}
+		}
+		return name;
+	}
+	
+	
+	function randomizeGrid(){
+		grid = [];
+		let bodies = [];
+		let faces = ["Krobus", "Sandy", "Elliott", "Leo"];
+		
+		for (let i = 0; i < gridPos.h; i++){
+			grid[i] = [];
+			
+			for (let j = 0; j < gridPos.w; j++){
+				let body = getRandomCharacter(bodies);
+				
+				let facesAndBody = [...faces];
+				facesAndBody.push(body);
+				
+				let face = getRandomCharacter(facesAndBody);
+				
+				bodies.push(body);
+				faces.push(face);
+				
+				grid[i][j] = {body: body, face: face, isActive: true};
+			}
+		}
+		draw();
 	}
 	
 	
 //Draw
 	
 	
-	function makeImageGrayScale(x, y, w, h){
+	function makeImageGrayscale(x, y, w, h){
 		let imgPixels = ctx.getImageData(x, y, w, h);
 			
 		for(let i = 0; i < imgPixels.height; i++){
@@ -115,7 +177,7 @@
 				
 				imgPixels.data[k] = avg;
 				imgPixels.data[k + 1] = avg;
-				//imgPixels.data[k + 2] = avg;
+				imgPixels.data[k + 2] = avg;
 			}
 		}
 		ctx.putImageData(imgPixels, x, y, 0, 0, imgPixels.width, imgPixels.height);
@@ -123,7 +185,7 @@
 	
 	
 	
-	function drawCharacterMix(body, face, x, y){
+	function drawCharacterMix(body, face, x, y, isActive){
 		ctx.drawImage(document.getElementById(body), x, y);
 		
 		let pos = {
@@ -135,25 +197,37 @@
 		};
 		
 		ctx.drawImage(document.getElementById(face + "Face"), x + pos.x, y + pos.y, pos.w, pos.h);
-		//ctx.fillRect(x - 32, y - 32, 192, 192);
-		makeImageGrayScale(x - 32, y - 32, 192, 192);
+		
+		if (!isActive){
+			let select = document.getElementById("selectId");
+			let style = select.options[select.selectedIndex].value;
+			
+			switch (style){
+				case "Grayscale":
+					makeImageGrayscale(x - 32, y - 32, 192, 192);
+				break;
+				case "GrayOverlay":
+					ctx.fillStyle = "#00000088";
+					ctx.fillRect(x - 32, y - 32, 192, 192);
+				break;
+			}
+		}
 	}
+	
+	
+	function drawGrid(){
+		for (let i in grid){
+			for (let j in grid[i]){
+				drawCharacterMix(grid[i][j].body, grid[i][j].face, gridPos.x + Number(j) * 192, gridPos.y + Number(i) * 192, grid[i][j].isActive);
+			}
+		}
+	}
+	
 	
 	function draw(){
 		canvas.width |= 0;
 		
-		let x = 0; let y = 0;
-		
-		for (let i in characters){
-			for (let j in characters){
-				drawCharacterMix(i, j, x * 192, y * 192);
-				
-				x++;
-			}
-			x = 0;
-			y++;
-		}
-		
+		drawGrid();
 		//drawCharacterMix(names[randomNum(0, names.length - 1)], names[randomNum(0, names.length - 1)], 100, 100);
 		
 	}
@@ -196,6 +270,14 @@
 	function onMouseDown(event){
 		let pos = getMousePos(canvas, event);
 		
+		for (let i in grid){
+			for (let j in grid[i]){
+				if (isVertexInRect(pos, {x: Number(j) * 192 + gridPos.x - 32, y: Number(i) * 192 + gridPos.y - 32, w: 192, h: 192})){
+					grid[i][j].isActive = 1 - grid[i][j].isActive;
+				}
+			}
+		}
+		draw();
 	}
 	
 	function onMouseUp(event){
@@ -219,7 +301,7 @@
 	canvas.addEventListener("mouseup", onMouseUp);
 	canvas.addEventListener('mousemove',onMouseMove);
 	
-	setTimeout(draw, 2000);
+	window.onload = randomizeGrid;
   </script>
  </body>
 </html>
