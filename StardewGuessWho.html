@@ -6,7 +6,10 @@
    <style>
 	html, body { height: 100%; margin: 0; }
 	body {
-		background-color: gray;
+		background-color: #888888;
+	}
+	a {
+		font-size: 20px;
 	}
    </style>
  </head>
@@ -15,16 +18,24 @@
 	<div id="picturesId"></div>
  </section>
  
- <select id="selectId">
+ <a>Style:</a>
+ <select id="selectId" onchange="draw()">
 	<option value="Grayscale">Grayscale</option>
 	<option value="GrayOverlay">Gray Overlay</option>
  </select>
+ 
+ <a>Seed:</a> 
+ 
+ <button onclick="randomizeGrid()">Apply</button>
+ <input id="seedId" type="number" style="width:70px;">
+ <button onclick="randomizeSeed()">Randomize</button>
+ 
  <canvas id="canvas1"></canvas>
   <script>
 	var canvas = document.getElementById("canvas1");
 	var ctx = canvas.getContext("2d");
 	//canvas.oncontextmenu = function(){return false;}
-	canvas.height = 965;//window.innerHeight; //969
+	canvas.height = 920;//window.innerHeight; //969
 	canvas.width = 1920;//window.innerWidth; //1920
 	
 	let fps = 60;
@@ -119,12 +130,42 @@
 	}
 	
 	
+	function randomizeSeed(){
+		let seed = "";
+		
+		for (let i = 0; i < 5; i++){
+			seed += randomNum(0, 9);
+		}
+		
+		document.getElementById("seedId").value = seed;
+		
+		randomizeGrid();
+	}
+	
+	
+	let randomStep = 0;
+	
+	function pseudoRandomNum(min, max){
+		let range = max - min + 1;
+		
+		let seed = document.getElementById("seedId").value;
+		
+		if (seed < 1){seed = 1;}
+		
+		let num = ((2147483 * seed - 883 + 324133 * Math.floor(randomStep + Math.cos(randomStep * 12347) * 123421)) % 48271 + 21879345) % range;
+		
+		randomStep++;
+		
+		return num + min;
+	}
+	
+	
 	function getRandomCharacter(excludeArr){
 		let isExcluded = true;
 		let name = "";
 		
 		while (isExcluded && excludeArr.length < names.length){
-			name = names[randomNum(0, names.length - 1)];
+			name = names[pseudoRandomNum(0, names.length - 1)];
 			
 			isExcluded = false;
 			for (let i of excludeArr){
@@ -138,6 +179,8 @@
 	
 	
 	function randomizeGrid(){
+		randomStep = 0;
+		
 		grid = [];
 		let bodies = [];
 		let faces = ["Krobus", "Sandy", "Elliott", "Leo"];
@@ -207,7 +250,7 @@
 					makeImageGrayscale(x - 32, y - 32, 192, 192);
 				break;
 				case "GrayOverlay":
-					ctx.fillStyle = "#00000088";
+					ctx.fillStyle = "#00000066";
 					ctx.fillRect(x - 32, y - 32, 192, 192);
 				break;
 			}
@@ -301,7 +344,7 @@
 	canvas.addEventListener("mouseup", onMouseUp);
 	canvas.addEventListener('mousemove',onMouseMove);
 	
-	window.onload = randomizeGrid;
+	window.onload = randomizeSeed;
   </script>
  </body>
 </html>
