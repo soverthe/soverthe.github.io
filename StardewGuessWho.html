@@ -20,8 +20,8 @@
 	var canvas = document.getElementById("canvas1");
 	var ctx = canvas.getContext("2d");
 	//canvas.oncontextmenu = function(){return false;}
-	canvas.height = 5760;//window.innerHeight; //969
-	canvas.width = 5760;//window.innerWidth; //1920
+	canvas.height = 8640;//window.innerHeight; //969
+	canvas.width = 8640;//window.innerWidth; //1920
 	
 	let fps = 60;
 		
@@ -34,12 +34,12 @@
 		Clint: {p1: {x: 34, y: 50}, p2: {x: 58, y: 90}},
 		Demetrius: {p1: {x: 46, y: 44}, p2: {x: 78, y: 94}},
 		Dwarf: {p1: {x: 42, y: 92}, p2: {x: 78, y: 126}},
-		Elliott: {p1: {x: 42, y: 40}, p2: {x: 52, y: 76}},
+		Elliott: {p1: {x: 38, y: 44}, p2: {x: 52, y: 76}},
 		Emily: {p1: {x: 54, y: 58}, p2: {x: 78, y: 92}},
 		Evelyn: {p1: {x: 47, y: 64}, p2: {x: 45, y: 90}}, //Why so odd, Batman?
 		George: {p1: {x: 50, y: 60}, p2: {x: 74, y: 96}},
 		Gil: {p1: {x: 34, y: 50}, p2: {x: 58, y: 88}},
-		Governor: {p1: {x: 26, y: 82}, p2: {x: 102, y: 120}},
+		Governor: {p1: {x: 26, y: 66}, p2: {x: 102, y: 120}},
 		Grandpa: {p1: {x: 32, y: 58}, p2: {x: 100, y: 92}},
 		Gunther: {p1: {x: 52, y: 58}, p2: {x: 48, y: 94}},
 		Gus: {p1: {x: 36, y: 46}, p2: {x: 68, y: 90}},
@@ -115,7 +115,7 @@
 				
 				imgPixels.data[k] = avg;
 				imgPixels.data[k + 1] = avg;
-				imgPixels.data[k + 2] = avg;
+				//imgPixels.data[k + 2] = avg;
 			}
 		}
 		ctx.putImageData(imgPixels, x, y, 0, 0, imgPixels.width, imgPixels.height);
@@ -135,7 +135,7 @@
 		};
 		
 		ctx.drawImage(document.getElementById(face + "Face"), x + pos.x, y + pos.y, pos.w, pos.h);
-		
+		//ctx.fillRect(x - 32, y - 32, 192, 192);
 		makeImageGrayScale(x - 32, y - 32, 192, 192);
 	}
 	
