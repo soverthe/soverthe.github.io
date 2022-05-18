@@ -206,6 +206,66 @@
 	}
 	
 	
+//Name Mixer
+	
+	
+	function isVowel(text){
+		return ["a","e","i","o","u"].includes(text);
+	}
+	
+	
+	
+	function getMixName(body, face){
+		let name = "";
+		
+		let duplicates = {vowels: [], consonants: []};
+		
+		for (let i = 1; i < body.length; i++){
+			for (let j = 0; j < face.length; j++){
+				if (body[i] == face[j]){
+					let letterType = (isVowel(body[i])) ? "vowels" : "consonants";
+					
+					if (duplicates[letterType].length == 0){
+						duplicates[letterType] = [i, j];
+					}
+				}
+			}
+		}
+		
+		if (duplicates.vowels.length > 0){
+		
+			name = body.slice(0, duplicates.vowels[0]) + face.slice(duplicates.vowels[1], 20);
+			
+		} else if (duplicates.vowels.length > 0){
+		
+			name = body.slice(0, duplicates.consonants[0]) + face.slice(duplicates.consonants[1], 20);
+			
+		} else{
+			let firstVowels = {body: 0, face: 0};
+			
+			for (let i in firstVowels){
+				let thisName = (i == "body") ? body : face;
+				
+				for (let j = 1; j < thisName.length; j++){
+					if (isVowel(thisName[j])){
+						firstVowels[i] = j;
+						
+						j = thisName.length;
+					}
+				}
+			}
+			name = body.slice(0, firstVowels.body + 1) + face.slice(firstVowels.face + 1, 20);
+			
+			/*if (body.length > 2 && face.length > 2){
+				name = body.slice(0, 2) + face.slice(2, 20);
+			} else{
+				name = body.slice(0, 1) + face.slice(1, 20);
+			}*/
+		}
+		return name;
+	}
+	
+	
 //Draw
 	
 	
@@ -261,7 +321,18 @@
 	function drawGrid(){
 		for (let i in grid){
 			for (let j in grid[i]){
-				drawCharacterMix(grid[i][j].body, grid[i][j].face, gridPos.x + Number(j) * 192, gridPos.y + Number(i) * 192, grid[i][j].isActive);
+			
+				let body = grid[i][j].body;
+				let face = grid[i][j].face;
+				
+				let x = gridPos.x + Number(j) * 192;
+				let y = gridPos.y + Number(i) * 192;
+				
+				drawCharacterMix(body, face, x, y, grid[i][j].isActive);
+				
+				ctx.font = "26px Consolas";
+				ctx.fillStyle = "#000000";
+				ctx.fillText(getMixName(body, face), x, y + 128 + 26);
 			}
 		}
 	}
@@ -271,42 +342,11 @@
 		canvas.width |= 0;
 		
 		drawGrid();
-		//drawCharacterMix(names[randomNum(0, names.length - 1)], names[randomNum(0, names.length - 1)], 100, 100);
 		
 	}
 	
 	
 //Listeners
-	
-	//Resize
-	
-	/*function onResize(){
-		canvas.height = window.innerHeight;
-		canvas.width = window.innerWidth;
-		
-		draw();
-	}
-	
-	window.addEventListener("resize",onResize);*/
-	
-	
-	//Inputs
-	
-	let inputs = []; //ex: inputs.KeyW
-	
-	function setKeyDown(e){
-		e = e || window.event;
-		inputs[e.code] = true;
-	}
-	
-	function setKeyUp(e){
-		e = e || window.event;
-		inputs[e.code] = false;
-	}
-	
-	document.onkeydown = setKeyDown;
-	document.onkeyup = setKeyUp;
-	
 	
 	//Mouse
 	
