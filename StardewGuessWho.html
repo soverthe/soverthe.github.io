@@ -136,7 +136,7 @@
 		
 		ctx.drawImage(document.getElementById(face + "Face"), x + pos.x, y + pos.y, pos.w, pos.h);
 		
-		makeImageGrayScale(x, y, 128, 128);
+		makeImageGrayScale(x - 32, y - 32, 192, 192);
 	}
 	
 	function draw(){
@@ -146,7 +146,7 @@
 		
 		for (let i in characters){
 			for (let j in characters){
-				drawCharacterMix(i, j, x * 128, y * 128);
+				drawCharacterMix(i, j, x * 192, y * 192);
 				
 				x++;
 			}
