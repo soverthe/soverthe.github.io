@@ -104,27 +104,21 @@
 //Draw
 	
 	
-	function drawImage(img, x, y, w, h, isGrayScale){
-		if (!isGrayScale){
-			ctx.drawImage(img, x, y, w, h);
-		} else{
-				ctx.drawImage(img, x, y, w, h);
+	function makeImageGrayScale(x, y, w, h){
+		let imgPixels = ctx.getImageData(x, y, w, h);
+			
+		for(let i = 0; i < imgPixels.height; i++){
+			for(let j = 0; j < imgPixels.width; j++){
+			
+				let k = (i * 4) * imgPixels.width + j * 4;
+				let avg = (imgPixels.data[k] + imgPixels.data[k + 1] + imgPixels.data[k + 2]) / 3;
 				
-				let imgPixels = ctx.getImageData(x, y, w, h);
-				
-				for(let i = 0; i < imgPixels.height; i++){
-					for(let j = 0; j < imgPixels.width; j++){
-					
-						let k = (i * 4) * imgPixels.width + j * 4;
-						let avg = (imgPixels.data[k] + imgPixels.data[k + 1] + imgPixels.data[k + 2]) / 3;
-						
-						imgPixels.data[k] = avg;
-						imgPixels.data[k + 1] = avg;
-						imgPixels.data[k + 2] = avg;
-					}
-				}
-				ctx.putImageData(imgPixels, x, y, 0, 0, imgPixels.width, imgPixels.height);
+				imgPixels.data[k] = avg;
+				imgPixels.data[k + 1] = avg;
+				imgPixels.data[k + 2] = avg;
+			}
 		}
+		ctx.putImageData(imgPixels, x, y, 0, 0, imgPixels.width, imgPixels.height);
 	}
 	
 	
@@ -140,7 +134,9 @@
 			h: 128 - (characters[face].p2.y - characters[face].p1.y) + (characters[body].p2.y - characters[body].p1.y)
 		};
 		
-		drawImage(document.getElementById(face + "Face"), x + pos.x, y + pos.y, pos.w, pos.h, true);
+		ctx.drawImage(document.getElementById(face + "Face"), x + pos.x, y + pos.y, pos.w, pos.h);
+		
+		makeImageGrayScale(x, y, 128, 128);
 	}
 	
 	function draw(){
