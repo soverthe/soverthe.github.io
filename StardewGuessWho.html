@@ -296,16 +296,18 @@
 		ctx.drawImage(document.getElementById(body), x, y);
 	}
 	
-	function drawBackground(x, y){
+	function drawBackground(x, y, isActive){
 		let isHover = isVertexInRect(mousePos, {x: x - 20, y: y - 16, w: 168, h: 176});
 		
-		if (document.getElementById("noBackgroundId").checked){
+		if (document.getElementById("noBackgroundId").checked || !isActive){
 			ctx.fillStyle = "#FFFFFF" + ((isHover) ? "33" : "00");
 		} else{
 			ctx.fillStyle = "#FFFFFF" + ((isHover) ? "66" : "33");
 		}
 		
-		ctx.fillRect(x - 20, y - 16, 168, 176);
+		if (isActive){
+			ctx.fillRect(x - 20, y - 16, 168, 176);
+		}
 	}
 	
 	
@@ -319,7 +321,7 @@
 					makeImageGrayscale(x - 32, y - 32, 192, 192);
 				break;
 				case "GrayOverlay":
-					ctx.fillStyle = "#00000060";
+					ctx.fillStyle = "#00000048";
 					ctx.fillRect(x - 20, y - 16, 168, 176);
 				break;
 			}
@@ -377,7 +379,7 @@
 				let y = gridPos.y + Number(i) * 192;
 				
 				
-				drawBackground(x, y);
+				drawBackground(x, y, grid[i][j].isActive);
 				drawBody(body, x, y);
 				
 				if (face != ""){
