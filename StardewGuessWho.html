@@ -6,7 +6,7 @@
    <style>
 	html, body { height: 100%; margin: 0; }
 	body {
-		background-color: #888888;
+		background-color: #555555;
 	}
 	a {
 		font-size: 20px;
@@ -18,6 +18,7 @@
 	<div id="picturesId"></div>
  </section>
  
+ <div style="background-color: #909090;">
  <a>Style:</a>
  <select id="selectId" onchange="draw()">
 	<option value="Grayscale">Grayscale</option>
@@ -31,6 +32,9 @@
  <button onclick="randomizeSeed()">Randomize</button>
  
  <input type="checkbox" id="anyFaceId" onclick="randomizeGrid()">Any Face
+ <input type="checkbox" id="noFaceId" onclick="randomizeGrid()">Faceless
+ <input type="checkbox" id="noBackgroundId" onclick="draw()">Backgroundless
+ </div>
  
  <canvas id="canvas1"></canvas>
   <script>
@@ -41,7 +45,9 @@
 	canvas.width = 1920;//window.innerWidth; //1920
 	
 	let fps = 60;
-		
+	
+	let mousePos = {x: 0, y: 0};
+	
 	let characters = {
 		Abigail: {p1: {x: 40, y: 54}, p2: {x: 64, y: 86}},
 		Alex: {p1: {x: 34, y: 52}, p2: {x: 56, y: 90}},
@@ -183,7 +189,8 @@
 	function randomizeGrid(){
 		randomStep = 0;
 		
-		let anyFace = document.getElementById("anyFaceId").checked;
+		let noFace = document.getElementById("noFaceId").checked;
+		let anyFace = (noFace) ? false : document.getElementById("anyFaceId").checked;
 		
 		grid = [];
 		let bodies = [];
@@ -203,7 +210,7 @@
 				bodies.push(body);
 				faces.push(face);
 				
-				grid[i][j] = {body: body, face: face, isActive: true};
+				grid[i][j] = {body: body, face: (noFace) ? "" : face, isActive: true};
 			}
 		}
 		draw();
@@ -267,7 +274,7 @@
 //Draw
 	
 	
-	function makeImageGrayscale(x, y, w, h){
+	function makeImageGrayscale(x, y, w, h){ //https://stackoverflow.com/a/35180284/12777947
 		let imgPixels = ctx.getImageData(x, y, w, h);
 			
 		for(let i = 0; i < imgPixels.height; i++){
@@ -285,20 +292,24 @@
 	}
 	
 	
-	
-	function drawCharacterMix(body, face, x, y, isActive){
+	function drawBody(body, x, y){
 		ctx.drawImage(document.getElementById(body), x, y);
+	}
+	
+	function drawBackground(x, y){
+		let isHover = isVertexInRect(mousePos, {x: x - 20, y: y - 16, w: 168, h: 176});
 		
-		let pos = {
-			x: characters[body].p1.x - characters[face].p1.x,
-			y: characters[body].p1.y - characters[face].p1.y,
-			
-			w: 128 - (characters[face].p2.x - characters[face].p1.x) + (characters[body].p2.x - characters[body].p1.x),
-			h: 128 - (characters[face].p2.y - characters[face].p1.y) + (characters[body].p2.y - characters[body].p1.y)
-		};
+		if (document.getElementById("noBackgroundId").checked){
+			ctx.fillStyle = "#FFFFFF" + ((isHover) ? "33" : "00");
+		} else{
+			ctx.fillStyle = "#FFFFFF" + ((isHover) ? "66" : "33");
+		}
 		
-		ctx.drawImage(document.getElementById(face + "Face"), x + pos.x, y + pos.y, pos.w, pos.h);
-		
+		ctx.fillRect(x - 20, y - 16, 168, 176);
+	}
+	
+	
+	function drawOverlay(x, y, isActive){
 		if (!isActive){
 			let select = document.getElementById("selectId");
 			let style = select.options[select.selectedIndex].value;
@@ -308,11 +319,50 @@
 					makeImageGrayscale(x - 32, y - 32, 192, 192);
 				break;
 				case "GrayOverlay":
-					ctx.fillStyle = "#00000066";
-					ctx.fillRect(x - 32, y - 32, 192, 192);
+					ctx.fillStyle = "#00000060";
+					ctx.fillRect(x - 20, y - 16, 168, 176);
 				break;
 			}
 		}
+	}
+	
+	
+	function drawCharacterMix(body, face, x, y, isActive){
+		let pos = {
+			x: characters[body].p1.x - characters[face].p1.x,
+			y: characters[body].p1.y - characters[face].p1.y,
+			
+			w: 128 - (characters[face].p2.x - characters[face].p1.x) + (characters[body].p2.x - characters[body].p1.x),
+			h: 128 - (characters[face].p2.y - characters[face].p1.y) + (characters[body].p2.y - characters[body].p1.y)
+		};
+		
+		ctx.drawImage(document.getElementById(face + "Face"), x + pos.x, y + pos.y, pos.w, pos.h);
+	}
+	
+	
+	
+	function drawTextWithShadows(name, x, y, shadowSize){
+		ctx.fillStyle = "#000000";
+		ctx.fillText(name, x + shadowSize, y + shadowSize);
+		
+		ctx.fillStyle = "#FFFFFF";
+		ctx.fillText(name, x, y);
+	}
+	
+	
+	function drawName(name, x, y){
+		let length = name.length * 14.4;
+		ctx.font = "26px Consolas";
+		
+		let pos = {
+			x: x + 64 - Math.round(length / 2),
+			y: y + 153
+		}
+		
+		ctx.fillStyle = "#444444";
+		ctx.fillRect((x + 64) - Math.round(length / 2) - 2, y + 132, length + 4, 28);
+		
+		drawTextWithShadows(name, pos.x, pos.y, 2);
 	}
 	
 	
@@ -326,11 +376,18 @@
 				let x = gridPos.x + Number(j) * 192;
 				let y = gridPos.y + Number(i) * 192;
 				
-				drawCharacterMix(body, face, x, y, grid[i][j].isActive);
 				
-				ctx.font = "26px Consolas";
-				ctx.fillStyle = "#000000";
-				ctx.fillText(getMixName(body, face), x, y + 128 + 26);
+				drawBackground(x, y);
+				drawBody(body, x, y);
+				
+				if (face != ""){
+					drawCharacterMix(body, face, x, y, grid[i][j].isActive);
+				}
+				
+				let name = (face == "") ? body : getMixName(body, face);
+				drawName(name, x, y);
+				
+				drawOverlay(x, y, grid[i][j].isActive);
 			}
 		}
 	}
@@ -340,7 +397,6 @@
 		canvas.width |= 0;
 		
 		drawGrid();
-		
 	}
 	
 	
@@ -366,7 +422,9 @@
 	}
 	
 	function onMouseMove(event){
-	
+		mousePos = getMousePos(canvas, event);
+		
+		draw();
 	}
 	
 	function getMousePos(canvas, event) {
