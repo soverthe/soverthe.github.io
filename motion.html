@@ -6,12 +6,12 @@
    <style>
 	html, body { height: 100%; margin: 0; }
 	body {
-		overflow: hidden;
 		background-color: gray;
 	}
    </style>
  </head>
  <body>
+ text
  <canvas id="canvas1"></canvas>
   <script>
 	var canvas = document.getElementById("canvas1");
@@ -46,7 +46,7 @@
 	
 	
 	function handleMotionEvent(event){
-		alert(event.accelerationIncludingGravity);
+		//alert(event.accelerationIncludingGravity);
 		
 		x = event.accelerationIncludingGravity.x ?? 0;
 		y = event.accelerationIncludingGravity.y ?? 0;
