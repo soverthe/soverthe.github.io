@@ -14,7 +14,6 @@
  <a id="textId"></a>
  <canvas id="canvas1"></canvas>
   <script>
-	alert("1");
 	var canvas = document.getElementById("canvas1");
 	var ctx = canvas.getContext("2d");
 	canvas.height = window.innerHeight;
@@ -48,13 +47,13 @@
 	alert("2");
 	
 	function handleMotionEvent(event){
-		//alert(event.accelerationIncludingGravity);
+		alert(event.accelerationIncludingGravity);
 		
-		x = event.accelerationIncludingGravity.x ?? 0;
-		y = event.accelerationIncludingGravity.y ?? 0;
-		z = event.accelerationIncludingGravity.z ?? 0;
+		//x = event.accelerationIncludingGravity.x ?? 0;
+		//y = event.accelerationIncludingGravity.y ?? 0;
+		//z = event.accelerationIncludingGravity.z ?? 0;
 		
-		draw();
+		//draw();
 	}
 	window.addEventListener("devicemotion", handleMotionEvent, true);
 	
@@ -73,14 +72,12 @@
 	document.getElementById("textId").innerHTML = canvas.width + ", " + canvas.height + "; " + " (" + x + ", " + y + ", " + z + ")";
 	
 	
-	alert("5");
 	
 	draw();
 	/*window.onerror = function(msg, url, linenumber) {
 		alert('Error message: '+msg+'\nURL: '+url+'\nLine Number: '+linenumber);
 		return true;
 	}*/
-	alert("6");
   </script>
  </body>
 </html>
