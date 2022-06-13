@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>motion</title>
+   <meta charset="UTF-8">
+ </head>
+ <body>
+ <a id="motionId"></a>
+  <script>
+	function handleMotionEvent(event){
+		let x = event.accelerationIncludingGravity.x;
+		let y = event.accelerationIncludingGravity.y;
+		let z = event.accelerationIncludingGravity.z;
+		
+		document.getElementById("motionId").innerHTML = "x, y, z = " + x + ", " + y + ", " + z;
+	}
+
+	window.addEventListener("devicemotion", handleMotionEvent, true);
+  </script>
+ </body>
+</html>
