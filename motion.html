@@ -25,15 +25,22 @@
 		let y = event.accelerationIncludingGravity.y ?? 0;
 		let z = event.accelerationIncludingGravity.z ?? 0;
 		
-		
 		let size = (z + 10) * 5
 		
+		let pos = {
+			x: x * Math.floor(canvas.width / 20) + Math.floor(canvas.width / 2 - size / 2),
+			y: y * Math.floor(canvas.height / 20) + Math.floor(canvas.height / 2 - size / 2)
+		}
+		
 		ctx.fillRect(
-			x * Math.floor(canvas.width / 20) + Math.floor(canvas.width / 2 - size / 2),
-			y * Math.floor(canvas.height / 20) + Math.floor(canvas.height / 2 - size / 2),
+			pos.x,
+			pos.y,
 			size,
 			size
 		);
+		
+		ctx.font = "40px Consolas";
+		ctx.fillText(pos.x + ", " + pos.y + ", " + size + " (" + x + ", " + y + ", " + z + ")", 20, 40);
 	}
 	window.addEventListener("devicemotion", handleMotionEvent, true);
 	
