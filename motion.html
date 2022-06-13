@@ -46,6 +46,8 @@
 	
 	
 	function handleMotionEvent(event){
+		alert(event.accelerationIncludingGravity);
+		
 		x = event.accelerationIncludingGravity.x ?? 0;
 		y = event.accelerationIncludingGravity.y ?? 0;
 		z = event.accelerationIncludingGravity.z ?? 0;
@@ -63,10 +65,10 @@
 	}
 	window.addEventListener("resize",onResize);
 	
-	window.onerror = function(msg, url, linenumber) {
+	/*window.onerror = function(msg, url, linenumber) {
 		alert('Error message: '+msg+'\nURL: '+url+'\nLine Number: '+linenumber);
 		return true;
-	}
+	}*/
   </script>
  </body>
 </html>
