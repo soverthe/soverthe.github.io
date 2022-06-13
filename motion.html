@@ -12,9 +12,9 @@
  </head>
  <body>
  <a id="textId"></a>
- <!--<canvas id="canvas1"></canvas>-->
+ <canvas id="canvas1"></canvas>
   <script>
-	/*var canvas = document.getElementById("canvas1");
+	var canvas = document.getElementById("canvas1");
 	var ctx = canvas.getContext("2d");
 	canvas.height = window.innerHeight;
 	canvas.width = window.innerWidth;
@@ -24,7 +24,7 @@
 	let y = 0;
 	let z = 0;
 	
-	
+	/*
 	function draw(){
 		let size = (z + 10) * 5
 		
@@ -44,7 +44,7 @@
 		ctx.fillText(pos.x + ", " + pos.y + ", " + size + " (" + x + ", " + y + ", " + z + ")", 20, 40);
 	}*/
 	
-	//alert("21");
+	alert("21");
 	
 	function handleMotionEvent(event){
 		//alert(event.accelerationIncludingGravity);
@@ -59,9 +59,9 @@
 		
 		//draw();
 		
-		let x = event.accelerationIncludingGravity.x;
-		let y = event.accelerationIncludingGravity.y;
-		let z = event.accelerationIncludingGravity.z;
+		x = event.accelerationIncludingGravity.x;
+		y = event.accelerationIncludingGravity.y;
+		z = event.accelerationIncludingGravity.z;
 
 		document.getElementById("textId").innerHTML = "x, y, z = " + x + ", " + y + ", " + z;
 	}
