@@ -46,7 +46,7 @@
 		ctx.fillText(pos.x + ", " + pos.y + ", " + size + " (" + x + ", " + y + ", " + z + ")", 20, 40);
 	}
 	
-	alert("22");
+	alert("23");
 	
 	function handleMotionEvent(event){
 		//alert(event.accelerationIncludingGravity);
@@ -61,9 +61,9 @@
 		
 		//draw();
 		
-		x = event.accelerationIncludingGravity.x;
-		y = event.accelerationIncludingGravity.y;
-		z = event.accelerationIncludingGravity.z;
+		x = event.accelerationIncludingGravity.x ?? 0;
+		y = event.accelerationIncludingGravity.y ?? 0;
+		z = event.accelerationIncludingGravity.z ?? 0;
 
 		document.getElementById("textId").innerHTML = "x, y, z = " + x + ", " + y + ", " + z;
 		
@@ -72,7 +72,7 @@
 	window.addEventListener("devicemotion", handleMotionEvent, true);
 	
 	//alert("31");
-	/*
+	
 	function onResize(){
 		canvas.height = window.innerHeight;
 		canvas.width = window.innerWidth;
@@ -80,7 +80,7 @@
 		draw();
 	}
 	window.addEventListener("resize",onResize);
-	
+	/*
 	alert("4");
 	*/
 	//document.getElementById("textId").innerHTML = canvas.width + ", " + canvas.height + "; " + " (" + x + ", " + y + ", " + z + ")";
