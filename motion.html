@@ -24,7 +24,7 @@
 	let y = 0;
 	let z = 0;
 	
-	/*
+	
 	function draw(){
 		let size = (z + 10) * 5
 		
@@ -42,9 +42,9 @@
 		
 		ctx.font = "40px Consolas";
 		ctx.fillText(pos.x + ", " + pos.y + ", " + size + " (" + x + ", " + y + ", " + z + ")", 20, 40);
-	}*/
+	}
 	
-	alert("21");
+	alert("22");
 	
 	function handleMotionEvent(event){
 		//alert(event.accelerationIncludingGravity);
@@ -64,6 +64,8 @@
 		z = event.accelerationIncludingGravity.z;
 
 		document.getElementById("textId").innerHTML = "x, y, z = " + x + ", " + y + ", " + z;
+		
+		draw();
 	}
 	window.addEventListener("devicemotion", handleMotionEvent, true);
 	
