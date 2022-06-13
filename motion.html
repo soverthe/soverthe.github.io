@@ -20,11 +20,12 @@
 	canvas.width = window.innerWidth;
 	
 	
-	function handleMotionEvent(event){
-		let x = event.accelerationIncludingGravity.x ?? 0;
-		let y = event.accelerationIncludingGravity.y ?? 0;
-		let z = event.accelerationIncludingGravity.z ?? 0;
-		
+	let x = 0;
+	let y = 0;
+	let z = 0;
+	
+	
+	function draw(){
 		let size = (z + 10) * 5
 		
 		let pos = {
@@ -42,12 +43,23 @@
 		ctx.font = "40px Consolas";
 		ctx.fillText(pos.x + ", " + pos.y + ", " + size + " (" + x + ", " + y + ", " + z + ")", 20, 40);
 	}
+	
+	
+	function handleMotionEvent(event){
+		x = event.accelerationIncludingGravity.x ?? 0;
+		y = event.accelerationIncludingGravity.y ?? 0;
+		z = event.accelerationIncludingGravity.z ?? 0;
+		
+		draw();
+	}
 	window.addEventListener("devicemotion", handleMotionEvent, true);
 	
 	
 	function onResize(){
 		canvas.height = window.innerHeight;
 		canvas.width = window.innerWidth;
+		
+		draw();
 	}
 	window.addEventListener("resize",onResize);
   </script>
