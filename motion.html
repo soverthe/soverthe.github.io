@@ -12,9 +12,9 @@
  </head>
  <body>
  <a id="textId"></a>
- <canvas id="canvas1"></canvas>
+ <!--<canvas id="canvas1"></canvas>-->
   <script>
-	var canvas = document.getElementById("canvas1");
+	/*var canvas = document.getElementById("canvas1");
 	var ctx = canvas.getContext("2d");
 	canvas.height = window.innerHeight;
 	canvas.width = window.innerWidth;
@@ -42,9 +42,9 @@
 		
 		ctx.font = "40px Consolas";
 		ctx.fillText(pos.x + ", " + pos.y + ", " + size + " (" + x + ", " + y + ", " + z + ")", 20, 40);
-	}
+	}*/
 	
-	alert("21");
+	//alert("21");
 	
 	function handleMotionEvent(event){
 		//alert(event.accelerationIncludingGravity);
@@ -53,15 +53,21 @@
 		//y = event.accelerationIncludingGravity.y ?? 0;
 		//z = event.accelerationIncludingGravity.z ?? 0;
 		
-		let e = event.accelerationIncludingGravity;
+		/*let e = event.accelerationIncludingGravity;
 		
-		document.getElementById("textId").innerHTML = e.x + ", " + e.y + ", " + e.z;
+		document.getElementById("textId").innerHTML = e.x + ", " + e.y + ", " + e.z;*/
 		
 		//draw();
+		
+		let x = event.accelerationIncludingGravity.x;
+		let y = event.accelerationIncludingGravity.y;
+		let z = event.accelerationIncludingGravity.z;
+
+		document.getElementById("textId").innerHTML = "x, y, z = " + x + ", " + y + ", " + z;
 	}
 	window.addEventListener("devicemotion", handleMotionEvent, true);
 	
-	alert("31");
+	//alert("31");
 	/*
 	function onResize(){
 		canvas.height = window.innerHeight;
@@ -73,11 +79,11 @@
 	
 	alert("4");
 	*/
-	document.getElementById("textId").innerHTML = canvas.width + ", " + canvas.height + "; " + " (" + x + ", " + y + ", " + z + ")";
+	//document.getElementById("textId").innerHTML = canvas.width + ", " + canvas.height + "; " + " (" + x + ", " + y + ", " + z + ")";
 	
 	
 	
-	draw();
+	//draw();
 	/*window.onerror = function(msg, url, linenumber) {
 		alert('Error message: '+msg+'\nURL: '+url+'\nLine Number: '+linenumber);
 		return true;
