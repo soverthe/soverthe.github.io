@@ -3,19 +3,46 @@
  <head>
     <title>motion</title>
    <meta charset="UTF-8">
+   <style>
+	html, body { height: 100%; margin: 0; }
+	body {
+		overflow: hidden;
+		background-color: gray;
+	}
+   </style>
  </head>
  <body>
- <a id="motionId"></a>
+ <canvas id="canvas1"></canvas>
   <script>
+	var canvas = document.getElementById("canvas1");
+	var ctx = canvas.getContext("2d");
+	canvas.height = window.innerHeight;
+	canvas.width = window.innerWidth;
+	
+	
 	function handleMotionEvent(event){
-		let x = event.accelerationIncludingGravity.x;
-		let y = event.accelerationIncludingGravity.y;
-		let z = event.accelerationIncludingGravity.z;
+		let x = event.accelerationIncludingGravity.x ?? 0;
+		let y = event.accelerationIncludingGravity.y ?? 0;
+		let z = event.accelerationIncludingGravity.z ?? 0;
 		
-		document.getElementById("motionId").innerHTML = "x, y, z = " + x + ", " + y + ", " + z;
+		
+		let size = (z + 10) * 5
+		
+		ctx.fillRect(
+			x * Math.floor(canvas.width / 20) + Math.floor(canvas.width / 2 - size / 2),
+			y * Math.floor(canvas.height / 20) + Math.floor(canvas.height / 2 - size / 2),
+			size,
+			size
+		);
 	}
-
 	window.addEventListener("devicemotion", handleMotionEvent, true);
+	
+	
+	function onResize(){
+		canvas.height = window.innerHeight;
+		canvas.width = window.innerWidth;
+	}
+	window.addEventListener("resize",onResize);
   </script>
  </body>
 </html>
