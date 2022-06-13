@@ -44,20 +44,24 @@
 		ctx.fillText(pos.x + ", " + pos.y + ", " + size + " (" + x + ", " + y + ", " + z + ")", 20, 40);
 	}
 	
-	alert("2");
+	alert("21");
 	
 	function handleMotionEvent(event){
-		alert(event.accelerationIncludingGravity);
+		//alert(event.accelerationIncludingGravity);
 		
 		//x = event.accelerationIncludingGravity.x ?? 0;
 		//y = event.accelerationIncludingGravity.y ?? 0;
 		//z = event.accelerationIncludingGravity.z ?? 0;
 		
+		let e = event.accelerationIncludingGravity;
+		
+		document.getElementById("textId").innerHTML = e.x + ", " + e.y + ", " + e.z;
+		
 		//draw();
 	}
 	window.addEventListener("devicemotion", handleMotionEvent, true);
 	
-	alert("3");
+	alert("31");
 	/*
 	function onResize(){
 		canvas.height = window.innerHeight;
