@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>Snowify Transparency</title>
+   <meta charset="UTF-8">
+   <style>
+	html, body { height: 100%; margin: 0; }
+	body {
+		background-color: gray;
+		
+		zoom: 1.5; 
+		-moz-transform: scale(1.5); 
+		-moz-transform-origin: 0 0;
+	}
+	#inputsDiv input {
+		width: 36px;
+	}
+   </style>
+ </head>
+ <body>
+  <input accept="image/*" type='file' id="imageInput" />
+  
+  <section hidden>
+	<img id="defaultImageId" src="#"/>
+	<img id="currentImageId" src="#"/>
+  </section>
+ <br>
+ <div id="inputsDiv">
+  <br>Max Snow Layers: <input type="number" value="3" id="maxSnowLayersId"></input>
+  <br>Max Definite Snow Level: <input type="number" value="1" id="maxDefiniteSnowLevelId"></input> (0 = first layer)
+  <br>Snow Chance After Definite Level: <input type="number" value="50" id="snowChanceAfterDefiniteLevelId"></input>%
+  <br>
+  <br><button onclick="drawSnowifiedImage()">Snowify Image</button>
+  <button onclick="resetImageToDefault()">Reset</button>
+ </div>
+ <br>
+ <canvas id="canvasId"></canvas>
+  <script>
+	
+	var canvas = document.getElementById("canvasId");
+	var ctx = canvas.getContext("2d");
+	canvas.height = 100;
+	canvas.width = 100;
+	
+</script>
+<script> //General
+	
+	function randomNum(min, max){
+		return Math.floor(Math.random() * (max - min + 1) + min);
+	}
+	
+</script>
+<script> //Image
+	
+	imageInput.onchange = e => {
+		const [file] = imageInput.files;
+		
+		if (file) {
+			defaultImageId.src = URL.createObjectURL(file);
+			currentImageId.src = URL.createObjectURL(file);
+			
+			setTimeout(draw,500);
+		}
+	}
+	
+	function resetImageToDefault(){
+		currentImageId.src = defaultImageId.src;
+		
+		draw();
+	}
+	
+	function getCanvasImageData(){
+		return ctx.getImageData(0,0,canvas.width,canvas.height);;
+	}
+	
+	
+	function getImageDataColorsMap(imageData){
+		let colorsMap = [];
+		
+		for (let pos = 0; pos < imageData.data.length; pos += 4){
+			let x = (pos/4) % canvas.width;
+			let y = Math.floor((pos/4) / canvas.width);
+			
+			if (colorsMap[y] == undefined){
+				colorsMap[y] = [];
+			}
+			
+			colorsMap[y][x] = {
+				red: imageData.data[pos],
+				green: imageData.data[pos + 1],
+				blue: imageData.data[pos + 2],
+				alpha: imageData.data[pos + 3]
+			}
+		}
+		return colorsMap;
+	}
+	
+	
+	function replaceTransparentOnOpaqueWithSnow(imageData, canvasData, colorsMap, snowLevel){
+		let maxDefiniteSnowLevel = document.getElementById("maxDefiniteSnowLevelId").value;
+		let snowChanceAfterDefiniteLevel = document.getElementById("snowChanceAfterDefiniteLevelId").value;
+		
+		
+		for (let pos = 0; pos < canvasData.data.length; pos += 4){
+				
+			let x = (pos/4) % canvas.width;
+			let y = Math.floor((pos/4) / canvas.width);
+			
+			let colors = colorsMap[y][x];
+			
+			if (colors.alpha < 255){
+				if (y + 1 < canvas.height){
+					let colorBelow = colorsMap[y+1][x];
+					
+					if (colorBelow.alpha == 255){
+						if (randomNum(1, 100) <= snowChanceAfterDefiniteLevel || snowLevel <= maxDefiniteSnowLevel){
+							colors = {red: 255, green: 255, blue: 255, alpha: 255};
+						}
+					}
+				}
+			}
+			
+			imageData.data[pos] = colors.red;
+			imageData.data[pos + 1] = colors.green;
+			imageData.data[pos + 2] = colors.blue;
+			imageData.data[pos + 3] = colors.alpha;
+		}
+		return imageData;
+	}
+	
+	
+	function modifyImageData(imageData, canvasData){
+		
+		let maxSnowLayers = Number(document.getElementById("maxSnowLayersId").value);
+		
+		for (let snowLevel = 0; snowLevel < maxSnowLayers; snowLevel++){
+			
+			let data = (snowLevel == 0) ? canvasData : imageData;
+			
+			let colorsMap = getImageDataColorsMap(data);
+			
+			
+			imageData = replaceTransparentOnOpaqueWithSnow(imageData, canvasData, colorsMap, snowLevel);
+		}
+		return imageData;
+	}
+	
+</script>
+<script> //Draw
+	
+	function resizeCanvasToCurrentImage(){
+		if (currentImageId.width > 0){
+			canvas.width = currentImageId.width;
+			canvas.height = currentImageId.height;
+		}
+	}
+	
+	function draw(){
+		canvas.width |= 0;
+		
+		resizeCanvasToCurrentImage();
+		
+		if (currentImageId.src != "#"){
+			ctx.drawImage(currentImageId, 0, 0);
+		}
+	}
+	
+	function drawSnowifiedImage(){
+		let canvasData = getCanvasImageData();
+		
+		let imageData = new ImageData(canvas.width, canvas.height);
+		
+		resizeCanvasToCurrentImage();
+		
+		ctx.putImageData(modifyImageData(imageData, canvasData), 0, 0);
+	}
+	
+</script>
+ </body>
+</html>
