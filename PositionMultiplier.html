@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>Position Multiplier</title>
+   <meta charset="UTF-8">
+   <style>
+	body {
+		font-size: 2vw;
+		
+		color: #EEEEEE;
+		background-color: #242424;
+		
+		margin-left: 5vw;
+		margin-top: 7vh;
+	}
+	
+	input {
+		width: 32vw;
+		height: 8vh;
+		
+		font-size: 2vw;
+		
+		color: #EEEEEE;
+		background-color: #444444;
+		border-color: #444444;
+		text-shadow: 1px 1px 10px #000000;
+	}
+	
+	button {
+		height: 8vh;
+		
+		font-size: 2vw;
+		
+		color: #EEEEEE;
+		background-color: #444444;
+		border-color: #444444;
+		
+		margin-left: 1vw;
+		padding-left: 1vw;
+		padding-right: 1vw;
+	}
+	
+	.smallButton {
+		height: 4vh;
+		
+		font-size: 1vw;
+		
+		color: #EEEEEE;
+		background-color: #444444;
+		border-color: #444444;
+		
+		margin-left: 1vw;
+		padding-left: 1vw;
+		padding-right: 1vw;
+	}
+	
+	pre {
+		font: 1.4vw Arial;
+	}
+	
+	
+	table {
+		display: inline-block;
+	}
+	td {
+		padding-right: 4vw;
+	}
+	
+	.coordinateLabel:hover {
+		background-color: #666666;
+	}
+   </style>
+ </head>
+ <body>
+	<button onclick="resetLocalStorageData();" class="smallButton" style="position: absolute; margin-left: 82vw; margin-top: -5vh;">Reset LocalStorage</button>
+	<a style="color:#ff218c">x:</a> <input id="xId" onchange="setCoordinates()" style="border-color:#ff218c; text-shadow: 1px 1px 10px #ff218c;"></input><button onclick="clearCoordinates()">Clear</button><br>
+	<a style="color:#ffd800">y:</a> <input id="yId" onchange="setCoordinates()" style="border-color:#ffd800; text-shadow: 1px 1px 10px #ffd800;"></input><br>
+	<a style="color:#21b1ff">z:</a> <input id="zId" onchange="setCoordinates()" style="border-color:#21b1ff; text-shadow: 1px 1px 10px #21b1ff;"></input>
+	<a style="margin-left: 8vw;"></a>
+	multiplier: <input step="0.01" type="number" id="multiplierId" onchange="setCoordinates()" style="width:10vw;"></input><br>
+	<br><br>
+	<input id="coordinatesId"></input><button onclick="copyCoordinatesToClipboard()">Copy to Clipboard</button><br>
+	<label id="selectedCoordinateOrderId"></label><table id="coordinateOrderId"></table>
+	<br>
+	<div>
+	<button onclick="toggleInfo();" id="infoButton" class="smallButton" style="position: absolute; margin-left: -0.25vw; margin-top: 3vh;">Info ▼</button><br>
+	<pre id="infoId" style="display: none;">
+Usage (for Blender to traVRsal):
+	(In Blender)
+	-Put the 3D Cursor to your desired position (Shift + Right Click)
+	-Open the side panel (N)
+	-Go to (View > 3D Cursor), and copy the Location values over
+	
+	(In Tiled)
+	-Open the Map Properties (Map > Map Properties...)
+	-Make a Property called "OffsetRaw" (string), and paste the coordinates into it
+	</pre>
+	</div>
+	
+<script> //Variables
+	
+	let isInfoDisplayed = false;
+	
+	let multiplier = localStorage.getItem("Position_Multiplier.multiplier");
+	if (multiplier == null){ multiplier = 0.25; }
+	multiplier = Number(multiplier);
+	
+	document.getElementById("multiplierId").value = multiplier;
+	
+	
+	let selectedCoordinateOrder = localStorage.getItem("Position_Multiplier.selectedCoordinateOrder");
+	if (selectedCoordinateOrder == null){ selectedCoordinateOrder = "xzy"; }
+	
+	let isCoordinateOrderChange = false;
+	
+</script>
+
+<script> //Coordinates Output
+	
+	function clearCoordinates(){
+		let pos = {x: 0, y: 0, z: 0};
+		
+		for (let i in pos){
+			document.getElementById(i + "Id").value = "";
+		}
+		setCoordinates();
+	}
+	
+	function setCoordinates(){
+		let pos = {x: 0, y: 0, z: 0};
+		
+		multiplier = document.getElementById("multiplierId").value;
+		localStorage.setItem('Position_Multiplier.multiplier', multiplier);
+		
+		for (let i in pos){
+			let value = document.getElementById(i + "Id").value;
+			
+			if (value != ""){
+				parseNum = str => +str.replace(/[^-.\d]/g, ''); //https://stackoverflow.com/a/62054923/12777947
+				
+				pos[i] = Number(parseNum(value)) * Number(multiplier);
+			}
+		}
+		
+		document.getElementById("coordinatesId").value = getCoordinateTextFromPos(pos);
+	}
+	
+	function getCoordinateTextFromPos(pos){
+		let text = "";
+		
+		for (let i in selectedCoordinateOrder){
+			text += pos[selectedCoordinateOrder[i]];
+			
+			if (i < 2){
+				text += ";";
+			}
+		}
+		return text;
+	}
+	
+</script>
+<script> //Coordinates Order
+	
+	function generateCoordinateOrderSelect(){
+		let text = "<tr>";
+		
+		let selectedText = "";
+		
+		let orderArr = ["xzy","xyz","yzx","yxz","zxy","zyx"];
+		let axisColors = {x: "#ff218c", y: "#ffd800", z: "#21b1ff"};
+		
+		for (let order of orderArr){
+			let labelText = "";
+			
+			for (let i in order){
+				labelText += "<label style='color:" + axisColors[order[i]] + ";'>" + order[i] + "</label>";
+				
+				if (i < 2){
+					labelText += ";";
+				}
+			}
+			
+			if (order == selectedCoordinateOrder){
+				selectedText = labelText;
+			}
+			
+			text += '<td onclick="changeCoordinateOrder(\'' + order + '\');"><label class="coordinateLabel">' + labelText + '</label></td>';
+		}
+		
+		
+		document.getElementById("coordinateOrderId").innerHTML = ""
+		document.getElementById("selectedCoordinateOrderId").innerHTML = "";
+		
+		if (isCoordinateOrderChange){
+			document.getElementById("coordinateOrderId").innerHTML = text + "</tr>";
+		} else{
+			document.getElementById("selectedCoordinateOrderId").innerHTML = "order: " + selectedText + '<button class="smallButton" onclick="displayCoordinateTable();">change</button>';
+		}
+	}
+	
+	function displayCoordinateTable(){
+		isCoordinateOrderChange = true;
+		
+		generateCoordinateOrderSelect();
+	}
+	
+	function changeCoordinateOrder(order){
+		selectedCoordinateOrder = order;
+		
+		localStorage.setItem('Position_Multiplier.selectedCoordinateOrder', selectedCoordinateOrder);
+		
+		setCoordinates();
+		
+		isCoordinateOrderChange = false;
+		
+		generateCoordinateOrderSelect();
+	}
+	
+</script>
+
+<script> //Copy to Clipboard
+	
+	function copyTextToClipboard(text){
+		navigator.clipboard.writeText(text);
+	}
+	
+	function copyCoordinatesToClipboard(){
+		copyTextToClipboard(document.getElementById("coordinatesId").value)
+	}
+	
+</script>
+
+<script> //Reset Local Storage
+	
+	function resetLocalStorageData(){
+		multiplier = 0.25;
+		selectedCoordinateOrder = "xzy";
+		
+		document.getElementById("multiplierId").value = multiplier;
+		
+		localStorage.removeItem("Position_Multiplier.multiplier");
+		localStorage.removeItem("Position_Multiplier.selectedCoordinateOrder");
+		
+		runSetupFunctions();
+	}
+	
+</script>
+
+<script> //Toggle Info
+	
+	function toggleInfo(){
+		isInfoDisplayed = !isInfoDisplayed;
+		
+		if (isInfoDisplayed){
+			document.getElementById("infoId").style.display = "block";
+			document.getElementById("infoButton").innerHTML = "Info ▲";
+		} else{
+			document.getElementById("infoId").style.display = "none";
+			document.getElementById("infoButton").innerHTML = "Info ▼";
+		}
+	}
+	
+</script>
+
+<script> //Function Calls
+	
+	function runSetupFunctions(){
+		generateCoordinateOrderSelect();
+		
+		setCoordinates();
+	}
+	runSetupFunctions();
+	
+  </script>
+ </body>
+</html>
