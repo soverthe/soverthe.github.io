@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>DVD logo bounces</title>
+   <meta charset="UTF-8">
+   <style>
+	html, body { height: 100%; margin: 0; }
+	body {
+		overflow: hidden;
+		background-color: #111111;
+	}
+   </style>
+ </head>
+ <body>
+ <canvas id="canvasId"></canvas>
+  <script>
+	var canvas = document.getElementById("canvasId");
+	var ctx = canvas.getContext("2d");
+	canvas.height = window.innerHeight;
+	canvas.width = window.innerWidth;
+	
+	let fps = 60;
+	
+	let rects = [];
+	
+	let cornerHits = {};
+	
+	let cornerHitNums = 0;
+	let maxCornerHits = 0;
+	
+	
+	let startingTime = new Date().getTime();
+	
+	
+	function generateRects(){
+		for (let i = 0; i < 1000; i++){
+			rects.push({
+				x: Math.round(canvas.width/2),
+				y: Math.round(canvas.height/2),
+				w: (i + 1) * 1,
+				h: (i + 1) * 1,
+				speed: 1,
+				direction: {
+					x: 1,
+					y: 1
+				}
+			});
+		}
+	}
+	generateRects();
+	
+	
+	function moveRects(){
+		for (let rect of rects){
+			
+			let changed = {x: false, y: false};
+			
+			if (rect.x <= 0){
+				rect.direction.x = rect.speed;
+				changed.x = true;
+			}
+			if (rect.x + rect.w >= canvas.width - 1){
+				rect.direction.x = -rect.speed;
+				changed.x = true;
+			}
+			
+			if (rect.y <= 0){
+				rect.direction.y = rect.speed;
+				changed.y = true;
+			}
+			if (rect.y + rect.h >= canvas.height - 1){
+				rect.direction.y = -rect.speed;
+				changed.y = true;
+			}
+			
+			
+			if (changed.x && changed.y){
+				if ((rect.x == 0 || rect.x + rect.w == canvas.width - 1) && (rect.y == 0 || rect.y + rect.h == canvas.height - 1)){ //delete this if you don't care about perfection
+					let name = rect.w;
+					if (cornerHits[name] == undefined){
+						cornerHits[name] = 0;
+					}
+					
+					cornerHits[name]++;
+				}
+			}
+			
+			
+			rect.x += rect.direction.x;
+			rect.y += rect.direction.y;
+		}
+	}
+	
+	
+	
+	function drawRects(){
+		canvas.width |= 0;
+		
+		
+		for (let i = rects.length - 1; i >= 0; i--){
+			let rect = rects[i];
+			
+			ctx.fillStyle = "hsla(" + ((i / rects.length) * 255) + ", 100%, 50%, 0.002)";
+			
+			ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+		}
+	}
+	
+	
+	function drawCornerHitsGraph(){
+		
+		ctx.fillStyle = "#000000D0";
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		
+		
+		cornerHitNums = 0;
+		maxCornerHits = 0;
+		
+		for (let i in cornerHits){
+			cornerHitNums += cornerHits[i];
+			
+			if (maxCornerHits < cornerHits[i]){
+				maxCornerHits = cornerHits[i];
+			}
+		}
+		
+		
+		
+		for (let i in cornerHits){
+			let num = Number(i);
+			
+			let ratioNum = ((num+1) / rects.length);
+			
+			let height = (cornerHits[i] / maxCornerHits) * (canvas.height*0.9);
+			
+			
+			ctx.fillStyle = "hsla(" + (ratioNum * 255) + ", 100%, 50%, 0.8)";
+			
+			ctx.fillRect(ratioNum * (canvas.width * 0.99), canvas.height*0.9 - height, 1.9, height);
+		}
+		
+		for (let i in cornerHits){
+			let num = Number(i);
+			
+			let ratioNum = ((num+1) / rects.length);
+			
+			let height = (cornerHits[i] / maxCornerHits) * (canvas.height*0.9);
+			
+			
+			
+			if (num % 10 == 0){
+				ctx.fillStyle = "hsla(" + (ratioNum * 255) + ", 100%, 50%, 0.8)";
+				
+				ctx.fillText(cornerHits[i], ratioNum * (canvas.width * 0.99) - ((cornerHits[i] + "").length * 6), canvas.height*0.9 + ((num-1) % 100)*0.84 + 5);
+			}
+		}
+		
+		
+		
+		ctx.fillStyle = "#D2D2D2";
+		ctx.fillText("corner hits: " + cornerHitNums, 3, 13);
+		
+		ctx.fillStyle = "#D2D2D2";
+		ctx.fillText("most hits: " + maxCornerHits, 3, 26);
+		
+		
+		let currentTime = new Date().getTime();
+		
+		ctx.fillStyle = "#D2D2D2";
+		ctx.fillText("seconds passed: " + Math.floor((currentTime - startingTime)/1000) + "s", 3, 39);
+	}
+	
+	
+	function draw(){
+		drawRects();
+		
+		drawCornerHitsGraph();
+	}
+	
+	function nextFrame(){
+		for (let i = 0; i < 1200; i++){
+			moveRects();
+		}
+		
+		draw();
+		
+		setTimeout(nextFrame, 1000/fps);
+	}
+	nextFrame();
+	
+	
+	
+	function onResize(){
+		canvas.height = window.innerHeight;
+		canvas.width = window.innerWidth;
+		
+		draw();
+	}
+	
+	window.addEventListener("resize",onResize);
+	
+</script>
+  </script>
+ </body>
+</html>
