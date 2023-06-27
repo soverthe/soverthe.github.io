@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>Credits Player</title>
+   <meta charset="UTF-8">
+   <style>
+	html, body { height: 100%; margin: 0; }
+	body {
+		overflow: hidden;
+		
+		background-color: #111111;
+		
+		color: white;
+	}
+   </style>
+ </head>
+ <body>
+ <div id="setupDiv">
+	credits .txt file: <input id="textImportId" type="file" accept="text/*"></input><br>
+	images: <input id="imageImportId" type="file" accept="image/*" multiple="multiple"></input> <label id="imageLoadingId"></label><br>
+	<button onclick="startCredits()">Start Credits</button><br><br>
+	<br><br>
+	Usage:<br>
+	Write the credits in a text file.<br><br>
+	
+	[this would appear bigger]<br>
+	[[[[this would be very big]]]]<br><br>
+	
+	this would be replaced by the first loaded picture (alphabetically):<br>
+	#1<br><br>
+	
+	this would be the second picture:<br>
+	#2<br><br>
+	
+	(make sure to only have the # and the number in that line, it shouldn't have anything else in it)<br><br><br>
+	
+	
+	a line containing the word "pride" will be rainbow-y
+ </div>
+ <div id="canvasDiv" style="display: none;">
+ <canvas id="canvasId"></canvas>
+ </div>
+  <script> //this could use Lu's 2d automata thingy for cool colors in the back
+	var canvas = document.getElementById("canvasId");
+	var ctx = canvas.getContext("2d");
+	//canvas.oncontextmenu = function(){return false;}
+	canvas.height = window.innerHeight; //969
+	canvas.width = window.innerWidth; //1920
+	
+	let fps = 60;
+	
+	
+	let fontSize = 32;
+	
+	let textGap = 50;
+	
+	let creditsWidthRatio = 0.55;
+	
+	
+	let imageHeight = 600;
+	
+	
+	let creditsText = "";
+	
+	let texts = [];
+	
+	let images = [];
+	
+	let camera = {y: 100};
+	
+	
+	let time = 0;
+	
+</script>
+<script> //Import Credits File
+	
+	window.onload = function(){
+		let textInput = document.getElementById('textImportId');
+		textInput.addEventListener('change', handleTextFiles, false);
+		
+		let imageInput = document.getElementById('imageImportId');
+		imageInput.addEventListener('change', handleImageFiles, false);
+	}
+
+	function handleTextFiles(e){ //https://stackoverflow.com/a/6776066/12777947
+		let f = e.target.files[0];
+		
+		let reader = new FileReader();
+		
+        reader.onload = function(event)
+        {
+            creditsText = event.target.result;
+        };
+
+        reader.readAsText(f); //what's this? ah, whatever...
+	}
+	
+
+	function handleImageFiles(e){ //https://stackoverflow.com/a/6776066/12777947
+		images = [];
+		
+		for (let i = 0; i < e.target.files.length; i++){
+			let url = URL.createObjectURL(e.target.files[i]);
+			let img = new Image();
+			
+			img.src = url;
+			
+			img.onload = function(){
+				
+				let creditsWidth = canvas.width * creditsWidthRatio;
+				
+				let pos = {
+					w: img.width,
+					h: img.height
+				}
+				
+				if (pos.w > creditsWidth){
+					let ratio = creditsWidth / pos.w;
+					
+					pos.w *= ratio;
+					pos.h *= ratio;
+				}
+				
+				images[i] = {image: img, w: pos.w, h: pos.h};//w: img.width * (imageHeight / img.height), h: img.height};
+				
+				URL.revokeObjectURL(img.src); //https://stackoverflow.com/a/6776055/12777947
+				
+				document.getElementById("imageLoadingId").innerHTML = images.length + "/" + e.target.files.length;   
+			}
+		}
+	}
+	
+</script>
+<script> //Generate Texts Array
+	
+	function generateTextsArray(){
+		texts = [];
+		
+		let lines = creditsText.split('\n');
+		
+		let y = 0;
+		
+		for (let line of lines){
+			line = line.replaceAll('\r', '');
+			
+			let isImage = false;
+			let imageNum = 0;
+			
+			if (line[0] == "#"){
+				let num = Number(line.substring(1));
+				
+				if (!isNaN(num)){
+					isImage = true;
+					
+					imageNum = num - 1;
+				}
+			}
+			
+			if (isImage){
+				texts.push({text: line, y: y, imageNum: imageNum});
+				
+				let currentImageHeight = imageHeight;
+				
+				if (images[imageNum] != undefined){
+					currentImageHeight = images[imageNum].h;
+				}
+				
+				for (let i = textGap; i < currentImageHeight; i += textGap){
+					y += textGap;
+				}
+			} else{
+				texts.push({text: line, y: y});
+			}
+			
+			y += textGap;
+		}
+	}
+	
+</script>
+<script> //Start Credits
+	
+	function startCredits(){
+		time = 0;
+		
+		generateTextsArray();
+		
+		document.getElementById("setupDiv").style.display = "none";
+		document.getElementById("canvasDiv").style.display = "inline-block";
+		
+		camera.y = (canvas.height * 1.1);
+		
+		draw();
+	}
+	
+</script>
+<script> //Draw
+	
+	function draw(){
+		canvas.width |= 0;
+		
+		ctx.fillStyle = "#FFFFFF";
+		
+		let creditsWidth = canvas.width * creditsWidthRatio;
+		
+		for (let i in texts){
+			let currentY = texts[i].y + Math.round(camera.y);
+			
+			if (texts[i].imageNum == undefined){
+				if (currentY > 0 && currentY - fontSize < canvas.height){
+					let currentText = texts[i].text;
+					
+					let currentFontSize = fontSize;
+					
+					
+					while (currentText[0] == "[" && currentText[currentText.length - 1] == "]"){
+						currentText = currentText.substring(1, currentText.length - 1);
+						
+						currentFontSize *= 1.35;
+					}
+					
+					let length = currentText.length;
+					
+					let width = (length * fontSize)/1.825;
+					
+					
+					
+					
+					if (width > creditsWidth){
+						currentFontSize = creditsWidth * 1.825 / length; //this was constructed with maths, am proud of it
+					}
+					
+					
+					
+					let leftMargain = (creditsWidth - ((currentFontSize/1.825) * currentText.length)) / 2 + 10;
+					
+					
+					ctx.font = currentFontSize + "px Consolas";
+					
+					
+					for (let j = 0; j < currentText.length; j++){
+						if (currentText.toLowerCase().includes("pride")){
+							ctx.fillStyle = "hsl(" + ((j / currentText.length) * 255) + ",100%, 50%)";
+							
+							ctx.fillText(currentText[j], j * (currentFontSize/1.825) + leftMargain, currentY);
+						} else{
+							
+							if ((time - i - (j*2)) % 1200 > 900){
+								ctx.fillStyle = "#21b1ffB4";
+							} else if ((time - i - (j*2)) % 1200 > 600){
+								ctx.fillStyle = "#ffd800B4";
+							} else if ((time - i - (j*2)) % 1200 > 300){
+								ctx.fillStyle = "#ff218cB4";
+							} else{
+								ctx.fillStyle = "#000000B4";
+							}
+							
+							let shiftAmount = Math.round(currentFontSize/20);
+							
+							ctx.fillText(currentText[j], j * (currentFontSize/1.825) + leftMargain + shiftAmount, currentY + shiftAmount);
+							
+							
+							ctx.fillStyle = "#FFFFFF";
+							
+							ctx.fillText(currentText[j], j * (currentFontSize/1.825) + leftMargain, currentY);
+						}
+					}
+				}
+			} else{
+				let image = images[texts[i].imageNum];
+				
+				if (image != undefined){
+					let leftMargain = (creditsWidth - image.w) / 2 + 10;
+					
+					ctx.drawImage(image.image, leftMargain, texts[i].y + Math.round(camera.y), image.w, image.h);
+				}
+			}
+		}
+	}
+	
+</script>
+<script> //Next Frame
+	
+	function nextFrame(){
+		time++;
+		
+		camera.y -= 0.85 * 2;
+		
+		draw();
+		
+		setTimeout(nextFrame,1000/fps);
+	}
+	
+</script>
+<script> //Listeners
+	
+	//Resize
+	
+	function onResize(){
+		canvas.height = window.innerHeight;
+		canvas.width = window.innerWidth;
+		
+		draw();
+	}
+	
+	window.addEventListener("resize",onResize);
+</script>
+<script> //Calls	
+	nextFrame();
+  </script>
+ </body>
+</html>
