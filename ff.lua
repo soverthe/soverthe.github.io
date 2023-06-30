@@ -1,4 +1,4 @@
-m = peripheral.wrap("right") m.setTextScale(1)
+m = peripheral.wrap("right") m.setTextScale(2)
 m.clear() m.setCursorPos(1,1) m.write("Awaiting input...")
 term.clear()
 run = true
