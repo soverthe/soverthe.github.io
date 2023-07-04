@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>WordCounter.html</title>
+   <meta charset="UTF-8">
+   <style>
+	html, body { height: 100%; margin: 0; }
+	body {
+		background-color: #111111;
+		
+		color: white;
+	}
+   </style>
+ </head>
+ <body>
+	text: <input id="textImportId" type="file" accept="text/*"></input> <button onclick="countWords()">Count Words</button><br><br>
+	<pre id="wordCountId"></pre>
+ </div>
+  <script>
+	let fullText = "";
+	
+	let sortedWordCounts = [];
+	
+	
+	function countWords(){
+		let words = fullText.replaceAll("\t","").replaceAll("\r\n", " ").split(" "); //these should be removed aswell :,{}()
+		
+		
+		let wordCounts = {};
+		
+		for (let word of words){
+			if (wordCounts[word] == undefined){
+				wordCounts[word] = 0;
+			}
+			
+			wordCounts[word]++;
+		}
+		
+		
+		sortedWordCounts = [];
+		
+		for (let word in wordCounts) {
+			sortedWordCounts.push([word, wordCounts[word]]);
+		}
+
+		sortedWordCounts.sort(function(a, b) {
+			return b[1] - a[1];
+		});
+		
+		
+		setWordCountPreToWordCounts();
+	}
+	
+	function setWordCountPreToWordCounts(){
+		let text = "";
+		
+		for (let i in sortedWordCounts){
+			text += sortedWordCounts[i][0] + " " + sortedWordCounts[i][1] + "\n";
+		}
+		
+		document.getElementById("wordCountId").innerHTML = text;
+	}
+	
+	
+	window.onload = function(){
+		let textInput = document.getElementById('textImportId');
+		textInput.addEventListener('change', handleTextFiles, false);
+	}
+
+	function handleTextFiles(e){ //https://stackoverflow.com/a/6776066/12777947
+		let f = e.target.files[0];
+		
+		let reader = new FileReader();
+		
+        reader.onload = function(event)
+        {
+            fullText = event.target.result;
+        };
+
+        reader.readAsText(f);
+	}
+	
+</script>
+  </script>
+ </body>
+</html>
