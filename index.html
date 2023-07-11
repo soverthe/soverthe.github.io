@@ -7,13 +7,14 @@
    <style>
 	body {
 		background-color: #000000;
-		font-size: 36px;
+		font-size: 1.65vw;
 		
 		color: #EEEEEE;
 	}
    </style>
  </head>
  <body>
+  <a id="timeId"></a><br><br>
   <a href="/StardewGuessWho.html">StardewGuessWho.html</a><br><br>
   
   <a href="/RectangleBounces.html">RectangleBounces.html</a><br>
@@ -33,8 +34,28 @@
   <a href="https://github.com/davidsover/nppJSFunctionViewer">JSFunctionViewer (Notepad++ Plugin)</a><br><br><br>
   
   <a href="https://github.com/davidsover/davidsover.github.io">GitHub</a><br>
+  
   <script>
 	
+	let time;
+	
+	function refreshTime(){
+		time = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Budapest"}));
+		
+		
+		let time12hour = time.toLocaleString('en-US', { hour: 'numeric', hour12: true });
+		
+		document.getElementById("timeId").innerHTML = "It's " + time12hour + " in parts of Europe";
+	}
+	
+	
+	function nextFrame(){
+		refreshTime()
+		
+		setTimeout(nextFrame, 1000);
+	}
+	
+	nextFrame();
   </script>
  </body>
 </html>
