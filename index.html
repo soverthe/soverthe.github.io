@@ -5,6 +5,7 @@
 	<link rel="icon" href ="Pictures/icon.png" type = "image/x-icon"> 
    <meta charset="UTF-8">
    <style>
+	html, body { height: 100%; margin: 0; }
 	body {
 		background-color: #000000;
 		font-size: 1.65vw;
@@ -120,7 +121,7 @@
 			let width = 0.125;
 			
 			buttons[link.type].push({
-				x: collumns[link.type] / objectLength(collumns) + 1/8 - width/2,// + 0.015,
+				x: collumns[link.type] / objectLength(collumns) + 1/8 - width/2,
 				y: buttons[link.type].length / 7.5 + 0.125,
 				w: width,
 				h: 1 / 10,
@@ -256,6 +257,11 @@
 		
 		current24hourTime = Number(currentTime.toLocaleString('hu-HU', {hour: 'numeric'}));
 		current24hourTime += Number(currentTime.toLocaleString('hu-HU', {minute: 'numeric'})) / 60;
+		
+		
+		/*current12hourTime = "10 AM";
+		
+		current24hourTime = 10;*/
 	}
 	
 	
