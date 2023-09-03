@@ -10,11 +10,14 @@
 		font-size: 1.65vw;
 		
 		color: #EEEEEE;
+		
+		overflow: hidden;
 	}
    </style>
  </head>
  <body>
-  <a id="timeId"></a><br><br>
+  <canvas id="canvasId"></canvas>
+  <!--
   <a href="/StardewGuessWho.html">StardewGuessWho.html</a><br><br>
   
   <a href="/RectangleBounces.html">RectangleBounces.html</a><br>
@@ -34,28 +37,316 @@
   <a href="https://github.com/davidsover/nppJSFunctionViewer">JSFunctionViewer (Notepad++ Plugin)</a><br><br><br>
   
   <a href="https://github.com/davidsover/davidsover.github.io">GitHub</a><br>
-  
+  -->
   <script>
 	
-	let time;
+	let links = [
+		{href: "/StardewGuessWho.html", name: "Stardew Guess Who", type: "Games", subTypes: ["Guess Who"]},
+		{href: "/NoteMath.html", name: "Note Math", type: "Games", subTypes: ["Music"]},
+		{href: "/FFIslandInstallation.html", name: "Adventures of FF Island (ComputerCraft installation)", type: "Games"},
+		
+		{href: "/TurtleBreak.html", name: "Turtle Break", type: "Tools", subTypes: ["Timer"]},
+		{href: "/WordCounter.html", name: "Word Counter", type: "Tools", subTypes: ["Text"]},
+		{href: "/SnowifyTransparency.html", name: "Snowify Transparency", type: "Tools", subTypes: ["Picture"]},
+		{href: "/PositionMultiplier.html", name: "Position Multiplier", type: "Tools"},
+		{href: "/CreditsPlayer.html", name: "Credits Player", type: "Tools", subTypes: ["Text"]},
+		
+		{href: "/RectangleBounces.html", name: "Rectangle Bounces", type: "Others", subTypes: ["Graph"]},
+		
+		{href: "https://github.com/davidsover/SandPonder", name: "SandPonder (SandPond fork)", type: "Links", subTypes: ["Automata"]},
+		{href: "https://github.com/davidsover/nppJSFunctionViewer", name: "JSFunctionViewer (Notepad++ Plugin)", type: "Links", subTypes: ["Notepad++ Plugin"]},
+		{href: "https://github.com/davidsover/davidsover.github.io", name: "davidsover.github.io Repo", type: "Links"},
+	];
+	
+	
+	var canvas = document.getElementById("canvasId");
+	var ctx = canvas.getContext("2d");
+	//canvas.oncontextmenu = function(){return false;}
+	canvas.height = window.innerHeight; //969
+	canvas.width = window.innerWidth; //1920
+	
+	
+	let buttons = {};
+	
+	let mousePos = {x: 0, y: 0};
+	
+	
+	let currentTime;
+	let current12hourTime;
+	let current24hourTime;
+	
+  </script>
+  <script> //General
+	
+	function objectLength(arr){
+		let length = 0;
+		
+		if (arr != undefined){
+			length = Object.keys(arr).length;
+		}
+		return length;
+	}
+	
+  </script>
+  <script> //Hitbox
+	
+	function isVertexInRect(v, r){
+		return (v.x >= r.x && v.x <= r.x + r.w &&
+				v.y >= r.y && v.y <= r.y + r.h);
+	}
+	
+  </script>
+  
+  <script> //Buttons
+	
+	function generateButtons(){
+		buttons = {};
+		
+		let collumns = {};
+		
+		for (let i in links){
+			let link = links[i];
+			
+			if (buttons[link.type] == undefined){
+				buttons[link.type] = [];
+				
+				collumns[link.type] = objectLength(collumns);
+			}
+		}
+		
+		for (let i in links){
+			let link = links[i];
+			
+			let width = 0.125;
+			
+			buttons[link.type].push({
+				x: collumns[link.type] / objectLength(collumns) + 1/8 - width/2,// + 0.015,
+				y: buttons[link.type].length / 7.5 + 0.125,
+				w: width,
+				h: 1 / 10,
+				text: link.name,
+				subTypes: link.subTypes,
+				href: link.href
+			});
+		}
+	}
+	generateButtons();
+	
+	
+	function drawScaledRectangle(r){
+		ctx.fillRect(
+			r.x * canvas.width,
+			r.y * canvas.height,
+			r.w * canvas.width,
+			r.h * canvas.height
+		);
+	}
+	
+	function drawScaledText(text, x, y){
+		ctx.fillText(text, x * canvas.width, y * canvas.height);
+	}
+	
+	
+	function drawButtons(){
+		
+		for (let collumn in buttons){
+			
+			ctx.fillStyle = "#ffffff";
+			ctx.font = (canvas.width/50) + "px Consolas";
+			ctx.fillText(
+				collumn,
+				(buttons[collumn][0].x + buttons[collumn][0].w/2) * canvas.width - (collumn.length/2) * canvas.width * 0.0115,
+				buttons[collumn][0].y * canvas.height * 0.75
+			);
+			
+			for (let button of buttons[collumn]){
+				
+				ctx.fillStyle = "#222222";
+				ctx.font = canvas.width/120 + "px Consolas";
+				drawScaledRectangle(button);
+				
+				let textLines = button.text.split("(");
+				
+				for (let lineNum in textLines){
+					
+					if (lineNum > 0){ textLines[lineNum] = "(" + textLines[lineNum]; }
+					
+					ctx.fillStyle = "#ffffff";
+					
+					drawScaledText(
+						textLines[lineNum],
+						button.x + button.w/2 - (textLines[lineNum].length / 2) * button.w * 0.0365,
+						button.y + button.h * 0.55 + lineNum * button.h * 0.15
+					);
+				}
+			}
+		}
+	}
+	
+	
+  </script>
+  <script> //Day Animation
+	
+	function getSunPosition(time, size, offset){
+		return {
+			x: Math.cos((time + offset) * Math.PI * 2 / 24) * canvas.width*0.45 + canvas.width/2 - size/2,
+			y: Math.sin((time + offset) * Math.PI * 2 / 24) * canvas.width*0.45  + canvas.height - size/2,
+			w: size,
+			h: size
+		};
+	}
+	
+	
+	function getSkyColor(time){
+		let hourColors = ["#000000","#000000","#000000","#000000","#000000","#000000","#440022","#221679","#3355bb","#4488ff","#4488ff","#4488ff","#4488ff"];
+		
+		for (let i = hourColors.length - 2; i >= 0; i--){
+			hourColors.push(hourColors[i]);
+		}
+		return hourColors[time];
+	}
+	
+  </script>
+  <script> //Draw
+	
+	function shortFillRect(arr){
+		ctx.fillRect(arr.x, arr.y, arr.w, arr.h);
+	}
+	
+	function drawDayAnimation(){
+		ctx.fillStyle = getSkyColor(Math.floor(current24hourTime) % 24);
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		
+		ctx.fillStyle = "#FFFF00";
+		shortFillRect(getSunPosition(current24hourTime - 6.5, 100, Math.PI * 4));
+		
+		ctx.fillStyle = "#444444";
+		shortFillRect(getSunPosition(current24hourTime - 6.5, 100, 0));
+		
+		
+		ctx.fillStyle = "#FFFFFF";
+		ctx.font = (canvas.width/100) + "px Consolas";
+		if (current24hourTime % 12 == 0){
+			ctx.fillText(((current24hourTime == 12) ? "It's high noon." : "It's high nigh."), canvas.width/2 - canvas.width/50, canvas.height * 0.885);
+		}
+	}
+	
+	
+	function draw(){
+		canvas.width |= 0;
+		
+		
+		drawDayAnimation();
+		
+		
+		ctx.fillStyle = "#FFFFFF";
+		ctx.font = (canvas.width/35) + "px Consolas";
+		ctx.fillText("It's " + current12hourTime + " in parts of Europe", canvas.width * 0.3, canvas.height * 0.95);
+		
+		drawButtons();
+	}
+	
+  </script>
+  <script>
 	
 	function refreshTime(){
-		time = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Budapest"}));
+		currentTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Budapest"}));
 		
+		current12hourTime = currentTime.toLocaleString('en-US', { hour: 'numeric', hour12: true });
 		
-		let time12hour = time.toLocaleString('en-US', { hour: 'numeric', hour12: true });
-		
-		document.getElementById("timeId").innerHTML = "It's " + time12hour + " in parts of Europe";
+		current24hourTime = Number(currentTime.toLocaleString('hu-HU', {hour: 'numeric'}));
+		current24hourTime += Number(currentTime.toLocaleString('hu-HU', {minute: 'numeric'})) / 60;
 	}
 	
 	
 	function nextFrame(){
-		refreshTime()
+		refreshTime();
+		
+		draw();
 		
 		setTimeout(nextFrame, 1000);
 	}
 	
 	nextFrame();
+  </script>
+  
+  <script> //Listeners
+	
+	//Resize
+	
+	function onResize(){
+		canvas.height = window.innerHeight;
+		canvas.width = window.innerWidth;
+		
+		draw();
+	}
+	
+	window.addEventListener("resize",onResize);
+	
+	
+	//Inputs
+	
+	let inputs = []; //ex: inputs.KeyW
+	
+	function setKeyDown(e){
+		e = e || window.event;
+		inputs[e.code] = true;
+	}
+	
+	function setKeyUp(e){
+		e = e || window.event;
+		inputs[e.code] = false;
+	}
+	
+	document.onkeydown = setKeyDown;
+	document.onkeyup = setKeyUp;
+	
+	
+	//Mouse
+	
+	function onMouseDown(event){
+		setMousePos(canvas, event);
+		
+		let selectedButton = {collumn: "", num: -1, arr: {}};
+		
+		for (let collumn in buttons){
+			for (let i in buttons[collumn]){
+				let button = buttons[collumn][i];
+				
+				if (isVertexInRect(mousePos, button)){
+					selectedButton = {collumn: collumn, num: i, arr: button};
+				}
+			}
+		}
+		
+		if (selectedButton.collumn != ""){
+			console.log(selectedButton.arr);
+			
+			window.open(selectedButton.arr.href);
+		}
+	}
+	
+	function onMouseUp(event){
+	
+	}
+	
+	function onMouseMove(event){
+	
+	}
+	
+	function setMousePos(canvas, event) {
+		let rect = canvas.getBoundingClientRect();
+		
+		mousePos = {
+			x: (event.clientX - rect.left) / canvas.width,
+			y: (event.clientY - rect.top) / canvas.height
+		};
+	}
+	
+	canvas.addEventListener("mousedown", onMouseDown);
+	canvas.addEventListener("mouseup", onMouseUp);
+	canvas.addEventListener('mousemove',onMouseMove);
+	
   </script>
  </body>
 </html>
