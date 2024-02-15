@@ -70,7 +70,7 @@
 	let lastNote = 0;
 	
 	
-	function mod(n, m) {
+	function mod(n, m){
 		return ((n % m) + m) % m;
 	}
 	
@@ -139,11 +139,13 @@
 			["#7f7f7f", "#c4c4c4", "#9ad9eb", "#ffffff", "#9ad9eb", "#c4c4c4", "#7f7f7f"], //demiboy
 			["#7f7f7f", "#c4c4c4", "#ffaec9", "#ffffff", "#ffaec9", "#c4c4c4", "#7f7f7f"], //demigirl
 			["#ff75a2", "#f5f5f5", "#be18d6", "#2c2c2c", "#333ebd"], //genderfluid
-			["#b57edc", "#ffffff", "#4a8123"] //genderqueer
+			["#b57edc", "#ffffff", "#4a8123"], //genderqueer
+			["#e50000", "#ff8b00", "#ffee00", "#028121", "#004cff", "#770088"] //pride rainbow
 		];
 		
 		
-		let color = prideColors[3]//Math.floor(Math.random() * prideColors.length)];
+		let color = prideColors[Math.floor(Math.random() * prideColors.length)];
+		//let color = prideColors[13];
 		
 		let colorCodesText = "";
 		
