@@ -1256,7 +1256,7 @@ while (run) do
 				end
 				if (input == "\023\014\155\195\127\160\002\241" and fishPoints >= 10000) then
 					fishPoints = fishPoints - 10000
-					inventory[#inventory + 1] = {"paper","it reads: \"Well Played. -David\""}
+					inventory[#inventory + 1] = {"paper","it reads: \"Well Played. -Emily\""}
 				end
 				
 				if (input == "sleep") then
