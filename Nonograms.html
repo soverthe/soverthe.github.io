@@ -1,0 +1,2526 @@
+<!DOCTYPE html>
+<html lang="en-US">
+ <head>
+    <title>Sover the Nonograms</title>
+   <meta charset="UTF-8">
+   <style>
+	html, body { height: 100%; margin: 0; }
+	body {
+		overflow: hidden;
+		background-color: #707070;
+	}
+   </style>
+ </head>
+ <body>
+ <canvas id="canvasId"></canvas>
+ <script type="text/javascript" src="nonogramBoards.js"></script>
+  <script>
+	var canvas = document.getElementById("canvasId");
+	var ctx = canvas.getContext("2d");
+	canvas.oncontextmenu = function(){return false;}
+	canvas.height = window.innerHeight; //969
+	canvas.width = window.innerWidth; //1920
+	
+	let fps = 60;
+	
+	let xyArr = ["x", "y"];
+	let xyArrInverse = ["y", "x"];
+	let directions = [{x: 0, y: -1}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 1, y: 0}];
+	
+	let mousePos = {x: 0, y: 0};
+	let lastMousePos = {x: 0, y: 0};
+	let mousePosRatio = {x: 0, y: 0};
+	
+	let mouseButton = -1;
+	let isMouseUnclick = false;
+	
+	let isClickInverted = false;
+	
+	let straightLineAssist = true;
+	let initiallyClickedTile = {x: -1, y: -1};
+	let straightLineAxis = "";
+	
+	let hoveredTile = {x: -1, y: -1};
+	
+	
+	let isInEditor = false;
+	let solutionSteps = 0;
+	let maxSteps = 200;
+	
+	
+	let currentBoard = [];
+	let solvedBoard = [];
+	
+	let undoBoards = [];
+	let undoNum = -1;
+	
+	
+	let currentClues = {
+		rows: [],
+		columns: []
+	};
+	
+	
+	let boardPos = {center: {x: 0.125, y: 0.125}, maxSizeRatio: 0.666, biggestTileSizeRatio: 0.25};
+	
+	let worlds = {
+		tutorial: [
+			{clues: {rows: [[1]], columns: [[1]]}},
+			{clues: {rows: [[2]], columns: [[1],[1]]}},
+			{clues: {rows: [[3]], columns: [[1],[1],[1]]}},
+			{clues: {rows: [[1,1]], columns: [[1],[0],[1]]}},
+			{clues: {rows: [[1,1]], columns: [[1],[0],[0],[0],[0],[0],[0],[1]]}},
+			{clues: {rows: [[3],[1,1],[3]], columns: [[3],[1,1],[3]]}},
+			{clues: {rows: [[1],[1,1],[1]], columns: [[1],[1,1],[1]]}},
+			{clues: {rows: [[0],[1],[0]], columns: [[0],[1],[0]]}},
+			{size: {w: {min: 3, max: 3}, h: {min: 3, max: 3}}},
+			{size: {w: {min: 4, max: 4}, h: {min: 4, max: 4}}},
+			{size: {w: {min: 4, max: 4}, h: {min: 4, max: 4}}},
+			{size: {w: {min: 5, max: 5}, h: {min: 5, max: 5}}}
+		],
+		preRandomHard5x5to7x7: [
+			{clues: {rows:[[2],[2,1],[1,2],[3],[1]], columns:[[2],[2,1],[1,2],[2],[2]]}},
+			{clues: {rows:[[1,1],[1,1,1],[2,1],[2,2],[1,1],[2]], columns:[[2],[3],[2,1],[1,1],[1,2],[3]]}},
+			{clues: {rows:[[2,1],[1,1,1],[2,2],[1,2,1],[1,2],[2,1],[1,2]], columns:[[3],[3,2],[1,2],[1,2],[1,2],[1,1,1],[1,1,1]]}}
+		],
+		preRandom15x15: [
+			{arr: {name: "random", size: "15,15"}, difficulty: {min: 1, max: 6}},
+			{arr: {name: "random", size: "15,15"}, difficulty: {min: 7, max: 11}},
+			{arr: {name: "random", size: "15,15"}, difficulty: {min: 12, max: 17}},
+			{arr: {name: "random", size: "15,15"}, difficulty: {min: 18, max: 25}}
+		],
+		preRandom15x15Hard: [
+			{arr: {name: "random", size: "15,15"}, difficulty: {min: 26, max: 38}},
+			{arr: {name: "random", size: "15,15"}, difficulty: {min: 39, max: 52}},
+			{arr: {name: "random", size: "15,15"}, difficulty: {min: 53, max: 68}},
+			{arr: {name: "random", size: "15,15"}, difficulty: {min: 69, max: 100}}
+		],
+		handmade15x15: [
+			{arr: {name: "handmade", size: "15,15"}, difficulty: {min: 1, max: 3}},
+			{arr: {name: "handmade", size: "15,15"}, difficulty: {min: 4, max: 9}},
+			{arr: {name: "handmade", size: "15,15"}, difficulty: {min: 10, max: 33}}
+		],
+		wide: [
+			{size: {w: {min: 5, max: 5}, h: {min: 2, max: 2}}},
+			{arr: {name: "random", size: "7,3"}, difficulty: {min: 8, max: 10}},
+			{arr: {name: "random", size: "9,4"}, difficulty: {min: 15, max: 22}},
+			{arr: {name: "random", size: "10,5"}, difficulty: {min: 21, max: 28}},
+			{arr: {name: "random", size: "12,6"}, difficulty: {min: 29, max: 38}},
+			{arr: {name: "random", size: "14,7"}, difficulty: {min: 39, max: 47}}
+		],
+		randomSize: [
+			{size: {w: {min: 2, max: 2}, h: {min: 2, max: 2}}},
+			{size: {w: {min: 3, max: 5}, h: {min: 3, max: 4}}},
+			{size: {w: {min: 6, max: 8}, h: {min: 5, max: 6}}},
+			{size: {w: {min: 9, max: 11}, h: {min: 7, max: 9}}},
+			{size: {w: {min: 12, max: 14}, h: {min: 10, max: 12}}},
+			{size: {w: {min: 14, max: 15}, h: {min: 13, max: 15}}}
+		],
+		randomSizeSmall: [
+			{size: {w: {min: 1, max: 1}, h: {min: 1, max: 1}}},
+			{size: {w: {min: 2, max: 2}, h: {min: 1, max: 1}}},
+			{size: {w: {min: 2, max: 3}, h: {min: 2, max: 2}}},
+			{size: {w: {min: 3, max: 4}, h: {min: 2, max: 3}}},
+			{size: {w: {min: 4, max: 5}, h: {min: 2, max: 4}}},
+			{size: {w: {min: 5, max: 6}, h: {min: 3, max: 5}}},
+			{size: {w: {min: 6, max: 7}, h: {min: 4, max: 5}}},
+			{size: {w: {min: 7, max: 8}, h: {min: 5, max: 6}}},
+			{size: {w: {min: 7, max: 8}, h: {min: 6, max: 8}}},
+			{size: {w: {min: 9, max: 10}, h: {min: 8, max: 10}}}
+		],
+		randomShapes: [
+			{size: {w: {min: 5, max: 7}, h: {min: 4, max: 5}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered"}},
+			{size: {w: {min: 8, max: 10}, h: {min: 6, max: 8}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered"}},
+			{size: {w: {min: 14, max: 15}, h: {min: 9, max: 13}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered"}},
+			{size: {w: {min: 14, max: 15}, h: {min: 9, max: 13}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered", shouldInvert: true}},
+			{size: {w: {min: 8, max: 10}, h: {min: 6, max: 8}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered", shouldInvert: true}},
+			{size: {w: {min: 5, max: 7}, h: {min: 4, max: 5}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered", shouldInvert: true}},
+			{size: {w: {min: 3, max: 4}, h: {min: 2, max: 3}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered", shouldInvert: true}},
+			{size: {w: {min: 2, max: 2}, h: {min: 1, max: 1}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered", shouldInvert: true}},
+			{size: {w: {min: 1, max: 1}, h: {min: 1, max: 1}}, shapeData: {shapeCount: 7, maxVertices: 12, shapeType: "centered", shouldInvert: true}}
+		],
+		randomerShapes: [
+			{size: {w: {min: 5, max: 7}, h: {min: 4, max: 5}}, shapeData: {shapeCount: 7, maxVertices: 12, shouldInvert: true}},
+			{size: {w: {min: 8, max: 10}, h: {min: 6, max: 8}}, shapeData: {shapeCount: 7, maxVertices: 12, shouldInvert: true}},
+			{size: {w: {min: 11, max: 14}, h: {min: 9, max: 11}}, shapeData: {shapeCount: 7, maxVertices: 12, shouldInvert: true}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 7, maxVertices: 12, shouldInvert: true}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 4, maxVertices: 4}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 3, maxVertices: 4}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 2, maxVertices: 4}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 1, maxVertices: 4}}
+		],
+		randomCircles: [
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 1, shapeType: "circle"}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 2, shapeType: "circle"}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 3, shapeType: "circle"}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 4, shapeType: "circle"}},
+			{size: {w: {min: 15, max: 15}, h: {min: 15, max: 15}}, shapeData: {shapeCount: 5, shapeType: "circle"}}
+		],
+	};
+	
+	let savedWorldStates = {};
+	let savedEditorBoard = [];
+	
+	let completedWorlds = {};
+	
+	let currentLevel = {worldName: "", num: 0, isInLevel: false};
+	
+	
+	let nextButton = {x: 1 - 0.075*1.25, y: 0 + 0.0625*1.25, w: 0.15*1.25, h: 0.125*1.25};
+	
+	let isNextButtonShown = false;
+	
+	
+	let menuState = "intro"; //"intro", "levels", "powerups", "editor"
+	
+	let menuButtons = [];
+	
+	let menuButtonsGrid = [
+		[["Tutorial", "tutorial", "Very Easy"]],
+		[["Random Size Small", "randomSizeSmall", "Easy"], ["Random Shapes", "randomShapes", "Easy"], ["Random Circles", "randomCircles", "Easy"]],
+		[["Handmade 15x15", "handmade15x15", "Medium"], ["Random Size", "randomSize", "Medium"], ["w i d e", "wide", "Medium"]],
+		[["Randomer Shapes", "randomerShapes", "Hard"], ["Difficult 15x15", "preRandom15x15", "Very Hard"], ["Barely Solvable", "preRandom15x15Hard", "Very Very Hard"]]
+	];
+	
+	let menuButtonSizes = {h: 0.1, w: 0.2, gap: {x: 0.0333, y: 0.07}, centerOffset: {x: 0, y: -0.0125}, borderSize: 0.006666};
+	
+	
+	let straightLineAssistButton = {x: 0.076, y: 0.04, h: 0.04, w: 0.125};
+	
+	let touchScreenButtons = [
+		{x: 0.910, y: 0.845, h: 0.035, w: 0.0175},
+		{x: 0.940, y: 0.845, h: 0.035, w: 0.0175}
+	];
+	
+	let undoRedoButtons = [
+		{x: 0.168, y: 0.04, h: 0.035, w: 0.0175, undoRedoState: "undo"},
+		{x: 0.19, y: 0.04, h: 0.035, w: 0.0175, undoRedoState: "redo"}
+	];
+	
+	let powerupButton = {x: 0.9 - 0.025, y: 0.075 + 0.025, h: 0.1, w: 0.2};
+	
+	let powerupButtons = [
+		{text: "grayedLine", powerup: "grayedLine", price: 1, x: 0.175, y: 0.1, h: 0.1, w: 0.2, demoLines: [{line: "    ", clue: [0], color: "xableLine"},{line: ". ..", clue: [1,2], color: "xableLine"}]},
+		{text: "completeableLine", powerup: "completeableLine", price: 2, x: 0.175, y: 0.25, h: 0.1, w: 0.2, demoLines: [{line: ".   ", clue: [3], color: "completeableLine"},{line: " x  x", clue: [1,2], color: "completeableLine"}]},
+		{text: "advanceableLine", powerup: "advanceableLine", price: 3, x: 0.175, y: 0.4, h: 0.1, w: 0.2, demoLines: [{line: " x  ", clue: [1,1], color: "advanceableLine"},{line: "     ", clue: [1,2], color: "advanceableLine"}]},
+		{text: "wrongLine", powerup: "wrongLine", price: 1, x: 0.175, y: 0.55, h: 0.1, w: 0.2, demoLines: [{line: ".", clue: [0], color: "wrongLine"},{line: "..x", clue: [3], color: "wrongLine"}]},
+		
+		{text: "Back", menuState: "levels", x: 0.5, y: 0.8, h: 0.1, w: 0.2}
+	];
+	
+	let introButtons = [
+		{text: "Menu", menuState: "levels", x: 0.5, y: 0.75, h: 0.1, w: 0.2}
+	];
+	
+	
+	
+	let backButton = {text: "Save & Exit", menuState: "levels", x: 0.1, y: 0.9, h: 0.075, w: 0.1};
+	
+	
+	let savedLines = {};
+	let saveBoardCluesSolutionSteps = {};
+	
+	let changedLines = {x: [], y: []};
+	
+	
+	let xTileRatio = 0.07;
+	
+	let colors = {
+		defaultColor: "#000000",
+		
+		backgroundColor: "#707070",
+		
+		emptyTile: "#B0B0B0",
+		filledTile: "#222222",
+		xTile: "#888888",
+		
+		xableLine: "#B0B0B0",
+		xableLine2: "#ffffff",
+		
+		completeLine: "#606060",
+		
+		completeableLine: "#e28c00",
+		completeableLine2: "#eccd00",
+		
+		advanceableLine: "#203856",
+		advanceableLine2: "#62aedc",
+		
+		wrongLine: "#ffffff",
+		wrongLine2: "#000000",
+		
+		editorTexts: "#000000",
+		
+		nextButton: "#222222",
+		
+		menuTexts: "#ffffff",
+		menuButtons: "#881166",
+		menuButtonsOff: "#444444",
+		menuButtonBorders: "#440033",
+		menuButtonBordersOff: "#282828",
+		
+		introText: "#ffffff",
+		introTextShadow: "#000000"
+	};
+	
+	let outlineColors = {completeableLine: true, advanceableLine: true, xableLine: true, wrongLine: true};
+	
+	
+	
+	let isBoardGenerator = false;
+	let boardGenerator = {size: {w: 14, h: 7}, i: 0, maxI: 150, isNewBoard: true, boardNum: 0, maxBoards: 2000, targetSteps: {min: 1000, max: 1000}};
+	
+	let isBoardBruteforce = false;
+	let boardBruteforce = {size: {w: 5, h: 5}, i: 0, boardsPerFrame: 4000, minStepsToSave: 9, stepsCounts: []}; 
+	
+	let generatedBoards = localStorage.getItem("generatedBoards");
+	
+	if (generatedBoards == null){
+		generatedBoards = {};
+	} else{
+		generatedBoards = JSON.parse(generatedBoards);
+	}
+	
+	
+	
+	let powerupPoints = 0;
+	let unspentPowerupPoints = 0;
+	
+	let powerups = {
+		grayedLine: false,
+		wrongLine: false,
+		completeableLine: false,
+		advanceableLine: false
+	}
+	
+	let savedPowerupColors = {};
+	
+	
+	let introText = [
+		"Hi, welcome to Nonograms!",
+		"",
+		"Your goal is to figure out which tiles should be turned on, based on the clues next to each row and column.",
+		"Left click a tile to toggle its color, right click a tile to X it out.",
+		"",
+		"You can get powerups by spending the points you get when completing a level,",
+		"which will make the clues turn into different colors to help you in solving the boards."
+	];
+	
+	
+	let areCheatsOn = true;
+	
+</script>
+<script> //General
+	
+	let t = 0;
+	function slowLog(text){ //so console.log won't stop the browser
+		if (t % Math.floor(fps/2) == 0){
+			console.log(text);
+		}
+	}
+	
+	
+	function randomNum(min, max){
+		return Math.floor(Math.random() * (max - min + 1) + min);
+	}
+	
+	function getRandomElementOfArray(arr){
+		return arr[Math.floor(Math.random() * arr.length)];
+	}
+	
+	
+	function objectLength(arr){
+		let length = 0;
+		
+		if (arr != undefined){
+			length = Object.keys(arr).length;
+		}
+		return length;
+	}
+	
+	
+	function areArraysEqual(a, b){ //https://stackoverflow.com/a/16436975/12777947
+		if (a === b) return true;
+		if (a == null || b == null) return false;
+		if (a.length !== b.length) return false;
+		
+		for (var i = 0; i < a.length; ++i) {
+			if (a[i] !== b[i]) return false;
+		}
+		return true;
+	}
+	
+</script>
+<script> //Hitbox
+	
+	function isVertexInRect(v, r){
+		return (v.x >= r.x && v.x <= r.x + r.w &&
+				v.y >= r.y && v.y <= r.y + r.h);
+	}
+	
+	function isVertexInButton(v, r){
+		return isVertexInRect(v, {x: r.x - r.w/2, y: r.y - r.h/2, h: r.h, w: r.w});
+	}
+	
+	function areRectsColliding(r1, r2){ //https://stackoverflow.com/a/16012490/12777947
+		return (
+			(r1.x < (r2.x + r2.w)) && (r1.y < (r2.y + r2.h)) &&
+			(r2.x < (r1.x + r1.w)) && (r2.y < (r1.y + r1.h))
+		);
+	}
+	
+	function isVertexInPolygon(v, p){ //https://stackoverflow.com/a/36070256/12777947
+		let j = p.length - 1;
+		let odd = false;
+		
+		for (let i = 0; i < p.length; i++){
+			if ((p[i].y < v.y && p[j].y >= v.y || p[j].y < v.y && p[i].y >= v.y) && (p[i].x <= v.x || p[j].x <= v.x)){
+				odd ^= (p[i].x + (v.y - p[i].y) * (p[j].x - p[i].x) / (p[j].y - p[i].y)) < v.x;
+			}
+			j = i;
+		}
+		return odd;
+	}
+	
+	
+	function getClickedPosition(pos){
+		if (pos == undefined){
+			pos = mousePos;
+		}
+		
+		return {
+			x: Math.floor((pos.x - boardPos.x) / boardPos.tileSize),
+			y: Math.floor((pos.y - boardPos.y) / boardPos.tileSize)
+		}
+	}
+	
+	
+	function isPosInBoard(pos){
+		let isInBoard = false;
+		
+		if (currentBoard.length > 0){
+			if (pos.x >= 0 && pos.x < currentBoard[0].length &&
+				pos.y >= 0 && pos.y < currentBoard.length){
+				
+				isInBoard = true;
+			}
+		}
+		return isInBoard;
+	}
+	
+</script>
+<script> //Direction and Distance between Vertices
+	
+	function getVertexDistance(v1, v2){
+		return Math.sqrt((Math.abs(v1.x - v2.x) ** 2) + (Math.abs(v1.y - v2.y) ** 2));
+	}
+	
+	function getVertexToVertexRadians(v1, v2){
+		let deltaX = v2.x - v1.x; 
+		let deltaY = v2.y - v1.y;
+		
+		return Math.atan2(deltaY, deltaX);
+	}
+	
+	function getVertexToVertexDirection(v1, v2){
+		let radians = getVertexToVertexRadians(v1, v2);
+		
+		return {x: Math.cos(radians), y: Math.sin(radians)};
+	}
+	
+	
+</script>
+
+<script> //Generate Menu Buttons
+	
+	function generateMenuButtons(){
+		menuButtons = [];
+		
+		for (let y = 0; y < menuButtonsGrid.length; y++){
+			for (let x = 0; x < menuButtonsGrid[y].length; x++){
+				let arr = menuButtonsGrid[y][x];
+				
+				let gridSize = {
+					x: menuButtonsGrid[y].length,
+					y: menuButtonsGrid.length,
+				}
+				
+				menuButtons.push({
+					text: arr[0],
+					worldName: arr[1],
+					difficulty: arr[2],
+					x: 0.5 + (x - (gridSize.x - 1)/2) * (menuButtonSizes.w + menuButtonSizes.gap.x) + menuButtonSizes.centerOffset.x,
+					y: 0.5 + (y - (gridSize.y - 1)/2) * (menuButtonSizes.h + menuButtonSizes.gap.y) + menuButtonSizes.centerOffset.y,
+					h: menuButtonSizes.h,
+					w: menuButtonSizes.w
+				});
+			}
+		}
+		menuButtons.push({text: "", menuState: "powerups", x: powerupButton.x, y: powerupButton.y, h: powerupButton.h, w: powerupButton.w});
+		
+		menuButtons.push({text: "editor", menuState: "editor", x: 0.1, y: 0.9, h: menuButtonSizes.h/2, w: menuButtonSizes.w/2});
+		menuButtons.push({text: "custom", shouldLoadCustomLevel: true, x: 0.9, y: 0.9, h: menuButtonSizes.h/2, w: menuButtonSizes.w/2});
+	}
+	
+</script>
+
+<script> //Board Position
+	
+	function refreshBoardPosition(){
+		if (currentBoard.length > 0){
+			let h = currentBoard.length;
+			let w = currentBoard[0].length;
+			
+			let tileSize = Math.min(canvas.width / w, canvas.height / h) * boardPos.maxSizeRatio;
+			
+			
+			let smallestCanvasSize = Math.min(canvas.width, canvas.height);
+			
+			if (tileSize > smallestCanvasSize * boardPos.biggestTileSizeRatio){
+				tileSize = smallestCanvasSize * boardPos.biggestTileSizeRatio;
+			}
+			
+			boardPos.tileSize = tileSize;
+			
+			boardPos.x = Math.round(canvas.width/2 + canvas.width/2 * boardPos.center.x - tileSize * w/2);
+			boardPos.y = Math.round(canvas.height/2 + canvas.height/2 * boardPos.center.y - tileSize * h/2);
+		}
+	}
+	
+</script>
+<script> //New Board
+	
+	function startNonogram(clueArr){
+		currentClues = clueArr;
+		
+		currentBoard = [];
+		for (let y = 0; y < currentClues.rows.length; y++){
+			currentBoard[y] = [];
+			
+			for (let x = 0; x < currentClues.columns.length; x++){
+				currentBoard[y][x] = " ";
+			}
+		}
+		
+		resetUndoBoards();
+		
+		refreshBoardPosition();
+	}
+	
+	
+	function startEmptyBoard(w, h){
+		let clueArr = {rows: [], columns: []};
+		
+		for (let i = 0; i < w; i++){
+			clueArr.columns[i] = [0];
+		}
+		
+		for (let i = 0; i < h; i++){
+			clueArr.rows[i] = [0];
+		}
+		
+		startNonogram(clueArr);
+	}
+	
+	
+	function startRandomBoard(w, h){
+		currentBoard = [];
+		
+		for (let y = 0; y < h; y++){
+			currentBoard[y] = [];
+			
+			for (let x = 0; x < w; x++){
+				currentBoard[y][x] = (Math.random() > 0.5) ? "x" : ".";
+			}
+		}
+		
+		changeCluesToCurrentBoard();
+		
+		startNonogram(currentClues);
+	}
+	
+	function startRandomSolvableBoard(w, h){
+		
+		let isSolved = false;
+		
+		while (!isSolved){
+			startRandomBoard(w, h);
+			
+			resetChangedLines();
+			
+			isSolved = countSolutionSteps() < maxSteps;
+		}
+	}
+	
+	function startRandomSolvableShapeBoard(w, h, shapeData){
+		
+		let isSolved = false;
+		
+		while (!isSolved){
+			startEmptyBoard(w, h);
+			
+			resetChangedLines();
+			
+			for (let i = 0; i < shapeData.shapeCount; i++){
+				inverseTilesInPolygon(getRandomPolygon(shapeData));
+			}
+			
+			if (shapeData.shouldInvert){
+				inverseCurrentBoard();
+			}
+			
+			changeCluesToCurrentBoard();
+			
+			isSolved = countSolutionSteps() < maxSteps;
+		}
+		
+		startNonogram(currentClues);
+	}
+	
+	
+	function startNextLevel(){
+		let level = worlds[currentLevel.worldName][currentLevel.num];
+		
+		if (savedWorldStates[currentLevel.worldName] == undefined){
+			savedWorldStates[currentLevel.worldName] = [];
+		}
+		
+		if (savedWorldStates[currentLevel.worldName][currentLevel.num] == undefined){
+			if (level.arr != undefined){
+				let arr = boards[level.arr.name][level.arr.size];
+				
+				let difficulties = [];
+				for (let i in arr){
+					if (i >= level.difficulty.min && i <= level.difficulty.max){
+						
+						for (let j in arr[i]){
+							difficulties.push(i);
+						}
+					}
+				}
+				
+				let randomDifficulty = getRandomElementOfArray(difficulties);
+				
+				startNonogram(getRandomElementOfArray(arr[randomDifficulty]));
+			} else{
+				if (level.clues != undefined){
+					startNonogram(level.clues);
+				} else{
+					let w = randomNum(level.size.w.min, level.size.w.max);
+					let h = randomNum(level.size.h.min, level.size.h.max);
+					
+					if (level.shapeData == undefined){
+						startRandomSolvableBoard(w, h);
+					} else{
+						startRandomSolvableShapeBoard(w, h, level.shapeData);
+					}
+				}
+			}
+		} else{
+			currentBoard = structuredClone(savedWorldStates[currentLevel.worldName][currentLevel.num].board);
+			currentClues = structuredClone(savedWorldStates[currentLevel.worldName][currentLevel.num].clues);
+			
+			refreshBoardPosition();
+		}
+		
+		isNextButtonShown = false;
+		
+		saveBoardToSavedWorldStates();
+	}
+	
+</script>
+<script> //Load Board from Prompt
+
+	function loadBoardFromPrompt(){
+		let clue = prompt("Input the clues of a board, ex: {rows:[[1,1],[3],[1]],columns:[[2],[2],[2]]}");
+		
+		eval("clue = " + clue);
+		
+		if (clue != undefined){
+			if (clue.rows != undefined && clue.columns != undefined){
+				resetUndoBoards();
+				
+				currentLevel = {worldName: "custom", num: 0, isInLevel: true};
+				
+				startNonogram(clue);
+				
+				addCurrentBoardToUndoBoards();
+			}
+		}
+	}
+	
+</script>
+
+<script> //Board Save
+	
+	function saveBoardToSavedWorldStates(){
+		if (!isInEditor){
+			savedWorldStates[currentLevel.worldName][currentLevel.num] = {
+				board: structuredClone(currentBoard),
+				clues: structuredClone(currentClues)
+			};
+		}
+	}
+	
+	function saveBoardToSavedEditorBoard(){
+		savedEditorBoard = structuredClone(currentBoard);
+	}
+	
+</script>
+
+<script> //Board Click
+	
+	function changeBoardByMouseClick(){
+		let directions = getVertexToVertexDirection(mousePos, lastMousePos);
+		
+		let distance = getVertexDistance(mousePos, lastMousePos);
+		
+		for (let i = 0; i < distance; i+=0.5){
+			let currentPos = {
+				x: mousePos.x + i * directions.x,
+				y: mousePos.y + i * directions.y
+			};
+			
+			let pos = getClickedPosition(currentPos);
+			
+			changeBoardByClickPos(pos);
+		}
+	}
+	
+	
+	function changeBoardByClickPos(pos){
+		if (mouseButton != -1){
+		
+			if (straightLineAssist){
+				let oppositeAxis = (straightLineAxis == "x") ? "y" : "x";
+				
+				if (pos[oppositeAxis] != undefined){
+					pos[oppositeAxis] = initiallyClickedTile[oppositeAxis];
+				}
+			}
+			
+			if (isPosInBoard(pos)){
+				let clickState = (mouseButton == 0) ? "." : "x";
+				
+				if (isClickInverted){
+					clickState = (clickState == "x") ? "." : "x";
+				}
+				
+				if (isMouseUnclick){
+					if (currentBoard[pos.y][pos.x] == clickState){
+						currentBoard[pos.y][pos.x] = " ";
+					}
+				} else{
+					if (currentBoard[pos.y][pos.x] == " "){
+						currentBoard[pos.y][pos.x] = clickState;
+					}
+				}
+			}
+		}
+	}
+	
+	
+	function refreshHoveredTile(){
+		hoveredTile = {x: -1, y: -1};
+		
+		let pos = getClickedPosition();
+		
+		if (isPosInBoard(pos)){
+			hoveredTile = {x: pos.x, y: pos.y};
+		}
+	}
+	
+</script>
+
+<script> //Board Line Functions
+	
+	function getBoardLine(i, xy){
+		let line = "";
+		
+		if (xy == "y"){
+			for (let j in currentBoard[i]){
+				line += currentBoard[i][j];
+			}
+		} else{
+			for (let j in currentBoard){
+				line += currentBoard[j][i];
+			}
+		}
+		
+		return line;
+	}
+	
+	function getClueFromLine(line){
+		let arr = [];
+		
+		let isPreviousFilled = false;
+		
+		for (let k in line){
+			if (line[k] == "."){
+				if (isPreviousFilled){
+					arr[arr.length - 1]++;
+				} else{
+					arr.push(1);
+				}
+			}
+			
+			isPreviousFilled = (line[k] == ".");
+		}
+		
+		if (arr.length == 0){ arr = [0]; }
+		
+		return arr;
+	}
+	
+	
+	function isLineFull(line){
+		let isFull = true;
+		
+		for (let i in line){
+			if (line[i] == " "){
+				isFull = false;
+			}
+		}
+		return isFull;
+	}
+	
+	function isLineCorrect(line, correctClue){
+		let clue = getClueFromLine(line);
+		
+		return clue.join(',') == correctClue.join(',');
+	}
+	
+	function isLineImpossible(line, allLineStates){
+		let equalLineNum = -1;
+		
+		for (let i in allLineStates){
+			let isSame = true;
+			
+			for (let j in line){
+				if (line[j] == "." && allLineStates[i][j] != "1"){
+					isSame = false;
+				}
+				
+				if (line[j] == "x" && allLineStates[i][j] != "0"){
+					isSame = false;
+				}
+			}
+			
+			if (isSame){
+				equalLineNum = i;
+			}
+		}
+		return (equalLineNum == -1);
+	}
+	
+	
+	function setLineToArray(arr, i, xy){
+		if (xy == "y"){
+			for (let j in currentBoard[i]){
+				if (currentBoard[i][j] != arr[j]){
+					currentBoard[i][j] = arr[j];
+					
+					changedLines.x[j] = true;
+				}
+			}
+		} else{
+			for (let j in currentBoard){
+				if (currentBoard[j][i] != arr[j]){
+					currentBoard[j][i] = arr[j];
+					
+					changedLines.y[j] = true;
+				}
+			}
+		}
+	}
+	
+</script>
+<script> //Is Board Correct Function
+	
+	function isBoardCorrect(){
+		let isCorrect = true;
+		
+		for (let i in currentClues){
+			for (let j = 0; j < currentClues[i].length; j++){
+				
+				let xy = (i == "rows") ? "y" : "x";
+				
+				let line = getBoardLine(j, xy);
+				
+				if (!isLineCorrect(line, currentClues[i][j])){
+					isCorrect = false;
+				}
+			}
+		}
+		return isCorrect;
+	}
+	
+</script>
+
+<script> //Nonogram Solver Algorithm
+	
+	function getAllCombinations(numCount, sumAmount){ //This function was written by an AI. (Prompt: In JavaScript, I want a code where you have two variables named "numCount" and "sumAmount", and with those, you get an array that has every possible combination of numbers that add up to the sumAmount. For example, if the numCount is 3, and the sumAmount is 3, then this should be the result: [[0, 0, 3], [0, 1, 2], [0, 2, 1], [0, 3, 0], [1, 0, 2], [1, 1, 1], [1, 2, 0], [2, 0, 1], [2, 1, 0], [3, 0, 0]])
+		let result = [];
+
+		function generateCombinations(currentCombination, remainingCount, remainingSum) {
+			if (remainingCount === 0) {
+				if (remainingSum === 0) {
+					result.push([...currentCombination]);
+				}
+				return;
+			}
+
+			for (let i = 0; i <= remainingSum; i++) {
+				currentCombination.push(i);
+				generateCombinations(currentCombination, remainingCount - 1, remainingSum - i);
+				currentCombination.pop();
+			}
+		}
+
+		generateCombinations([], numCount, sumAmount);
+
+		return result;
+	}
+
+
+	function getAllGapValues(nums, size){
+		
+		let overallNums = nums.reduce((a, b) => a + b, 0);
+
+		let numOfGaps = nums.length + 1;
+
+		let overallGapValue = size - overallNums;
+		let gapValueWithoutMiddle = overallGapValue - numOfGaps + 2;
+		
+		
+		let combinations = getAllCombinations(numOfGaps, gapValueWithoutMiddle);
+		
+		
+		let gapValues = [];
+		
+		for (let i in combinations){
+			gapValues[i] = [];
+			
+			for (let j in combinations[i]){
+				if (j != 0 && j != numOfGaps - 1){
+					gapValues[i][j] = combinations[i][j] + 1;
+				} else{
+					gapValues[i][j] = combinations[i][j];
+				}
+			}
+		}
+		
+		return gapValues;
+	}
+
+
+	function getAllPossibleLineStates(nums, size){
+		let gaps = getAllGapValues(nums, size);
+		
+		let arr = [];
+		
+		for (let i in gaps){
+			arr[i] = "";
+			
+			for (let j = 0; j < gaps[i].length + nums.length; j++){
+				let isGap = (j % 2 == 0);
+				
+				let num = (isGap ? gaps[i][Math.floor(j/2)] : nums[Math.floor(j/2)]);
+				
+				for (let k = 0; k < num; k++){
+					arr[i] += isGap ? 0 : 1;
+				}
+			}
+		}
+		
+		return arr;
+	}
+
+
+	function getCommonsFromLineStates(lineStates, currentState){
+		let arr = [];
+		
+		for (let i in lineStates){
+			let isRuledOut = false;
+			
+			let currentArr = [];
+			
+			for (let j in lineStates[i]){
+				
+				if (i == 0){
+					arr[j] = [];
+				}
+				
+				if (currentState != undefined){
+					if (currentState[j] != " "){
+						if (currentState[j] == "x" && lineStates[i][j] == "1"){
+							isRuledOut = true;
+						}
+						if (currentState[j] == "." && lineStates[i][j] == "0"){
+							isRuledOut = true;
+						}
+					}
+				}
+				
+				if (!isRuledOut){
+					currentArr[j] = [];
+					
+					currentArr[j][lineStates[i][j]] = true;
+				}
+			}
+			
+			if (!isRuledOut){
+				
+				for (let j in currentArr){
+					arr[j][lineStates[i][j]] = currentArr[j][lineStates[i][j]];
+				}
+			}
+		}
+		
+		let commons = "";
+		for (let i in arr){
+			commons += (arr[i][0] == arr[i][1]) ? " " : ((arr[i][0]) ? "x" : ".");
+		}
+		
+		return commons;
+	}
+	
+	
+	function resetChangedLines(){
+		changedLines = {x: [], y: []};
+		
+		for (let i in currentBoard){ changedLines.y[i] = true; }
+		for (let i in currentBoard[0]){ changedLines.x[i] = true; }
+	}
+	
+	function solveBoard(){
+		let currentChangedLines = structuredClone(changedLines);
+		
+		changedLines = {x: [], y: []};
+		
+		for (let xy in currentChangedLines){
+			
+			let clueI = (xy == "x") ? "columns" : "rows";
+			
+			for (let j in currentChangedLines[xy]){
+				let line = getBoardLine(j, xy);
+				
+				let text = line + currentClues[clueI][j].join();
+				
+				let solvedLine = savedLines[text];
+				
+				if (solvedLine == undefined){
+					solvedLine = getCommonsFromLineStates(getAllPossibleLineStates(currentClues[clueI][j], line.length), line);
+					
+					savedLines[text] = solvedLine;
+				}
+				
+				setLineToArray(solvedLine, j, xy);
+			}
+		}
+		//addCurrentBoardToUndoBoards(); //can undo randomSizeSmall to solve, it shouldn't be able to
+	}
+	
+</script>
+
+<script> //Button Clicks
+	
+	function nextButtonClick(){
+		if (isNextButtonShown){
+			if (isVertexInButton(mousePosRatio, nextButton) || inputs["Enter"] || inputs["Space"]){
+				
+				let currentWorld = worlds[currentLevel.worldName];
+				
+				if (currentWorld != undefined){
+					if (currentWorld.length > currentLevel.num + 1){
+						currentLevel.num++;
+						
+						startNextLevel();
+					} else{
+						completedWorlds[currentLevel.worldName] = true;
+						
+						let previousPowerupPoints = powerupPoints;
+						
+						powerupPoints = objectLength(completedWorlds);
+						
+						if (powerupPoints > previousPowerupPoints){
+							unspentPowerupPoints++;
+						}
+						
+						saveBoardToSavedWorldStates();
+						resetUndoBoards();
+						
+						currentLevel.isInLevel = false;
+						
+						mouseButton = -1;
+						
+						isNextButtonShown = false;
+					}
+				} else{
+					currentLevel.isInLevel = false;
+					
+					mouseButton = -1;
+					
+					isNextButtonShown = false;
+				}
+			}
+		}
+	}
+	
+	function backButtonClick(){
+		if (isVertexInButton(mousePosRatio, backButton)){
+			if (menuState == "levels" && worlds[currentLevel.worldName] != undefined){
+				saveBoardToSavedWorldStates();
+			}
+			if (menuState == "editor"){
+				saveBoardToSavedEditorBoard();
+			}
+			
+			menuState = backButton.menuState;
+			
+			resetUndoBoards();
+			
+			currentLevel.isInLevel = false;
+			toggleEditorState();
+		}
+	}
+	
+	function menuButtonsClick(){
+		let clickedButton = {};
+		
+		let arr = buttonsArr[menuState];
+		
+		if (arr != undefined){
+			for (let button of arr){
+				if (isVertexInButton(mousePosRatio, button)){
+					clickedButton = button;
+				}
+			}
+		}
+		
+		if (clickedButton.worldName != undefined){
+			currentLevel = {worldName: clickedButton.worldName, num: 0, isInLevel: true};
+			
+			if (savedWorldStates[clickedButton.worldName] != undefined){
+				currentLevel.num = savedWorldStates[clickedButton.worldName].length - 1;
+			}
+			
+			startNextLevel();
+		} else if (clickedButton.menuState != undefined){
+			menuState = clickedButton.menuState;
+			
+			toggleEditorState();
+		} else if (clickedButton.shouldLoadCustomLevel){
+			loadBoardFromPrompt();
+		} else if (clickedButton.powerup != undefined){
+			if (unspentPowerupPoints >= clickedButton.price || powerups[clickedButton.powerup]){
+				unspentPowerupPoints -= clickedButton.price * (powerups[clickedButton.powerup] ? -1 : 1);
+				
+				powerups[clickedButton.powerup] = !powerups[clickedButton.powerup];
+				
+				savedPowerupColors = {};
+			}
+		}
+		
+		mouseButton = -1;
+	}
+	
+	
+	function touchScreenButtonsClick(){
+		let clickedButton;
+		
+		for (let button of touchScreenButtons){
+			if (isVertexInButton(mousePosRatio, button)){
+				clickedButton = button;
+			}
+		}
+		
+		if (clickedButton != undefined){
+			isClickInverted = !isClickInverted;
+			
+			mouseButton = -1;
+		}
+	}
+	
+	function straightLineAssistButtonClick(){
+		let clickedButton;
+		
+		if (isVertexInButton(mousePosRatio, straightLineAssistButton)){
+			straightLineAssist = !straightLineAssist;
+			
+			mouseButton = -1;
+		}
+	}
+	
+	
+	function undoRedoButtonsClick(){
+		let clickedButton;
+		
+		for (let button of undoRedoButtons){
+			if (isVertexInButton(mousePosRatio, button)){
+				clickedButton = button;
+			}
+		}
+		
+		if (clickedButton != undefined){
+			if (clickedButton.undoRedoState == "undo"){
+				undoClick();
+			} else{
+				redoClick();
+			}
+			
+			mouseButton = -1;
+		}
+	}
+	
+</script>
+
+<script> //Copy currentClues To Clipboard
+	
+	function copyCurrentCluesToClipboard(){
+		navigator.clipboard.writeText(
+			JSON.stringify(currentClues).replaceAll('"rows"','rows').replaceAll('"columns"','columns')
+			//JSON.stringify(currentClues).replaceAll('"r','\n\t\t\t"r').replaceAll('"c','\n\t\t\t"c').replaceAll('"rows"','rows').replaceAll('"columns"','columns').replaceAll('}','\n\t\t}') + ",\n\t\t"
+		);
+	}
+	
+</script>
+<script> //Editor
+	
+	function getCurrentBoardLineClues(){
+		let clue = {rows: [], columns: []};
+		
+		for (let i = 0; i < 2; i++){
+			let xy = xyArrInverse[i];
+			let clueI = (xy == "x") ? "columns" : "rows";
+			
+			let length = (xy == "x") ? currentBoard[0].length : currentBoard.length;
+			
+			for (let j = 0; j < length; j++){
+				let line = getBoardLine(j, xy);
+				
+				clue[clueI][j] = getClueFromLine(line);
+			}
+		}
+		
+		return clue;
+	}
+	
+	function changeCluesToCurrentBoard(){
+		currentClues = getCurrentBoardLineClues();
+	}
+	
+	
+	function countSolutionSteps(shouldResolve){
+		
+		let clueText = JSON.stringify(currentClues);
+		
+		let stepsNum = 0;
+		
+		if (!isBoardBruteforce && saveBoardCluesSolutionSteps[clueText] != undefined && !shouldResolve){
+			stepsNum = saveBoardCluesSolutionSteps[clueText];
+		} else{
+			let wasInEditor = isInEditor;
+			
+			isInEditor = false;
+			
+			let currentBoardClone = structuredClone(currentBoard);
+			
+			
+			startNonogram(currentClues);
+			
+			
+			let isSolved = false;
+			
+			resetChangedLines();
+			
+			while (stepsNum < maxSteps && !isSolved){
+				solveBoard();
+				
+				let containsEmpty = currentBoard.some(row => row.includes(" "));
+				
+				isSolved = !containsEmpty;
+				stepsNum++;
+				
+				if (!(changedLines.x.length > 0 || changedLines.y.length > 0)){
+					stepsNum = maxSteps + 1;
+				}
+			}
+			
+			solvedBoard = structuredClone(currentBoard);
+			
+			
+			isInEditor = wasInEditor;
+			
+			currentBoard = currentBoardClone;
+			
+			
+			if (!isBoardBruteforce){
+				saveBoardCluesSolutionSteps[clueText] = stepsNum;
+			}
+		}
+		
+		return stepsNum;
+	}
+	
+	
+	
+	function getBoardIterationSolutionSteps(){
+		
+		let currentBoardClone = structuredClone(currentBoard);
+		
+		
+		let tileCount = currentBoard.length * currentBoard[0].length;
+		
+		let arr = [];
+		
+		for (let i = 0; i < tileCount; i++){
+			let pos = {
+				x: i % currentBoard[0].length,
+				y: Math.floor(i / currentBoard[0].length)
+			}
+			
+			currentBoard[pos.y][pos.x] = (currentBoard[pos.y][pos.x] == "." ? " " : ".");
+			
+			
+			changeCluesToCurrentBoard();
+			
+			let steps = countSolutionSteps();
+			
+			if (steps > maxSteps){ steps = 0; }
+			
+			if (arr[steps] == undefined){
+				arr[steps] = [];
+			}
+			
+			arr[steps].push(pos);
+			
+			
+			currentBoard = structuredClone(currentBoardClone);
+		}
+		return arr;
+	}
+	
+	
+	function loadBoardToEditorFromClue(clue){
+		currentClues = structuredClone(clue);
+		
+		countSolutionSteps(true);
+		
+		currentBoard = structuredClone(solvedBoard);
+		
+		refreshBoardPosition();
+	}
+	
+	
+	function toggleEditorState(){
+		isInEditor = (menuState == "editor");
+		
+		if (isInEditor){
+			currentLevel.isInLevel = true;
+			
+			if (savedEditorBoard.length == 0){
+				startEmptyBoard(15, 15);
+			} else{
+				currentBoard = structuredClone(savedEditorBoard);
+				
+				refreshBoardPosition();
+			}
+			
+			solvedBoard = [];
+		}
+	}
+	
+</script>
+
+<script> //Undo and Redo
+	
+	function resetUndoBoards(){
+		undoBoards = [];
+		undoNum = -1;
+	}
+	
+	
+	function addCurrentBoardToUndoBoards(){
+		if (currentLevel.isInLevel){
+			if (JSON.stringify(currentBoard) != JSON.stringify(undoBoards[undoNum])){
+				undoNum = Math.min(undoNum + 1, undoBoards.length);
+				
+				undoBoards[undoNum] = structuredClone(currentBoard);
+				
+				undoBoards = undoBoards.slice(0, undoNum + 1);
+			}
+		}
+	}
+	
+	function setBoardToUndoBoardNum(){
+		if (undoBoards[undoNum] != undefined){
+			currentBoard = structuredClone(undoBoards[undoNum]);
+			
+			refreshBoardPosition();
+		}
+	}
+	
+	
+	function undoClick(){
+		undoNum = Math.max(undoNum - 1, 0);
+		
+		setBoardToUndoBoardNum();
+	}
+	
+	function redoClick(){
+		undoNum = Math.min(undoNum + 1, undoBoards.length - 1);
+		
+		setBoardToUndoBoardNum();
+	}
+	
+</script>
+
+<script> //Board Changers
+	
+	function clearBoard(){
+		for (let i in currentBoard){
+			for (let j in currentBoard[i]){
+				currentBoard[i][j] = " ";
+			}
+		}
+		addCurrentBoardToUndoBoards();
+	}
+	
+	function inverseCurrentBoard(){
+		for (let i in currentBoard){
+			for (let j in currentBoard[i]){
+				currentBoard[i][j] = (currentBoard[i][j] == "." ? " " : ".");
+			}
+		}
+		addCurrentBoardToUndoBoards();
+	}
+	
+	
+	function getRandomPolygon(shapeData){
+		let vertexNum = 3;
+		
+		if (shapeData.maxVertices != undefined){
+			vertexNum = randomNum(3, shapeData.maxVertices);
+		}
+		
+		
+		let p = [];
+		
+		if (shapeData.shapeType == "centered"){
+			
+			let center = {
+				x: randomNum(0, currentBoard[0].length),
+				y: randomNum(0, currentBoard.length)
+			}
+			
+			let radius = randomNum(1, Math.max(currentBoard[0].length, currentBoard.length));
+			
+			
+			let randomAngles = [];
+			
+			for (let i = 0; i < vertexNum; i++){
+				let randomAngle = randomNum(0, Math.PI * 200);
+				
+				if (randomAngles[randomAngle] == undefined){
+					randomAngles[randomAngle] = true;
+				} else{
+					i--;
+				}
+			}
+			
+			
+			for (let i in randomAngles){
+				let angle = Number(i) / 100;
+				
+				p.push({
+					x: center.x + Math.cos(angle) * radius,
+					y: center.y + Math.sin(angle) * radius
+				});
+			}
+		} else if (shapeData.shapeType == "circle"){
+			
+			let center = {
+				x: randomNum(0, currentBoard[0].length),
+				y: randomNum(0, currentBoard.length)
+			}
+			
+			let radius = randomNum(1, Math.max(currentBoard[0].length, currentBoard.length));
+			
+			
+			for (let i = 0; i < 12; i++){
+				let angle = (Number(i) / 12) * Math.PI*2;
+				
+				p.push({
+					x: center.x + Math.cos(angle) * radius,
+					y: center.y + Math.sin(angle) * radius
+				});
+			}
+			
+		} else{
+			
+			for (let i = 0; i < vertexNum; i++){
+				p.push({
+					x: randomNum(0, currentBoard[0].length),
+					y: randomNum(0, currentBoard.length)
+				});
+			}
+			
+		}
+		return p;
+	}
+	
+	function inverseTilesInPolygon(p){
+		for (let i in currentBoard){
+			for (let j in currentBoard[i]){
+				if (isVertexInPolygon({x: Number(j) + 0.5, y: Number(i) + 0.5}, p)){
+					currentBoard[i][j] = (currentBoard[i][j] == "." ? " " : ".");
+				}
+			}
+		}
+		addCurrentBoardToUndoBoards();
+	}
+	
+</script>
+
+<script> //Board Generator
+	
+	function nextBoardGeneratorFrame(){
+		let size = (isBoardBruteforce) ? boardBruteforce.size : boardGenerator.size;
+		let sizeText = size.w + "," + size.h;
+		
+		if (generatedBoards[sizeText] == undefined){
+			generatedBoards[sizeText] = [];
+		}
+		
+		
+		if (isBoardBruteforce){
+			let startingI = boardBruteforce.i;
+			
+			for (let i = startingI; i < startingI + boardBruteforce.boardsPerFrame; i++){
+				let boardArr = (i).toString(2);
+				
+				let num = 0;
+				currentBoard = [];
+				for (let y = 0; y < size.h; y++){
+					currentBoard[y] = [];
+					for (let x = 0; x < size.w; x++){
+						let inverseNum = boardArr.length - num - 1;
+						
+						if (inverseNum < boardArr.length){
+							currentBoard[y][x] = (boardArr[inverseNum] == "1") ? "." : " ";
+						} else{
+							currentBoard[y][x] = " ";
+						}
+						num++;
+					}
+				}
+				
+				changeCluesToCurrentBoard();
+				
+				let steps = countSolutionSteps();
+				
+				if (boardBruteforce.stepsCounts[steps] == undefined){
+					boardBruteforce.stepsCounts[steps] = 0;
+				}
+				boardBruteforce.stepsCounts[steps]++;
+				
+				if (steps >= boardBruteforce.minStepsToSave && steps < maxSteps){
+					if (generatedBoards[sizeText][steps] == undefined){
+						generatedBoards[sizeText][steps] = {};
+					}
+					
+					let boardText = JSON.stringify(currentClues);
+					
+					generatedBoards[sizeText][steps][boardText] = true;
+					
+					localStorage.setItem("generatedBoards", JSON.stringify(generatedBoards));
+				}
+				
+				boardBruteforce.i = i + 1;
+			}
+			
+			if (boardBruteforce.i < Math.pow(2, size.w * size.h)){
+				setTimeout(nextBoardGeneratorFrame, 1);
+			} else{
+				console.log("BRUTEFORCE DONE");
+			}
+		} else{
+			let targetSteps = boardGenerator.targetSteps;
+			
+			
+			if (boardGenerator.isNewBoard){
+				boardGenerator.boardNum++;
+				
+				startRandomBoard(size.w, size.h);
+				
+				resetChangedLines();
+				
+				boardGenerator.isNewBoard = false;
+			} else{
+				loadBoardToEditorFromClue(currentClues);
+				let stepsArr = getBoardIterationSolutionSteps();
+				
+				
+				let stepClosenessToTarget = [];
+				
+				for (let i in stepsArr){
+					
+					let distanceNum = 0;
+					
+					if (i < targetSteps.min || i > targetSteps.max){
+						let closeness = {
+							min: Math.abs(Number(i) - targetSteps.min),
+							max: Math.abs(Number(i) - targetSteps.max)
+						}
+						
+						distanceNum = Math.min(closeness.min, closeness.max);
+					}
+					
+					
+					if (stepClosenessToTarget[distanceNum] == undefined){
+						stepClosenessToTarget[distanceNum] = [];
+					}
+					stepClosenessToTarget[distanceNum].push(i);
+				}
+				
+				
+				let closestBoardNums = stepClosenessToTarget.find(el => el);
+				
+				let randomClosestArray = stepsArr[getRandomElementOfArray(closestBoardNums)];
+				
+				let pos = getRandomElementOfArray(randomClosestArray);
+				currentBoard[pos.y][pos.x] = (currentBoard[pos.y][pos.x] == "." ? " " : ".");
+				
+				changedLines = {x: [pos.x], y: [pos.y]};
+				
+				changeCluesToCurrentBoard();
+			}
+			
+			
+			
+			let boardText = JSON.stringify(currentClues);
+			
+			boardGenerator.i++;
+			
+			let steps = countSolutionSteps();
+			let isSolved = steps < maxSteps;
+			
+			if (isSolved){
+				if (boardGenerator.i > boardGenerator.maxI || (steps >= targetSteps.min && steps <= targetSteps.max)){
+					
+					if (generatedBoards[sizeText][steps] == undefined){
+						generatedBoards[sizeText][steps] = {};
+					}
+					
+					generatedBoards[sizeText][steps][boardText] = true;
+				
+					console.log(((isSolved) ? steps : ""), "ADDED", boardText);
+					
+					localStorage.setItem("generatedBoards", JSON.stringify(generatedBoards));
+					
+					boardGenerator.isNewBoard = true;
+					boardGenerator.i = 0;
+				}
+			} else{
+				if (boardGenerator.i > boardGenerator.maxI){
+					boardGenerator.isNewBoard = true;
+					boardGenerator.i = 0;
+				}
+			}
+			
+			if (boardGenerator.boardNum <= boardGenerator.maxBoards){
+				setTimeout(nextBoardGeneratorFrame, 1);
+			}
+		}
+	}
+	
+</script>
+
+<script> //Colors & Powerups
+	
+	function setFillStyleToTileColor(tile){
+		ctx.fillStyle = (tile == " ") ? colors.emptyTile : ((tile == "x") ? colors.xTile : colors.filledTile);
+	}
+	
+	function getLineColorName(line, clue){
+		
+		let colorName = "defaultColor";
+		
+		if (!isInEditor){
+			
+			let id = line.toString() + ";" + clue.toString();
+			
+			if (savedPowerupColors[id] == undefined){
+				if (isLineCorrect(line, clue) && powerups.grayedLine){
+					if (isLineFull(line)){
+						colorName = "completeLine";
+					} else{
+						colorName = "xableLine";
+					}
+				} else{
+					if (powerups.advanceableLine || powerups.completeableLine || powerups.wrongLine){
+						let allLineStates = getAllPossibleLineStates(clue, line.length);
+						let solvedLine = getCommonsFromLineStates(allLineStates, line);
+						
+						if (powerups.advanceableLine){
+							if (!areArraysEqual(line, solvedLine) && !isLineFull(solvedLine)){
+								colorName = "advanceableLine";
+							}
+						}
+						if (powerups.completeableLine){
+							if (isLineFull(solvedLine)){
+								colorName = "completeableLine";
+							}
+						}
+						if (powerups.wrongLine){
+							if (isLineFull(line) || isLineImpossible(line, allLineStates)) {
+								colorName = "wrongLine";
+							}
+						}
+					}
+				}
+				
+				savedPowerupColors[id] = colorName;
+			} else{
+				colorName = savedPowerupColors[id];
+			}
+		}
+		
+		return colorName;
+	}
+	
+	function getToggledPowerupsCount(){
+		let num = 0;
+		
+		for (let i in powerups){
+			if (powerups[i]){
+				num++;
+			}
+		}
+		return num;
+	}
+	
+	function canBuyAPowerup(){
+		let canBuy = false;
+		
+		for (let i in powerups){
+			if (!powerups[i]){
+				for (let j in powerupButtons){
+					if (powerupButtons[j].powerup == i){
+						if (powerupButtons[j].price <= unspentPowerupPoints){
+							canBuy = true;
+						}
+					}
+				}
+			}
+		}
+		return canBuy;
+	}
+	
+	function refreshPowerupButtonColor(){
+		if (canBuyAPowerup() && menuState == "levels"){
+			colors.powerupButton = "hsl(" + ((t * 1.5) % 360) + ", 100%, 80%)";
+		} else{
+			colors.powerupButton = colors.menuTexts;
+		}
+	}
+	
+</script>
+
+<script> //Draw Menu
+	
+	function drawButton(button, textRatio, text, buttonColor, textColor, borderSize, borderColor){
+		ctx.font = Math.floor((button.w * canvas.width) * textRatio) + "px Consolas";
+		
+		if (borderSize > 0){
+			let size = {
+				x: (canvas.width > canvas.height ? (canvas.height*borderSize) / canvas.width : borderSize),
+				y: (canvas.width < canvas.height ? (canvas.width*borderSize) / canvas.height : borderSize)
+			}
+			
+			ctx.fillStyle = borderColor;
+			scaledCenteredFillRect(button.x, button.y, button.w + size.x*2, button.h + size.y*2);
+		}
+		
+		ctx.fillStyle = buttonColor;
+		scaledCenteredFillRect(button.x, button.y, button.w, button.h);
+		
+		ctx.fillStyle = textColor;
+		scaledFillText(text, button.x, button.y);
+	}
+	
+	
+	function getCurrentLevelOfWorld(worldName){
+		let levelNum = 1;
+		
+		if (savedWorldStates[worldName] != undefined){
+			levelNum = savedWorldStates[worldName].length;
+		}
+		return levelNum;
+	}
+	
+	function drawMenuButtons(){
+		let arr = buttonsArr[menuState];
+		
+		for (let i in arr){
+			
+			let buttonColor = (completedWorlds[arr[i].worldName] || arr[i].menuState == "editor") ? colors.menuButtonsOff : colors.menuButtons;
+			
+			if (arr[i].powerup != undefined){
+				if (!powerups[arr[i].powerup]){
+					buttonColor = colors.menuButtonsOff;
+				}
+			}
+			
+			
+			
+			let borderSize = 0;
+			
+			if (arr[i].worldName != undefined || (colors.powerupButton != colors.menuTexts && arr[i].menuState == "powerups")){
+				borderSize = menuButtonSizes.borderSize;
+			}
+			
+			let borderColor = (completedWorlds[arr[i].worldName]) ? colors.menuButtonBordersOff : colors.menuButtonBorders;
+			
+			if (arr[i].menuState == "powerups"){
+				borderColor = colors.powerupButton;
+			}
+			
+			
+			drawButton(arr[i], 0.1, arr[i].text, buttonColor, colors.menuTexts, borderSize, borderColor);
+			
+			
+			ctx.fillStyle = colors.menuTexts;
+			
+			if (arr[i].difficulty != undefined){
+				ctx.font = Math.floor(arr[i].w * canvas.width * 0.1 * 0.33) + "px Consolas";
+				
+				scaledFillText("[" + arr[i].difficulty + "]", arr[i].x + arr[i].w*0.35, arr[i].y + arr[i].h*0.3);
+			}
+			
+			if (arr[i].difficulty != undefined){
+				let levelNum = getCurrentLevelOfWorld(arr[i].worldName);
+				
+				ctx.font = Math.floor(arr[i].w * canvas.width * 0.1 * 0.33) + "px Consolas";
+				
+				scaledFillText("(" + (levelNum + "/" + worlds[arr[i].worldName].length) + ")", arr[i].x - arr[i].w*0.35, arr[i].y + arr[i].h*0.3);
+			}
+			
+			if (arr[i].price != undefined){
+				ctx.font = Math.floor(arr[i].w * canvas.width * 0.1 * 0.9) + "px Consolas";
+				
+				scaledFillText("Cost: " + arr[i].price, (arr[i].x + 0.1675), arr[i].y);
+				
+				
+				let gap = powerupButtons[1].y - powerupButtons[0].y;
+				
+				ctx.fillStyle = colors.menuButtonsOff;
+				scaledFillRect(0, arr[i].y + gap/2, 1, 0.005);
+			}
+			
+			if (arr[i].demoLines != undefined){
+				drawPowerupDemonstrationLines(arr[i].demoLines, (arr[i].x + 0.275), arr[i].y);
+			}
+		}
+	}
+	
+	
+	function drawPowerupPoints(){
+		ctx.font = Math.floor(canvas.width/60) + "px Consolas";
+		ctx.fillStyle = colors.powerupButton;
+		
+		scaledFillText("Powerup Points:", powerupButton.x, powerupButton.y - 0.0175);
+		scaledFillText(unspentPowerupPoints, powerupButton.x, powerupButton.y + 0.0175);
+	}
+	
+	
+	function drawPowerupDemonstrationLines(lines, x, y){
+		let tileSize = 0.025;
+		let scaledTileSize = tileSize * canvas.width;
+		
+		ctx.fillStyle = colors.menuTexts;
+		ctx.font = Math.floor(powerupButtons[0].x * canvas.width * 0.1 * 0.75) + "px Consolas";
+		scaledFillText("ex.", x - tileSize - 0.003, y + 0.008);
+		
+		for (let i = 0; i < lines.length; i++){
+			ctx.fillStyle = colors[lines[i].color];
+			
+			for (let j in lines[i].clue){
+				drawClueWithBox(lines[i].clue[j], {x: x * canvas.width, y: y * canvas.height}, scaledTileSize * 0.85, 0.875, lines[i].color);
+				
+				x += tileSize * 0.85;
+			}
+			
+			x += 0.004;
+			
+			for (let j in lines[i].line){
+				setFillStyleToTileColor(lines[i].line[j]);
+				
+				let pos = {
+					x: Math.round((x * canvas.width) - (scaledTileSize / 2)),
+					y: Math.round((y * canvas.height) - (scaledTileSize / 2)),
+					w: scaledTileSize,
+					h: scaledTileSize
+				}
+				
+				shortFillRect(pos);
+				
+				if (lines[i].line[j] == "x"){
+					ctx.fillStyle = colors.emptyTile;
+					
+					drawX(pos);
+				}
+				
+				x += tileSize + 0.0015;
+			}
+			
+			x += tileSize;
+		}
+	}
+	
+	
+	function drawIntroText(){
+		ctx.font = Math.floor(canvas.width/70) + "px Consolas";
+		
+		for (let i in introText){
+			ctx.fillStyle = colors.introTextShadow;
+			scaledFillText(introText[i], 0.5 + 0.0011, (Number(i)/introText.length - 0.5) * 0.35 + 0.4 + 0.0011);
+			
+			ctx.fillStyle = colors.introText;
+			scaledFillText(introText[i], 0.5, (Number(i)/introText.length - 0.5) * 0.35 + 0.4);
+		}
+	}
+	
+	
+	function drawMenu(){
+		if (menuState == "levels"){
+			ctx.fillStyle = "#0000000" + Math.floor(Math.cos(t/30) * 2 + 2);
+			ctx.font = Math.floor(canvas.width/4.4) + "px Consolas";
+			
+			scaledFillText("NONOGRAM", 0.5, 0.5);
+		}
+		drawMenuButtons();
+		
+		if (menuState == "levels" || menuState == "powerups"){
+			drawPowerupPoints();
+		} else if (menuState == "intro"){
+			drawIntroText();
+		}
+	}
+	
+</script>
+<script> //Draw (Game)
+	
+	function shortFillRect(arr){
+		ctx.fillRect(arr.x, arr.y, arr.w, arr.h);
+	}
+	
+	function scaledFillRect(x, y, w, h){
+		ctx.fillRect(Math.round(x * canvas.width), Math.round(y * canvas.height), Math.round(w * canvas.width), Math.round(h * canvas.height));
+	}
+	
+	function scaledCenteredFillRect(x, y, w, h){
+		scaledFillRect(x - w/2, y - h/2, w, h)
+	}
+	
+	function scaledFillText(text, x, y){
+		ctx.fillText(text, Math.round(x * canvas.width), Math.round(y * canvas.height));
+	}
+	
+	
+	function drawHoverTile(){
+		if (hoveredTile.x != -1){
+			ctx.fillStyle = colors.defaultColor;
+			
+			ctx.fillRect(
+				boardPos.x + hoveredTile.x*boardPos.tileSize + 1,
+				boardPos.y - 2,
+				boardPos.tileSize - 2,
+				2
+			);
+			
+			ctx.fillRect(
+				boardPos.x - 2,
+				boardPos.y + hoveredTile.y*boardPos.tileSize + 1,
+				2,
+				boardPos.tileSize - 2
+			);
+		}
+	}
+	
+	
+	function drawPolygon(p){
+		ctx.beginPath();
+		ctx.moveTo(p[0].x, p[0].y);
+		for (let i in p){
+			ctx.lineTo(p[i].x, p[i].y);
+		}
+		ctx.fill();
+	}
+	
+	function drawX(p){
+		let size = Math.min(p.w, p.h) * xTileRatio;
+		
+		let middle = {
+			x: p.x + Math.round(p.w / 2),
+			y: p.y + Math.round(p.h / 2)
+		}
+		
+		let v = [
+			{x: p.x, y: p.y + size},
+			{x: p.x, y: p.y},
+			{x: p.x + size, y: p.y},
+			{x: middle.x, y: middle.y - size},
+			
+			{x: p.x + p.w - size, y: p.y},
+			{x: p.x + p.w, y: p.y},
+			{x: p.x + p.w, y: p.y + size},
+			{x: middle.x + size, y: middle.y},
+			
+			{x: p.x + p.w, y: p.y + p.h - size},
+			{x: p.x + p.w, y: p.y + p.h},
+			{x: p.x + p.w - size, y: p.y + p.h},
+			{x: middle.x, y: middle.y + size},
+			
+			{x: p.x + size, y: p.y + p.h},
+			{x: p.x, y: p.y + p.h},
+			{x: p.x, y: p.y + p.h - size},
+			{x: middle.x - size, y: middle.y}
+		];
+		
+		drawPolygon(v);
+	}
+	
+	
+	function drawBoard(){
+		
+		//drawHoverTile(); //not sure if needed
+		
+		for (let y = 0; y < currentBoard.length; y++){
+			for (let x = 0; x < currentBoard[y].length; x++){
+				
+				let pos = {
+					x: boardPos.x + x*boardPos.tileSize + 1,
+					y: boardPos.y + y*boardPos.tileSize + 1,
+					w: boardPos.tileSize - 2 - ((x%5 == 4) ? 2 : 0),
+					h: boardPos.tileSize - 2 - ((y%5 == 4) ? 2 : 0)
+				}
+				
+				setFillStyleToTileColor(currentBoard[y][x]);
+				
+				shortFillRect(pos);
+				
+				if (currentBoard[y][x] == "x"){
+					ctx.fillStyle = colors.emptyTile;
+					
+					drawX(pos);
+				}
+			}
+		}
+	}
+	
+	function drawSolvedBoard(){
+		let tileSize = 20;
+		
+		for (let y = 0; y < solvedBoard.length; y++){
+			for (let x = 0; x < solvedBoard[y].length; x++){
+				
+				setFillStyleToTileColor(solvedBoard[y][x]);
+				
+				ctx.fillRect(
+					x*tileSize + 1,
+					y*tileSize + 1 + tileSize*2,
+					tileSize - 1 - ((x%5 == 4) ? 1 : 0),
+					tileSize - 1 - ((y%5 == 4) ? 1 : 0)
+				);
+			}
+		}
+		
+		ctx.fillStyle = colors.editorTexts;
+		
+		ctx.font = "26px Consolas";
+		ctx.textAlign = "center";
+		ctx.fillText("steps: " + ((solutionSteps == maxSteps+1) ? "unsolvable" : solutionSteps), Math.round((solvedBoard.length || 15) * tileSize / 2), tileSize);
+		
+		ctx.textAlign = "left";
+		ctx.fillText("[Space] Solve", 0, tileSize*4 + solvedBoard.length*tileSize);
+		ctx.fillText("[C]opy Clues to Clipboard", 0, tileSize*5.75 + solvedBoard.length*tileSize);
+		ctx.fillText("[S] Log Iteration Steps", 0, tileSize*8.5 + solvedBoard.length*tileSize);
+		ctx.fillText("[A+S] Step Highest Step", 0, tileSize*11.25 + solvedBoard.length*tileSize);
+		ctx.fillText("([W] = [A+S])", 0, tileSize*13 + solvedBoard.length*tileSize);
+		ctx.fillText("[F12] Open Console", 0, tileSize*14.75 + solvedBoard.length*tileSize);
+		ctx.fillText("[I]nverse Board", 0, tileSize*17.5 + solvedBoard.length*tileSize);
+		ctx.fillText("[X] Toggle Straight Assist", 0, tileSize*20 + solvedBoard.length*tileSize);
+	}
+	
+	
+	function getTileSize(){
+		let highestLineNumbers = 2;
+		
+		for (let i in currentClues){
+			for (let j in currentClues[i]){
+				if (highestLineNumbers < currentClues[i][j].length + 0.25){
+					highestLineNumbers = currentClues[i][j].length + 0.25;
+				}
+			}
+		}
+		
+		let smallestAxis = (canvas.width > canvas.height) ? "y" : "x";
+		//smallestAxis = (canvas.width / currentBoard[0].length > canvas.height / currentBoard.length) ? "y" : "x"; //not sure if this would be better
+		let smallestCanvasSize = Math.min(canvas.width, canvas.height);
+		let smallestClueSpace = smallestCanvasSize * ((1 - (boardPos.maxSizeRatio) + boardPos.center[smallestAxis]) / 2);
+		
+		let size = smallestClueSpace / highestLineNumbers - 1;
+		
+		if (size > boardPos.tileSize * 0.8){
+			size = boardPos.tileSize * 0.8;
+		}
+		
+		return size;
+	}
+	
+	
+	function drawClueWithBox(text, pos, size, insideRatio, colorName){
+		let halfSize = Math.floor(size / 2);
+		
+		ctx.fillStyle = colors[colorName];
+		
+		if (outlineColors[colorName]){
+			ctx.fillStyle = colors[colorName + "2"];
+			ctx.fillRect(pos.x - halfSize, pos.y - halfSize, size, size);
+			
+			ctx.fillStyle = colors[colorName + ""];
+			ctx.fillRect(pos.x - halfSize * insideRatio, pos.y - halfSize * insideRatio, size * insideRatio, size * insideRatio);
+			
+			ctx.fillStyle = colors[colorName + "2"];
+		}
+		
+		ctx.fillText(text, pos.x, pos.y + size*0.0825);
+	}
+	
+	function drawClues(){
+		let size = getTileSize();
+		
+		let halfSize = Math.floor(size / 2);
+		let insideRatio = 0.875;
+		
+		ctx.font = size + "px Consolas";
+		
+		
+		for (let i in currentClues){
+			let xy = (i == "rows") ? "y" : "x";
+			let xyOpposite = (xy == "x") ? "y" : "x";
+			
+			let startingPos = {
+				x: boardPos.x,
+				y: boardPos.y
+			};
+			
+			startingPos[xy] += Math.round(boardPos.tileSize/2);
+			startingPos[xyOpposite] -= size/2;
+			
+			
+			for (let j = 0; j < currentClues[i].length; j++){
+				
+				let line = getBoardLine(j, xy);
+				
+				for (let k = 0; k < currentClues[i][j].length; k++){
+					
+					let pos = {...startingPos};
+					
+					pos[xy] += boardPos.tileSize * j;
+					pos[xyOpposite] -= (currentClues[i][j].length - k - 1) * size;
+					
+					
+					let colorName = getLineColorName(line, currentClues[i][j]);
+					
+					drawClueWithBox(currentClues[i][j][k], pos, size, insideRatio, colorName);
+				}
+			}
+		}
+	}
+	
+	function drawStraightLineAssistButton(){
+		drawButton(
+			straightLineAssistButton,
+			0.08,
+			"Straight Line Assist",
+			(colors.menuButtonsOff + ((straightLineAssist) ? "" : "38")),
+			(colors.menuTexts + ((straightLineAssist) ? "" : "38"))
+		);
+	}
+	
+	function drawTouchScreenButtons(){
+		for (let i in touchScreenButtons){
+			drawButton(
+				touchScreenButtons[i],
+				1,
+				((i == isClickInverted) ? "∎" : "x"),
+				colors.menuButtonsOff,
+				((i == isClickInverted) ? colors.filledTile : colors.menuTexts)
+			);
+		}
+		
+		ctx.font = Math.floor(canvas.width/50) + "px Consolas";
+		ctx.fillStyle = colors.defaultColor; //this is the most important line in this code /jokebecauseitdoesntdoanything
+		
+		scaledFillText("🖱️", 0.925, 0.9);
+	}
+	
+	function drawUndoRedoButtons(){
+		for (let i in undoRedoButtons){
+			let state = undoRedoButtons[i].undoRedoState;
+			
+			let isClickable = (state == "undo") ? (undoNum > 0) : (undoNum < undoBoards.length - 1);
+			//⟲⟳ ↶↷
+			drawButton(
+				undoRedoButtons[i],
+				1,
+				((state == "undo") ? "↶" : "↷"),
+				((isClickable) ? colors.menuButtonsOff : colors.menuButtonsOff),
+				((isClickable) ? colors.menuTexts : colors.filledTile)
+			);
+		}
+	}
+	
+	function drawNextButton(){
+		drawButton(nextButton, 0.15, "Next", colors.nextButton, colors.menuTexts);
+		
+		ctx.font = Math.floor(nextButton.w * canvas.width * 0.15 * 0.225) + "px Consolas";
+		
+		scaledFillText("[Enter/Space]", nextButton.x, nextButton.y + nextButton.h*0.265);
+	}
+	
+	function drawBackButton(){
+		drawButton(backButton, 0.1, backButton.text, colors.menuButtonsOff, colors.menuTexts);
+	}
+	
+	function drawCurrentLevelText(){
+		if (worlds[currentLevel.worldName] != undefined){
+			ctx.font = Math.floor(canvas.width/75) + "px Consolas";
+			ctx.fillStyle = colors.nextButton;
+			
+			scaledFillText(getCurrentLevelOfWorld(currentLevel.worldName) + "/" + worlds[currentLevel.worldName].length, nextButton.x, nextButton.y);
+		}
+	}
+	
+	function draw(){
+		canvas.width |= 0;
+		
+		ctx.fillStyle = colors.backgroundColor;
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		
+		if (currentLevel.isInLevel){
+			backButton.text = ((worlds[currentLevel.worldName] != undefined) ? "Save & " : "") + "Exit";
+			
+			if (currentBoard.length > 0){
+				drawBoard();
+				
+				drawClues();
+				
+				drawTouchScreenButtons();
+				
+				drawBackButton();
+				
+				if (isInEditor){
+					drawSolvedBoard();
+				} else{
+					drawUndoRedoButtons();
+					drawStraightLineAssistButton();
+					
+					if (isNextButtonShown){
+						drawNextButton();
+					} else{
+						drawCurrentLevelText();
+					}
+				}
+			}
+		} else{
+			refreshPowerupButtonColor();
+			
+			drawMenu();
+		}
+	}
+	
+</script>
+
+<script> //Next Frame
+	
+	function nextFrame(){
+		//colors.filledTile = "hsl(" + ((t / 30) % 360) + ", 100%, 50%)";
+		
+		if (isBoardGenerator){
+			nextBoardGeneratorFrame();
+		} else{
+			t++;
+			
+			if (t%4 == 0){
+				if (isInEditor){
+					changeCluesToCurrentBoard();
+				} else if (currentLevel.isInLevel){
+					isNextButtonShown = isBoardCorrect();
+				}
+			}
+			
+			draw();
+			
+			setTimeout(nextFrame,1000/fps);
+		}
+	}
+	
+
+</script>
+
+<script> //Listeners
+	
+	//Resize
+	
+	function onResize(){
+		canvas.height = window.innerHeight;
+		canvas.width = window.innerWidth;
+		
+		refreshBoardPosition();
+		draw();
+	}
+	
+	window.addEventListener("resize",onResize);
+	
+	
+	//Inputs
+	
+	let inputs = []; //ex: inputs.KeyW
+	
+	function setKeyDown(e){
+		e = e || window.event;
+		
+		if (!isBoardGenerator){
+			if (currentLevel.isInLevel){
+				
+				if (e.code == "KeyX"){
+					straightLineAssist = !straightLineAssist;
+				}
+				if (e.code == "ShiftLeft" && !inputs["ShiftLeft"]){
+					straightLineAssist = !straightLineAssist;
+				}
+				
+				if (isInEditor){
+					if (e.code == "Space"){
+						solutionSteps = countSolutionSteps(true);
+					}
+					if (e.code == "KeyC"){
+						copyCurrentCluesToClipboard();
+					}
+					if (e.code == "KeyI"){
+						inverseCurrentBoard();
+					}
+					if (e.code == "KeyS" || e.code == "KeyW"){
+						let stepsArr = getBoardIterationSolutionSteps();
+						
+						console.log(stepsArr);
+						
+						if (inputs.KeyA || e.code == "KeyW"){
+							let pos = getRandomElementOfArray(stepsArr[stepsArr.length - 1]);
+							
+							currentBoard[pos.y][pos.x] = (currentBoard[pos.y][pos.x] == "." ? " " : ".");
+						}
+						
+						changeCluesToCurrentBoard();
+						solutionSteps = countSolutionSteps();
+						
+						solvedBoard = [];
+					}
+				} else{
+					if (areCheatsOn){
+						if (e.code == "KeyS"){
+							resetChangedLines();
+							
+							solveBoard();
+							
+							console.log("Cheat code, don't ship pleaseeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+						}
+					}
+					
+					if (e.code == "Enter" || e.code == "Space"){
+						inputs[e.code] = true;
+						
+						nextButtonClick();
+					}
+				}
+				
+				if (e.code == "KeyZ"){
+					undoClick();
+				}
+				
+				if (e.code == "KeyY"){
+					redoClick();
+				}
+			} else{
+				if (areCheatsOn){
+					if (e.code == "KeyP"){
+						for (let i in powerups){
+							powerups[i] = true;
+						}
+						
+						savedPowerupColors = {};
+						
+						console.log("Cheat code, don't ship pleaseeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+					}
+				}
+			}
+		}
+		
+		inputs[e.code] = true;
+	}
+	
+	function setKeyUp(e){
+		e = e || window.event;
+		inputs[e.code] = false;
+		
+		if (e.code == "ShiftLeft"){
+			straightLineAssist = !straightLineAssist;
+		}
+	}
+	
+	document.onkeydown = setKeyDown;
+	document.onkeyup = setKeyUp;
+	
+	
+	//Mouse
+	
+	function onMouseDown(event){
+		setMousePos(canvas, event);
+		
+		if (currentLevel.isInLevel){
+			mouseButton = event.button;
+			
+			let pos = getClickedPosition();
+			
+			initiallyClickedTile = pos;
+			
+			straightLineAxis = "";
+			
+			if (isPosInBoard(pos)){
+				isMouseUnclick = (currentBoard[pos.y][pos.x] != " ");
+			}
+			
+			changeBoardByClickPos(pos);
+			
+			touchScreenButtonsClick();
+			straightLineAssistButtonClick();
+			undoRedoButtonsClick();
+			
+			nextButtonClick();
+			backButtonClick();
+		} else{
+			menuButtonsClick();
+		}
+	}
+	
+	function onMouseUp(event){
+		setMousePos(canvas, event);
+		
+		straightLineAxis = "";
+		
+		mouseButton = -1;
+		
+		addCurrentBoardToUndoBoards();
+	}
+	
+	function onMouseMove(event){
+		setMousePos(canvas, event);
+		
+		if (currentLevel.isInLevel){
+			if (mouseButton != -1){
+				if (straightLineAssist){
+					if (straightLineAxis == ""){
+						let pos = getClickedPosition();
+						
+						if (initiallyClickedTile.x != pos.x){
+							straightLineAxis = "x";
+						} else if (initiallyClickedTile.y != pos.y){
+							straightLineAxis = "y";
+						} 
+					}
+				}
+				
+				changeBoardByMouseClick();
+			}
+			
+			refreshHoveredTile();
+		}
+	}
+	
+	function setMousePos(canvas, event) {
+		lastMousePos = mousePos;
+		
+		let rect = canvas.getBoundingClientRect();
+		
+		mousePos = {
+			x: event.clientX - rect.left,
+			y: event.clientY - rect.top
+		};
+		
+		mousePosRatio = {x: mousePos.x / canvas.width, y: mousePos.y / canvas.height};
+	}
+	
+	canvas.addEventListener("mousedown", onMouseDown);
+	canvas.addEventListener("mouseup", onMouseUp);
+	canvas.addEventListener('mousemove',onMouseMove);
+	
+</script>
+
+<script> //Calls
+	//isBoardGenerator = true;
+	//startNonogram(boards["random"]["15,15"][100][0]);
+	//startNonogram(boards["handmade"]["15,15"][2][5]);
+	//startRandomBoard(15,15);
+	
+	//let randomSizes = [randomNum(4,6),randomNum(4,15)];
+	//startRandomSolvableBoard(Math.max(...randomSizes), Math.min(...randomSizes));
+	
+		//fps = 1;
+	//isInEditor = true;
+	//startEmptyBoard(15, 15);
+	
+	
+	//currentLevel = {worldName: "preRandom15x15Hard", num: 3, isInLevel: true};
+	//startNextLevel();
+	
+	
+	/*
+	World Completion Times with all Powerups:
+	
+	"tutorial" //0:36
+	
+	"randomSizeSmall" //2:18
+	"randomCircles" //5:30
+	"randomShapes" //5:11
+	
+	"wide" //4:30
+	"randomSize" //7:05
+	"handmade15x15" //7:14
+	
+	"randomerShapes" //10:11
+	
+	"preRandom15x15" //13:00
+	"preRandom15x15Hard" //21:58
+	*/
+	
+	
+	if (isBoardGenerator){
+		if (objectLength(generatedBoards) > 0){
+			console.log("generatedBoards HAS CONTENTS AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		}
+	}
+	
+	generateMenuButtons();
+	let buttonsArr = {levels: menuButtons, powerups: powerupButtons, intro: introButtons};
+	
+	nextFrame();
+	
+  </script>
+ </body>
+</html>
