@@ -18,28 +18,7 @@
  </head>
  <body>
   <canvas id="canvasId"></canvas>
-  <!--
-  <a href="/StardewGuessWho.html">StardewGuessWho.html</a><br><br>
-  
-  <a href="/RectangleBounces.html">RectangleBounces.html</a><br>
-  <a href="/NoteMath.html">NoteMath.html</a><br><br>
-  
-  <a href="/FFIslandInstallation.html">FFIslandInstallation.html</a><br><br>
-  
-  <a href="/TurtleBreak.html">TurtleBreak.html</a><br>
-  <a href="/WordCounter.html">WordCounter.html</a><br>
-  <a href="/SnowifyTransparency.html">SnowifyTransparency.html</a><br>
-  <a href="/PositionMultiplier.html">PositionMultiplier.html</a><br><br>
-  
-  <a href="/CreditsPlayer.html">CreditsPlayer.html</a><br><br>
-  
-  <a href="https://github.com/soverThe/SandPonder">SandPonder (SandPond fork)</a><br><br>
-  
-  <a href="https://github.com/soverThe/nppJSFunctionViewer">JSFunctionViewer (Notepad++ Plugin)</a><br><br><br>
-  
-  <a href="https://github.com/soverThe/soverThe.github.io">GitHub</a><br>
-  -->
-  <script>
+<script>
 	
 	let links = [
 		{href: "/Nonograms.html", name: "Nonograms", type: "Games", subTypes: ["Nonograms"]},
@@ -61,11 +40,63 @@
 	];
 	
 	
+	let monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+	
+	let dayTexts = {
+		"January": {1: "New Year's Day!", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "",
+			10: "", 11: "", 12: "", 13: "", 14: "", 15: "", 16: "", 17: "", 18: "", 19: "",
+			20: "", 21: "", 22: "", 23: "", 24: "", 25: "", 26: "", 27: "", 28: "", 29: "", 30: "", 31: ""},
+		"February": {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "",
+			10: "", 11: "", 12: "", 13: "", 14: "Valentine's Day!", 15: "Aromantic Spectrum Awareness Week!!! (Beginning on the first Sunday after February 14)", 16: "Aromantic Spectrum Awareness Week!!! (Beginning on the first Sunday after February 14)", 17: "Aromantic Spectrum Awareness Week!!! (Beginning on the first Sunday after February 14)", 18: "Aromantic Spectrum Awareness Week!!! (Beginning on the first Sunday after February 14)", 19: "Aromantic Spectrum Awareness Week!!! (Beginning on the first Sunday after February 14)",
+			20: "Aromantic Spectrum Awareness Week!!! (Beginning on the first Sunday after February 14) + 420!", 21: "Aromantic Spectrum Awareness Week!!! (Beginning on the first Sunday after February 14)", 22: "Earth Day!", 23: "", 24: "", 25: "", 26: "", 27: "", 28: "", 29: ""},
+		"March": {1: "Zero Discrimination Day!!!", 2: "", 3: "", 4: "", 5: "", 6: "My bday! :3", 7: "", 8: "International Women's Day!!!", 9: "",
+			10: "Mario!", 11: "", 12: "", 13: "Pi Day!", 14: "", 15: "", 16: "", 17: "Saint Patrick's Day!", 18: "", 19: "",
+			20: "", 21: "World Down Syndrome Awareness Day!!!", 22: "", 23: "", 24: "", 25: "", 26: "", 27: "", 28: "", 29: "",
+			30: "", 31: "Trans Day of Visibility!!!"},
+		"April": {1: "April Fools' Day! + Easter! (look up the exact date)", 2: "World Autism Awareness Day!!! ", 3: "", 4: "", 5: "", 6: "International Asexuality Day!!!", 7: "", 8: "International Day of Pink!!! (on the second Wednesday of April, probably later than the 7th)", 9: "",
+			10: "", 11: "", 12: "", 13: "", 14: "", 15: "", 16: "", 17: "", 18: "", 19: "",
+			20: "", 21: "", 22: "", 23: "Lesbian Visibility Week!!! (the week surrounding April 26)", 24: "Lesbian Visibility Week!!! (the week surrounding April 26)", 25: "Lesbian Visibility Week!!! (the week surrounding April 26)", 26: "Lesbian Visibility Day!!! + Lesbian Visibility Week!!! (the week surrounding April 26)", 27: "Lesbian Visibility Week!!! (the week surrounding April 26)", 28: "Lesbian Visibility Week!!! (the week surrounding April 26)", 29: "Lesbian Visibility Week!!! (the week surrounding April 26)", 30: ""},
+		"May": {1: "International Workers' Day! + May Day!", 2: "", 3: "", 4: "May the 4th be with you!", 5: "", 6: "", 7: "", 8: "", 9: "",
+			10: "", 11: "", 12: "", 13: "", 14: "", 15: "", 16: "", 17: "International Day Against Homophobia, Transphobia and Biphobia", 18: "", 19: "Agender Pride Day!!!",
+			20: "", 21: "", 22: "", 23: "", 24: "Pansexual & Panromantic Awareness Day!!!", 25: "", 26: "", 27: "", 28: "", 29: "",
+			30: "", 31: ""},
+		"June": {1: "LGBT Pride Month!!!", 2: "LGBT Pride Month!!!", 3: "LGBT Pride Month!!!", 4: "LGBT Pride Month!!!", 5: "Aromantic Visibility Day!!! + LGBT Pride Month!!!", 6: "LGBT Pride Month!!!", 7: "LGBT Pride Month!!!", 8: "LGBT Pride Month!!!", 9: "LGBT Pride Month!!!",
+			10: "LGBT Pride Month!!!", 11: "LGBT Pride Month!!!", 12: "LGBT Pride Month!!!", 13: "LGBT Pride Month!!!", 14: "LGBT Pride Month!!!", 15: "LGBT Pride Month!!!", 16: "LGBT Pride Month!!!", 17: "LGBT Pride Month!!!", 18: "LGBT Pride Month!!!", 19: "LGBT Pride Month!!!",
+			20: "LGBT Pride Month!!!", 21: "LGBT Pride Month!!!", 22: "LGBT Pride Month!!!", 23: "LGBT Pride Month!!!", 24: "LGBT Pride Month!!!", 25: "LGBT Pride Month!!!", 26: "LGBT Pride Month!!!", 27: "LGBT Pride Month!!!", 28: "Stonewall Riots Anniversary + LGBT Pride Month!!!", 29: "LGBT Pride Month!!!", 30: "LGBT Pride Month!!!"},
+		"July": {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "",
+			10: "", 11: "Non-Binary Awareness Week!!! (the week surrounding July 14)", 12: "Non-Binary Awareness Week!!! (the week surrounding July 14)", 13: "Non-Binary Awareness Week!!! (the week surrounding July 14)", 14: "Non-Binary People's Day!!!", 15: "Non-Binary Awareness Week!!! (the week surrounding July 14)", 16: "Drag Day!!! + Non-Binary Awareness Week!!! (the week surrounding July 14)", 17: "Non-Binary Awareness Week!!! (the week surrounding July 14)", 18: "", 19: "",
+			20: "", 21: "", 22: "", 23: "", 24: "", 25: "", 26: "", 27: "", 28: "", 29: "", 30: "", 31: ""},
+		"August": {1: "", 2: "International Friendship Day!", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "",
+			10: "", 11: "", 12: "", 13: "International Lefthanders Day!", 14: "", 15: "", 16: "", 17: "", 18: "", 19: "",
+			20: "", 21: "", 22: "", 23: "", 24: "", 25: "", 26: "", 27: "", 28: "", 29: "", 30: "", 31: ""},
+		"September": {1: "Labor Day! (first Monday of September)", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "",
+			10: "", 11: "", 12: "", 13: "", 14: "", 15: "", 16: "Bisexual Awareness Week!!!", 17: "Bisexual Awareness Week!!!", 18: "Bisexual Awareness Week!!!", 19: "Bisexual Awareness Week!!!",
+			20: "Bisexual Awareness Week!!!", 21: "Bisexual Awareness Week!!!", 22: "Bisexual Awareness Week!!!", 23: "Celebrate Bisexuality Day!!!", 24: "", 25: "", 26: "", 27: "", 28: "", 29: "", 30: ""},
+		"October": {1: "LGBT History Month!!!", 2: "LGBT History Month!!!", 3: "LGBT History Month!!!", 4: "LGBT History Month!!!", 5: "LGBT History Month!!!", 6: "LGBT History Month!!!", 7: "LGBT History Month!!!", 8: "Lesbian Day!!! + LGBT History Month!!!", 9: "LGBT History Month!!!",
+			10: "LGBT History Month!!!", 11: "National Coming Out Day!!! + LGBT History Month!!!", 12: "LGBT History Month!!!", 13: "LGBT History Month!!!", 14: "LGBT History Month!!!", 15: "LGBT History Month!!!", 16: "LGBT History Month!!!", 17: "Genderfluid Visibility Week!!! + LGBT History Month!!!", 18: "Genderfluid Visibility Week!!! + LGBT History Month!!!", 19: "Genderfluid Visibility Week!!! + LGBT History Month!!!",
+			20: "Genderfluid Visibility Week!!! + LGBT History Month!!!", 21: "Genderfluid Visibility Week!!! + LGBT History Month!!!", 22: "Pronouns Day!!! (on the third Wednesday of October, probably later than the 22nd) + Genderfluid Visibility Week!!! + LGBT History Month!!!", 23: "Genderfluid Visibility Week!!! + LGBT History Month!!!", 24: "Genderfluid Visibility Week!!! + LGBT History Month!!!", 25: "Ace Week!!! (Last full week in October) + LGBT History Month!!!", 26: "Intersex Awareness Day!!! + Ace Week!!! (Last full week in October) + LGBT History Month!!!", 27: "Ace Week!!! (Last full week in October) + LGBT History Month!!!", 28: "Ace Week!!! (Last full week in October) + LGBT History Month!!!", 29: "Ace Week!!! (Last full week in October) + LGBT History Month!!!", 30: "Ace Week!!! (Last full week in October) + LGBT History Month!!!", 31: "Halloween! + Ace Week!!! (Last full week in October) + LGBT History Month!!!"},
+		"November": {1: "Trans Parent Day!!! (first Sunday in November) + Trans Awareness Month!!!", 2: "Trans Awareness Month!!!", 3: "Trans Awareness Month!!!", 4: "Trans Awareness Month!!!", 5: "Trans Awareness Month!!!", 6: "Trans Awareness Month!!!", 7: "Trans Awareness Month!!!", 8: "Intersex Day of Remembrance + Trans Awareness Month!!!", 9: "Trans Awareness Month!!!",
+			10: "Trans Awareness Month!!!", 11: "Trans Awareness Month!!!", 12: "Trans Awareness Month!!!", 13: "Trans Awareness Week!!! + Trans Awareness Month!!!", 14: "Trans Awareness Week!!! + Trans Awareness Month!!!", 15: "Trans Awareness Week!!! + Trans Awareness Month!!!", 16: "Trans Awareness Week!!! + Trans Awareness Month!!!", 17: "Trans Awareness Week!!! + Trans Awareness Month!!!", 18: "Trans Awareness Week!!! + Trans Awareness Month!!!", 19: "Trans Awareness Week!!! + Trans Awareness Month!!!",
+			20: "Transgender Day of Remembrance + Trans Awareness Month!!!", 21: "Trans Awareness Month!!!", 22: "Trans Awareness Month!!!", 23: "Trans Awareness Month!!!", 24: "Trans Awareness Month!!!", 25: "Trans Awareness Month!!!", 26: "Trans Awareness Month!!!", 27: "Trans Awareness Month!!!", 28: "Trans Awareness Month!!!", 29: "Trans Awareness Month!!!", 30: "Trans Awareness Month!!!"},
+		"December": {1: "World AIDS Day", 2: "", 3: "International Day of Disabled Persons", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "",
+			10: "Human Rights Day!!!", 11: "", 12: "", 13: "", 14: "", 15: "", 16: "", 17: "", 18: "", 19: "",
+			20: "", 21: "", 22: "", 23: "", 24: "", 25: "Christmas!", 26: "", 27: "", 28: "", 29: "", 30: "", 31: "New Year's Eve!"}
+	};
+	
+	
+	//let date = new Date();
+	//dayTexts[monthNames[date.getMonth()]][date.getDate()];
+	
 	var canvas = document.getElementById("canvasId");
 	var ctx = canvas.getContext("2d");
 	//canvas.oncontextmenu = function(){return false;}
 	canvas.height = window.innerHeight; //969
 	canvas.width = window.innerWidth; //1920
+	
+	
+	let cameraState = {camera: false, zoom: false};
+	
+	let camera = {x: 0, y: 0, speed: 1.25, zoom: {level: 1, min: 0.05, max: 2, speed: 10}, scrollSpeed: 0.001};
 	
 	
 	let buttons = {};
@@ -77,8 +108,8 @@
 	let current12hourTime;
 	let current24hourTime;
 	
-  </script>
-  <script> //General
+</script>
+<script> //General
 	
 	function objectLength(arr){
 		let length = 0;
@@ -89,17 +120,186 @@
 		return length;
 	}
 	
-  </script>
-  <script> //Hitbox
+</script>
+<script> //Hitbox
 	
 	function isVertexInRect(v, r){
 		return (v.x >= r.x && v.x <= r.x + r.w &&
 				v.y >= r.y && v.y <= r.y + r.h);
 	}
 	
-  </script>
+</script>
+<script> //Draw
+	
+	function getCanvasScaledPositions(pos){
+		let scaledArr = structuredClone(pos);
+		
+		let sizes = {x: canvas.width, y: canvas.height, w: canvas.width, h: canvas.height};
+		
+		for (let i in scaledArr){
+			if (sizes[i] != undefined){
+				
+				scaledArr[i] *= sizes[i];
+			}
+		}
+		
+		if (camera.areDimentionsEqual){
+			scaledArr.y *= canvas.width/canvas.height;
+			scaledArr.h *= canvas.width/canvas.height;
+		}
+		
+		return scaledArr;
+	}
+	
+	function getCanvasScaledPositionsInverted(pos){
+		let scaledArr = structuredClone(pos);
+		
+		if (camera.areDimentionsEqual){
+			scaledArr.y /= canvas.width/canvas.height;
+			scaledArr.h /= canvas.width/canvas.height;
+		}
+		
+		let sizes = {x: canvas.width, y: canvas.height, w: canvas.width, h: canvas.height};
+		
+		for (let i in scaledArr){
+			if (sizes[i] != undefined){
+				
+				scaledArr[i] /= sizes[i];
+			}
+		}
+		return scaledArr;
+	}
+	
+	
+	function getCenterPosition(pos){
+		let arr = structuredClone(pos);
+		
+		arr.x -= arr.w/2;
+		arr.y -= arr.h/2;
+		
+		return arr;
+	}
+	
+	function calculatePositionWithCamera(arr){
+		let pos = {x: arr.x, y: arr.y, w: arr.w, h: arr.h};
+		
+		if (cameraState.camera){
+			let scaledCamera = getCanvasScaledPositions(camera);
+			
+			pos.x += scaledCamera.x;
+			pos.y += scaledCamera.y;
+			
+			if (cameraState.zoom){
+				for (let i in pos){
+					pos[i] *= camera.zoom.level;
+				}
+			}
+		} else{
+			pos = arr;
+		}
+		
+		return {x: Math.round(pos.x + canvas.width/2), y: Math.round(pos.y + canvas.height/2), w: Math.round(pos.w), h: Math.round(pos.h)};
+	}
+	
+	function calculatePositionWithCameraInverted(arr){
+		let pos = {x: arr.x - canvas.width/2, y: arr.y - canvas.height/2, w: arr.w, h: arr.h};
+		
+		if (cameraState.camera){
+			if (cameraState.zoom){
+				for (let i in pos){
+					pos[i] /= camera.zoom.level;
+				}
+			}
+			
+			let scaledCamera = getCanvasScaledPositions(camera);
+			
+			pos.x -= scaledCamera.x;
+			pos.y -= scaledCamera.y;
+		} else{
+			pos = arr;
+		}
+		
+		return pos;
+	}
+	
+	function getScaledPosition(pos){
+		let scaledPos = getCanvasScaledPositions(pos);
+		
+		scaledPos = calculatePositionWithCamera(scaledPos);
+		
+		return scaledPos;
+	}
+	
+	function getScaledPositionInverted(pos){
+		let scaledPos = calculatePositionWithCameraInverted(pos);
+		
+		scaledPos = getCanvasScaledPositionsInverted(scaledPos);
+		
+		return scaledPos;
+	}
+	
+	
+	function shortFillRect(arr){
+		let pos = structuredClone(arr);
+		
+		ctx.fillRect(pos.x, pos.y, pos.w, pos.h);
+	}
+	
+	function scaledFillRect(pos, isAbsolutePositioned){
+		let scaledPos = (isAbsolutePositioned) ? getCanvasScaledPositions(pos) : getScaledPosition(pos);
+		
+		shortFillRect(scaledPos);
+	}
+	
+	function centeredScaledFillRect(pos, isAbsolutePositioned){
+		scaledFillRect(getCenterPosition(pos, isAbsolutePositioned));
+	}
+	
+	function scaledFillText(text, pos, isAbsolutePositioned){
+		let scaledPos = (isAbsolutePositioned) ? getCanvasScaledPositions(pos) : getScaledPosition(pos);
+		
+		ctx.fillText(text, scaledPos.x, scaledPos.y);
+	}
+	function scaledStrokeText(text, pos, isAbsolutePositioned){
+		let scaledPos = (isAbsolutePositioned) ? getCanvasScaledPositions(pos) : getScaledPosition(pos);
+		
+		ctx.strokeText(text, scaledPos.x, scaledPos.y);
+	}
+	
+	function scaledDrawLine(v1, v2, isAbsolutePositioned){
+		let v1Scaled = (isAbsolutePositioned) ? getCanvasScaledPositions(v1) : getScaledPosition(v1);
+		let v2Scaled = (isAbsolutePositioned) ? getCanvasScaledPositions(v2) : getScaledPosition(v2);
+		
+		ctx.beginPath();
+		ctx.moveTo(v1Scaled.x, v1Scaled.y);
+		ctx.lineTo(v2Scaled.x, v2Scaled.y);
+		ctx.stroke();
+	}
+	
+	function drawPolygon(p){
+		ctx.beginPath();
+		ctx.moveTo(p[0].x, p[0].y);
+		for (let i in p){
+			ctx.lineTo(p[i].x, p[i].y);
+		}
+		ctx.fill();
+	}
+	
+	function scaledDrawPolygon(p, isAbsolutePositioned){
+		let arr = [];
+		
+		for (let i in p){
+			let pos = (isAbsolutePositioned) ? getCanvasScaledPositions(p[i]) : getScaledPosition(p[i]);
+			
+			arr.push(pos);
+		}
+		
+		drawPolygon(arr);
+	}
+	
+</script>
   
-  <script> //Buttons
+<script> //Buttons
 	
 	function generateButtons(){
 		buttons = {};
@@ -186,8 +386,65 @@
 	}
 	
 	
-  </script>
-  <script> //Day Animation
+</script>
+<script> //Special Days Text
+	
+	function getDayText(monthNum, dayNum){
+		return monthNames[monthNum] + " " + dayNum;
+	}
+	
+	function drawSpecialDayText(monthNum, dayNum, currentPos, alphaText){
+		let currentDayText = getDayText(monthNum, dayNum) + ": " + dayTexts[monthNames[monthNum]][dayNum];
+		
+		let splitText = currentDayText.split(" + ");
+		
+		for (let i in splitText){
+			if (alphaText == ""){
+				ctx.fillStyle = "#000000";
+				scaledFillText(splitText[i], {x: currentPos.x + 0.001, y: currentPos.y + 0.001}, true);
+			}
+			
+			ctx.fillStyle = "#ffffff" + alphaText;
+			scaledFillText(splitText[i], currentPos, true);
+			
+			currentPos.y += 0.025;
+		}
+	}
+	
+	function drawCurrentDayTextAndFollowingSpecialDayTexts(){
+		let date = new Date();
+		let monthNum = date.getMonth();
+		let dayNum = date.getDate();
+		
+		let currentPos = {x: 0.6, y: 0.55};
+		
+		drawSpecialDayText(monthNum, dayNum, currentPos, "");
+		
+		let currentDate = {monthNum: monthNum, dayNum: dayNum};
+		
+		for (let i = 0; i < 12; i++){
+			currentDate.dayNum++;
+			
+			if (dayTexts[monthNames[currentDate.monthNum]][currentDate.dayNum] == undefined){
+				currentDate.dayNum = 1;
+				
+				currentDate.monthNum++;
+				
+				if (currentDate.monthNum >= 12){
+					currentDate.monthNum = 0;
+				}
+			}
+			
+			if (dayTexts[monthNames[currentDate.monthNum]][currentDate.dayNum] != ""){
+				drawSpecialDayText(currentDate.monthNum, currentDate.dayNum, currentPos, (128 - i * 10).toString(16).padStart(2, '0'));
+			} else{
+				i--;
+			}
+		}
+	}
+	
+</script>
+<script> //Day Animation
 	
 	function getSunPosition(time, size, offset){
 		return {
@@ -208,8 +465,8 @@
 		return hourColors[time];
 	}
 	
-  </script>
-  <script> //Draw
+</script>
+<script> //Draw
 	
 	function shortFillRect(arr){
 		ctx.fillRect(arr.x, arr.y, arr.w, arr.h);
@@ -231,6 +488,9 @@
 		if (current24hourTime % 12 == 0){
 			ctx.fillText(((current24hourTime == 12) ? "It's high noon." : "It's high nigh."), canvas.width/2 - canvas.width/50, canvas.height * 0.885);
 		}
+		
+		ctx.font = (canvas.width/125) + "px Consolas";
+		drawCurrentDayTextAndFollowingSpecialDayTexts();
 	}
 	
 	
@@ -248,8 +508,8 @@
 		drawButtons();
 	}
 	
-  </script>
-  <script>
+</script>
+<script>
 	
 	function refreshTime(){
 		currentTime = new Date(new Date().toLocaleString("en-US", {timeZone: "Europe/Budapest"}));
@@ -275,9 +535,9 @@
 	}
 	
 	nextFrame();
-  </script>
+</script>
   
-  <script> //Listeners
+<script> //Listeners
 	
 	//Resize
 	
@@ -354,6 +614,6 @@
 	canvas.addEventListener("mouseup", onMouseUp);
 	canvas.addEventListener('mousemove',onMouseMove);
 	
-  </script>
+</script>
  </body>
 </html>
