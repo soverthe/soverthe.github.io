@@ -66,7 +66,10 @@
  <div id="gameDiv" style="position: absolute; display: none;">
  <canvas id="canvasId"></canvas>
  </div>
-  <script>
+
+<script> //Variables
+	
+	//if you're use notepad++, press Alt+3 to collapse all of the scripts
 	
 	var canvas = document.getElementById("canvasId");
 	var ctx = canvas.getContext("2d");
@@ -94,10 +97,52 @@
 	}
 	
 	let inputButtons = {
-		rotateRight: {keyboard: "KeyX", gamepads: [[1,3],[1,3],[1,3],[1,3]], timer: 0, maxTimer: 12, functionName: "onRotateRight"},
-		rotateLeft: {keyboard: "KeyZ", gamepads: [[0,2],[0,2],[0,2],[0,2]], timer: 0, maxTimer: 12, functionName: "onRotateLeft"}
+		rotateRight: {keyboard: ["KeyX","ArrowUp","KeyW","KeyK"], gamepads: [[1,3],[1,3],[1,3],[1,3]], timer: 0, maxTimer: 12, functionName: "onRotateRight"},
+		
+		rotateLeft: {keyboard: ["KeyZ","KeyJ"], gamepads: [[0,2],[0,2],[0,2],[0,2]], timer: 0, maxTimer: 12, functionName: "onRotateLeft"},
+		
+		teleportMovement: {keyboard: ["KeyA","KeyS","KeyD","KeyF","KeyG","KeyH","KeyJ","KeyK","KeyL","Semicolon"],
+						   gamepads: [[14,12,4,6,15,2,3,5,7,1],[14,12,4,6,15,2,3,5,7,1],[14,12,4,6,15,2,3,5,7,1],[14,12,4,6,15,2,3,5,7,1]],
+						   timer: 0, maxTimer: 0, functionName: "moveTeleportMovementPiece", functionArgs: "pressedNum",
+						   condition: {arrPath: ["rules","teleportMovement"], target: true}
+		},
+		teleportRotateRight: {keyboard: ["KeyY","KeyU","KeyI","KeyO","KeyP","BracketLeft","BracketRight","KeyN","KeyM","Comma","Period","Slash"],
+							  gamepads: [[0],[0],[0],[0]], timer: 0, maxTimer: 12, functionName: "onRotateRight", functionArgs: true,
+							  condition: {arrPath: ["rules","teleportMovement"], target: true}
+		},
+		teleportRotateLeft: {keyboard: ["KeyQ","KeyW","KeyE","KeyR","KeyT","KeyZ","KeyX","KeyC","KeyV","KeyB"],
+							 gamepads: [[13],[13],[13],[13]], timer: 0, maxTimer: 12, functionName: "onRotateLeft", functionArgs: true,
+							 condition: {arrPath: ["rules","teleportMovement"], target: true}
+		},
+		teleportDrop: {keyboard: ["Space"], gamepads: [[10,11],[10,11],[10,11],[10,11]], timer: 0, maxTimer: 0, functionName: "dropCurrentPiece",
+					   condition: {arrPath: ["rules","teleportMovement"], target: true}
+		}
 	}
+	let defaultInputButtons = structuredClone(inputButtons);
+	
 	inputButtonStates = {};
+	
+	let inputButtonRebindLayout = [
+		{
+			text: "Rotation",
+			buttons: [
+				{text: "Rotate Left", type: "rotateLeft"},
+				{text: "Rotate Right", type: "rotateRight"}
+			]
+		},
+		{
+			text: "Teleport Movement",
+			buttons: [
+				{text: "Teleport Movement Teleport (ordered left-to-right)", type: "teleportMovement"},
+				{text: "Teleport Movement Rotate Left", type: "teleportRotateLeft"},
+				{text: "Teleport Movement Rotate Right", type: "teleportRotateRight"},
+				{text: "Teleport Movement Drop", type: "teleportDrop"}
+			]
+		}
+	];
+	
+	let selectedRebindButton = "";
+	
 	
 	//mouse
 	let mousePos = {x: 0, y: 0};
@@ -131,13 +176,7 @@
 		[["#f0f0f0","#d162a4"],["#a30262","#f0f0f0"],["#d162a4","#f0f0f0"]],
 		[["#f0f0f0","#5049cc"],["#7bade2","#f0f0f0"],["#5049cc","#f0f0f0"]],
 		
-		//[["#f0f0f0","#5bcefa"],["#f5a9b8","#f0f0f0"],["#5bcefa","#f0f0f0"]],
-		
-		[["#222222","#5bcefa"],["#f5a9b8","#222222"],["#5bcefa","#222222"]],
-		
-		//[["#222222","#5049cc"],["#7bade2","#222222"],["#5049cc","#222222"]],
-		//[["#AAAAAA","#d162a4"],["#a30262","#AAAAAA"],["#d162a4","#AAAAAA"]],
-		//[["#AAAAAA","#d162a4"],["#ff9a56","#AAAAAA"],["#d162a4","#AAAAAA"]]
+		[["#222222","#5bcefa"],["#f5a9b8","#222222"],["#5bcefa","#222222"]]
 	];
 	
 	let emptyColors = ["#222222","#222222"];//,"#444444"];
@@ -147,13 +186,17 @@
 		levelColors[i][-1] = emptyColors;
 	}
 	
-	//buttons
+	//buttons (currently unused)
 	let buttons = {}; //ex: {menu: [{pos: {x: 0.5, y: 0.5, w: 0.2, h: 0.1}, onclick: {f: "funcName", args: 12}}]};
 	
 	let clickedButton = {i: "", j: 0};
 	
 	let closestButton = {i: "", j: 0, distance: -1};
 	
+	
+	//menu
+	
+	var isInRebindControls = false;
 	
 	
 	//game
@@ -162,11 +205,13 @@
 	let boardData = {w: 10, h: 20, border: 0.075};
 	let tallerBoard = []; //for rotating I pieces above the board
 	
+	let shouldDrawControls = true;
 	
 	let currentLevel = 0;
 	let lineClearNums = {horizontal: 0, vertical: 0};
 	let previousScoreNum = 0;
 	let lineClearsPerLevel = 10;
+	let currentFallingSpeed = 30;
 	
 	let currentPiece = {x: 5, y: 0, pieceNum: 0, rotationNum: 0, hasReleasedDown: true, startingPos: {x: 5, y: 0}};
 	let nextPieceNums = [];
@@ -190,20 +235,22 @@
 	let isCurrentlyMultipleChoice = false;
 	
 	
-	let rules = {clearHorizontal: true, clearVertical: false, verticalLineHeight: 16, minConsecutiveLineClears: 1, noEasyPieces: false, noHardPieces: false,
-				keyboardMovement: false, invertedRotation: false, cursedPiecesChance: 0.166, cursedPiecesChanceMultiplierPerHole: 0.875,
+	var rules = {clearHorizontal: true, clearVertical: false, verticalLineHeight: 16, minConsecutiveLineClears: 1, noEasyPieces: false, noHardPieces: false,
+				teleportMovement: false, invertedRotation: false, cursedPiecesChance: 0.166, cursedPiecesChanceMultiplierPerHole: 0.875,
 				solverTakeoverChances: {easyPiece: 0, hardPiece: 0, cursedPiece: 0}, solverTimer: {num: 0, max: 4},
 				multipleChoiceChance: 0, isMultipleChoiceOrdered: false,
-				nextPieceDepth: 1, startingPieceNums: [], movementTimer: {x: 30, y: 30, max: {x: 6, y: 18}}};
+				pieceGravity: false, gravityTimer: {num: 0, max: 8},
+				nextPieceDepth: 1, startingPieceNums: [], movementTimer: {x: 30, y: 30, max: {x: 6, y: 36}}, fallingSpeedMultiplierPerClear: 0.99 
+	};
 	
 	let defaultRules = structuredClone(rules);
 	
 	let rulesPresets = {
 		"Uncursed": {
 			clearHorizontal: true, clearVertical: false, minConsecutiveLineClears: 1, noEasyPieces: false, noHardPieces: false,
-			keyboardMovement: false, cursedPiecesChance: 0, cursedPiecesChanceMultiplierPerHole: 0,
+			teleportMovement: false, cursedPiecesChance: 0, cursedPiecesChanceMultiplierPerHole: 0,
 			solverTakeoverChances: {easyPiece: 0, hardPiece: 0, cursedPiece: 0},
-			multipleChoiceChance: 0, startingPieceNums: []
+			multipleChoiceChance: 0, pieceGravity: false, startingPieceNums: []
 		},
 		"Tetrises-only": {
 			minConsecutiveLineClears: 4
@@ -259,6 +306,14 @@
 		"50% Multiple-Choice": {
 			multipleChoiceChance: 0.5,
 		},
+		
+		"Easy Gravity": {
+			clearHorizontal: true, clearVertical: true, verticalLineHeight: 4, pieceGravity: true,
+		},
+		"Difficult Gravity": {
+			clearHorizontal: true, clearVertical: true, verticalLineHeight: 12, pieceGravity: true,
+		},
+		
 		"Checkerboard Piece": {
 			startingPieceNums: [specialPieceNums.checkerboard],
 		},
@@ -269,25 +324,23 @@
 		"Reset to Default": defaultRules,
 	};
 	
-	
-	
-	let keyboardMovementRotateTimer = {num: 0, max: 12};
-	
-	let keyboardMovementKeys = {
-		movement: ["KeyA","KeyS","KeyD","KeyF","KeyG","KeyH","KeyJ","KeyK","KeyL","Semicolon"],
-		rotateLeft: ["KeyQ","KeyW","KeyE","KeyR","KeyT","IntlBackslash","KeyZ","KeyX","KeyC","KeyV","KeyB"],
-		rotateRight: ["KeyY","KeyU","KeyI","KeyO","KeyP","BracketLeft","BracketRight","KeyN","KeyM","Comma","Period","Slash"],
-	};
+	//ideas: 33.3 solver and 50% multiple-choice, clear a line with 2,2 speed
 	
 	
 	
-	let currentVersion = "v1.0";
+	
+	
+	let currentVersion = "v1.1";
 	
 	let versionLogs = [ //Not yet displayed anywhere
+		["v1.1 (July 4, 2024)",
+			"Piece Gravity", "Basic Rebind Controls", "Falling Speed Multiplier per Cleared Line", "Vertical Clear Height Indicator Line", "Renamed Keyboard Movement to Teleport Movement since it works with the controller as well now", "Other Smaller Changes"
+		],
 		["v1.0 (June 20, 2024)",
 			"Initial Release"
 		]
 	];
+	
 	
 </script>
 <script> //Pieces
@@ -1115,8 +1168,11 @@
 		clearHorizontal: "Remove horizontal rows that are fully filled up",
 		clearVertical: "Remove vertical columns that are filled up to the Vertical Line Height",
 		verticalLineHeight: "This is how many blocks are need to be filled in from the bottom for the Vertical Clears to learn a column",
-		movementTimerMaxY: "How many frames it takes for a piece to fall one block, 1 frame is 1/60th of a second",
 		movementTimerMaxX: "How many frames it takes for a piece to move left or right, 1 frame is 1/60th of a second",
+		movementTimerMaxY: "How many frames it takes for a piece to fall one block, 1 frame is 1/60th of a second",
+		fallingSpeedMultiplierPerClear: "If this is below 100% then the game speeds up for each cleared line\n(Falling Speed is multiplied by this for each clear)",
+		pieceGravity: "Blocks fall down if they would be in the air otherwise, fallen blocks turn into a different color, lines can only be cleared if either none of them all fallen blocks or all of them are fallen blocks.\n\nPlaying with both Horizontal Clears and Vertical Clears is recommended.",
+		gravityTimer: "How many frames it takes for a piece to fall if the Piece Gravity is on, 1 frame is 1/60th of a second",
 		nextPieceDepth: "How many pieces you can see in advance on the side of the board",
 		invertedRotation: "Changes rotation from left/right to right/left",
 		noEasyPieces: "Removes these basic pieces: I L J T",
@@ -1131,7 +1187,7 @@
 		solverTimer: "How many frames the computer should wait between putting down pieces, 1 frame is 1/60th of a second",
 		multipleChoiceChance: "How likely is it that instead of having to move a piece, you get to choose from a few places to put your piece. You can choose by pressing the number keys",
 		isMultipleChoiceOrdered: "When a Multiple-Choice happens, the numbers associated to the choices normally goes from left to right, but with this toggled, the numbers will go in order of how much the computer likes the move, 1 being to computers #1 choice",
-		keyboardMovement: "Instead of moving pieces left to right, with Keyboard Movement you teleport your piece horizontally with the middle row of your keyboard. The keys to move the pieces are these: ASDFGHJKL;\n\nYou can rotate left by pressing one of the following: QWERT ZXCVB\nAnd you can rotate right by pressing: YUIOP[] NM,./\n\nThe teleporting works based on the center of the pieces, which are highlighted with a different color\n\n(This is designed for the English QWERTY keyboard so switching to that one on your computer will achieve the desired experience)"
+		teleportMovement: "You teleport your pieces instead of moving them left-to-right\nYou teleport the center of the piece, which is highlighted in gray\nYou can use a keyboard or a controller, but you can only rebind the keyboard for now\n\nThe default controls:\nKeyboard: Middle row of the keyboard is the teleport, ASDFGHJKL; keys teleport the piece to their column\nOther letter keys rotate the piece, if they're on the left side of the keyboard they rotate it left and if they're on the right they rotate it right\nSpace drops down the piece faster\n\nController: The teleport from left-to-right is: Left, Up, Left Button, Left Trigger, Right, X, Y, Right Button, Right Trigger, B\nRotate left and right is Down and A\nPressing down either of the analog sticks makes the pieces drop down faster"
 	};
 	
 	let menuTexts = [
@@ -1141,26 +1197,31 @@
 			{text: "Vertical Line Height:", title: "verticalLineHeight"}, {numInput: {arrPath: ["verticalLineHeight"]}}, {text: "blocks (out of 20)"}
 		],
 		[
-			{text: "Gravity Speed:", title: "movementTimerMaxY"}, {numInput: {arrPath: ["movementTimer","max","y"]}}, {text: "frames"}, {gap: true},
-			{text: "Movement Speed:", title: "movementTimerMaxX"}, {numInput: {arrPath: ["movementTimer","max","x"]}}, {text: "frames"}
+			{text: "Movement Speed:", title: "movementTimerMaxX"}, {numInput: {arrPath: ["movementTimer","max","x"]}}, {text: "frames"}, {gap: true},
+			{text: "Falling Speed:", title: "movementTimerMaxY"}, {numInput: {arrPath: ["movementTimer","max","y"]}}, {text: "frames"}, {gap: true},
+			{text: "Falling Speed Multiplier:", title: "fallingSpeedMultiplierPerClear"}, {numInput: {arrPath: ["fallingSpeedMultiplierPerClear"], isPercentage: true}}
 		],
 		[
 			{text: "Next Piece List Size:", title: "nextPieceDepth"}, {numInput: {arrPath: ["nextPieceDepth"]}}, {text: "pieces"}, {gap: true},
-			{text: "Inverted Rotation", title: "invertedRotation"}, {checkBox: {arrPath: ["invertedRotation"]}}
+			{text: "Inverted Rotation", title: "invertedRotation"}, {checkBox: {arrPath: ["invertedRotation"]}},
+			{button: {text: "Rebind Controls", onclick: "generateRebindControlsMenu()"}},
 		],
-		[],
 		[
 			{text: "Disable Easy Pieces", title: "noEasyPieces"}, {checkBox: {arrPath: ["noEasyPieces"]}},
 			{text: "Disable Hard Pieces", title: "noHardPieces"}, {checkBox: {arrPath: ["noHardPieces"]}}
 		],
 		[
+			{text: "Smallest Consecutive Line Clears:", title: "minConsecutiveLineClears"}, {numInput: {arrPath: ["minConsecutiveLineClears"]}}, {text: "lines"}
+		],
+		[],
+		[
 			{text: "Cursed Pieces Chance:", title: "cursedPiecesChance"}, {numInput: {arrPath: ["cursedPiecesChance"], isPercentage: true}}, {gap: true},
 			{text: "Cursed Pieces Chance Multiplier per Hole:", title: "cursedPiecesChanceMultiplierPerHole"}, {numInput: {arrPath: ["cursedPiecesChanceMultiplierPerHole"], isPercentage: true, canGoOver100: true}}
 		],
 		[
-			{text: "Smallest Consecutive Line Clears:", title: "minConsecutiveLineClears"}, {numInput: {arrPath: ["minConsecutiveLineClears"]}}, {text: "lines"}
+			{text: "Piece Gravity", title: "pieceGravity"}, {checkBox: {arrPath: ["pieceGravity"]}},
+			{text: "Gravity Speed:", title: "gravityTimer"}, {numInput: {arrPath: ["gravityTimer","max"]}}, {text: "frames"}
 		],
-		[],
 		[
 			{text: "Solver Takeover Chances: ", title: "solverTakeoverChances"}, {gap: true},
 			{text: "Easy Piece", title: "solverTakeoverChancesEasyPiece"}, {numInput: {arrPath: ["solverTakeoverChances","easyPiece"], isPercentage: true}}, {gap: true},
@@ -1176,11 +1237,14 @@
 			{text: "Order Multiple-Choice", title: "isMultipleChoiceOrdered"}, {checkBox: {arrPath: ["isMultipleChoiceOrdered"]}}
 		],
 		[
-			{text: "Keyboard Movement", title: "keyboardMovement"}, {checkBox: {arrPath: ["keyboardMovement"]}}
+			{text: "Teleport Movement", title: "teleportMovement"}, {checkBox: {arrPath: ["teleportMovement"]}}
 		],
 	];
 	
 	function generateMenu(){
+		isInRebindControls = false;
+		selectedRebindButton = "";
+		
 		let text = '';
 		
 		text += '<br><br><button onclick="startButtonClick()">Start Cursetris</button><br><br>';
@@ -1259,6 +1323,18 @@
 					text += '&emsp;'.repeat(5);
 				}
 				
+				if (arr.button != undefined){
+					let onclickText = (arr.button.onclick != undefined) ? "onclick='" + arr.button.onclick + "'" : "";
+					
+					text += '<button ' + onclickText + '>';
+					
+					text += arr.button.text;
+					
+					text += '</button>';
+					
+					text += '&emsp;'.repeat(5);
+				}
+				
 				if (arr.gap){
 					text += '&emsp;'.repeat(5);
 				}
@@ -1268,6 +1344,65 @@
 		}
 		
 		text += '<br>Made by <a href="https://www.youtube.com/@Soverthe">Sover the</a>'
+		
+		document.getElementById("menuDiv").innerHTML = text;
+	}
+	
+	
+	function selectRebindButton(type){
+		selectedRebindButton = (selectedRebindButton != type) ? type : "";
+		
+		generateRebindControlsMenu();
+	}
+	
+	function removeInputButtons(type){
+		inputButtons[type].keyboard = [];
+		
+		generateRebindControlsMenu();
+	}
+	
+	function resetInputButtons(type){
+		inputButtons[type].keyboard = structuredClone(defaultInputButtons[type].keyboard);
+		
+		generateRebindControlsMenu();
+	}
+	
+	function generateRebindControlsMenu(){
+		isInRebindControls = true;
+		
+		let text = '<div style="text-align: left; margin-left: 20vw;">';
+		
+		text += '<br><br><br><br>';
+		
+		
+		for (let arr of inputButtonRebindLayout){
+			text += arr.text;
+			
+			text += "<br><br><br><br>";
+			
+			for (let button of arr.buttons){
+				let styleText = (selectedRebindButton == button.type) ? 'style="background-color:#8811ff"' : '';
+				
+				text += '<button onclick="selectRebindButton(\'' + button.type + '\')" ' + styleText + '>' + button.text + ':</button> ';
+				
+				text += inputButtons[button.type].keyboard.join(", ").replaceAll("Key","").replaceAll("Arrow","").replaceAll("Digit","");
+				
+				text += ' <button onclick="removeInputButtons(\'' + button.type + '\')">Remove All</button>';
+				text += '<button onclick="resetInputButtons(\'' + button.type + '\')">Reset</button>';
+				
+				text += "<br><br>";
+			}
+			
+			text += "<br><br>";
+		}
+		
+		text += (selectedRebindButton != "") ? "Press any button on your keyboard to add/remove it" : "";
+		
+		text += "<br><br><br><br>";
+		
+		text += '<button onclick="generateMenu()">Back</button>';
+		
+		text += '</div>';
 		
 		document.getElementById("menuDiv").innerHTML = text;
 	}
@@ -1329,6 +1464,16 @@
 		lineClearNums = {horizontal: 0, vertical: 0};
 		previousScoreNum = 0;
 		
+		
+		for (let i in inputButtons){
+			inputButtons[i].timer = 0;
+		}
+		shouldDrawControls = (JSON.stringify(inputButtons) == JSON.stringify(defaultInputButtons));
+		
+		
+		currentFallingSpeed = rules.movementTimer.max.y;
+		
+		
 		shouldPauseNextFrame = false;
 		
 		nextFrame();
@@ -1375,6 +1520,11 @@
 	
 	function getRandomNum(min, max){
 		return Math.floor(Math.random() * (max - min + 1) + min);
+	}
+	
+	
+	function toggleWindowBoolean(name){
+		window[name] = !window[name];
 	}
 	
 	
@@ -1453,7 +1603,7 @@
 			board[i] = [];
 			
 			for (let j of range(boardData.w)){
-				board[i][j] = 0;//getRandomNum(0, 3);
+				board[i][j] = {num: 0};
 			}
 		}
 		
@@ -1464,7 +1614,7 @@
 			tallerBoard[i] = [];
 			
 			for (let j of range(boardData.w)){
-				tallerBoard[i][j] = 0;
+				tallerBoard[i][j] = {num: 0};
 			}
 		}
 	}
@@ -1475,9 +1625,21 @@
 		
 		for (let i = 0; i < currentBoard.length; i++){
 			let isLineFull = true;
+			let isLineFallen;
 			
 			for (let j = 0; j < currentBoard[i].length; j++){
-				if (currentBoard[i][j] == 0){
+				if (currentBoard[i][j].num == 0){
+					isLineFull = false;
+				}
+				
+				
+				let hasFallen = (currentBoard[i][j].hasFallen == true);
+				
+				if (isLineFallen == undefined){
+					isLineFallen = hasFallen;
+				}
+				
+				if (hasFallen != isLineFallen){
 					isLineFull = false;
 				}
 			}
@@ -1518,15 +1680,13 @@
 				}
 				
 				currentBoard[0] = [];
-				for (let j of range(boardData.w)){ //could this be range(currentBoard[1].length)?
-					currentBoard[0][j] = 0;
+				for (let j of range(boardData.w)){
+					currentBoard[0][j] = {num: 0};
 				}
 				
 				if (!disableScoreIncrement){
 					lineClearNums.horizontal++;
 				}
-				
-				//if (Math.random() < 1){ lineClearNums.horizontal *= lineClearNums.horizontal;}
 			}
 			
 			previousShouldClear = shouldClear;
@@ -1537,9 +1697,21 @@
 		let fullLines = [];
 		for (let j = currentBoard[0].length - 1; j >= 0; j--){
 			let isLineFull = true;
+			let isLineFallen;
 			
 			for (let i = currentBoard.length - rules.verticalLineHeight; i < currentBoard.length; i++){
-				if (currentBoard[i][j] == 0){
+				if (currentBoard[i][j].num == 0){
+					isLineFull = false;
+				}
+				
+				
+				let hasFallen = (currentBoard[i][j].hasFallen == true);
+				
+				if (isLineFallen == undefined){
+					isLineFallen = hasFallen;
+				}
+				
+				if (hasFallen != isLineFallen){
 					isLineFull = false;
 				}
 			}
@@ -1593,7 +1765,7 @@
 					}
 					
 					for (let i in currentBoard){
-						currentBoard[i][0] = 0;
+						currentBoard[i][0] = {num: 0};
 					}
 					
 					fullLines.splice(j, 1);
@@ -1607,7 +1779,7 @@
 					}
 					
 					for (let i in currentBoard){
-						currentBoard[i][currentBoard[i].length - 1] = 0;
+						currentBoard[i][currentBoard[i].length - 1] = {num: 0};
 					}
 					
 					fullLines.splice(j, 1);
@@ -1637,13 +1809,6 @@
 			let overallScore = lineClearNums.horizontal + lineClearNums.vertical;
 			
 			currentLevel = Math.floor(overallScore / lineClearsPerLevel) % levelColors.length;
-			
-			/*
-			rules.movementTimer.max.y = 20 - Math.max(currentLevel, 0) * 4;
-			
-			if (rules.movementTimer.max.y < 1){
-				rules.movementTimer.max.y = 1;
-			}*/
 		}
 	}
 	
@@ -1661,7 +1826,7 @@
 		
 		for (let i in board){
 			for (let j in board[i]){
-				if (board[i][j] != 0){
+				if (board[i][j].num != 0){
 					isEmpty = false;
 				}
 			}
@@ -1669,7 +1834,9 @@
 		return isEmpty;
 	}
 	
+	
 </script>
+
 <script> //Cursed Pieces Chance
 	
 	function getCursedPiecesChance(){
@@ -1705,7 +1872,7 @@
 					}
 					
 					if (isPosInArr(pos, currentBoard)){
-						setValueInArrAtPos((pieceColorsNums[pieceNum] ?? 0) + 1, currentBoard, pos);
+						setValueInArrAtPos({num: (pieceColorsNums[pieceNum] ?? 0) + 1}, currentBoard, pos);
 					}
 				}
 			}
@@ -1766,7 +1933,7 @@
 			currentPiece.y = pieceStartingY[currentPiece.pieceNum] ?? 0;
 			currentPiece.rotationNum = 0;
 			rules.movementTimer.x = rules.movementTimer.max.x;
-			rules.movementTimer.y = rules.movementTimer.max.y * 2;
+			rules.movementTimer.y = currentFallingSpeed * 2;
 			currentPiece.hasReleasedDown = false;
 			
 			currentPiece.startingPos = {x: currentPiece.x, y: currentPiece.y};
@@ -1876,7 +2043,7 @@
 					}
 					
 					if (isPosInArr(pos, board)){
-						if (board[pos.y][pos.x] != 0){
+						if (board[pos.y][pos.x].num != 0){
 							isValid = false;
 						}
 					}
@@ -2024,59 +2191,99 @@
 		for (let buttonName in inputButtons){
 			let button = inputButtons[buttonName];
 			
-			let isPressed = false;
 			
-			if (inputs[button.keyboard]){
-				isPressed = true;
+			let isConditionFulfilled = true;
+			
+			if (button.condition != undefined){
+				let value = window[button.condition.arrPath[0]];
+				
+				for (let i = 1; i < button.condition.arrPath.length; i++){
+					value = value[button.condition.arrPath[1]];
+				}
+				
+				isConditionFulfilled = value == button.condition.target;
 			}
 			
-			for (let gamepadNum in button.gamepads){
-				let gamepad = gamepads[gamepadNum];
+			
+			if (isConditionFulfilled){
+				let isPressed = false;
 				
-				if (gamepad != null){
+				let pressedNum = 0;
+				
+				for (let i in button.keyboard){
+					if (inputs[button.keyboard[i]]){
+						isPressed = true;
+						pressedNum = i;
+					}
+				}
+				
+				for (let gamepadNum in button.gamepads){
+					let gamepad = gamepads[gamepadNum];
 					
-					for (let i in button.gamepads[gamepadNum]){
-						if (gamepad.buttons[button.gamepads[gamepadNum][i]] != undefined){
-							if (gamepad.buttons[button.gamepads[gamepadNum][i]].pressed){
-								isPressed = true;
+					if (gamepad != null){
+						
+						for (let i in button.gamepads[gamepadNum]){
+							if (gamepad.buttons[button.gamepads[gamepadNum][i]] != undefined){
+								if (gamepad.buttons[button.gamepads[gamepadNum][i]].pressed){
+									isPressed = true;
+									pressedNum = i;
+								}
 							}
 						}
 					}
 				}
-			}
-			
-			let isDelayed = false;
-			
-			if (button.timer > 0){
-				if (isPressed){
-					isDelayed = true;
-					
-					button.timer--;
-				} else{
-					button.timer = 0;
-				}
-			}
-			
-			if (!isDelayed && isPressed){
-				inputButtonStates[buttonName] = true;
 				
-				if (button.maxTimer > 0){
-					button.timer = button.maxTimer;
+				let isDelayed = false;
+				
+				if (button.timer > 0){
+					if (isPressed){
+						isDelayed = true;
+						
+						button.timer--;
+					} else{
+						button.timer = 0;
+					}
 				}
-			} else{
-				inputButtonStates[buttonName] = false;
-			}
-			
-			if (inputButtonStates[buttonName]){
-				if (window[button.functionName] != undefined){
-					window[button.functionName]();
+				
+				if (!isDelayed && isPressed){
+					inputButtonStates[buttonName] = true;
+					
+					if (button.maxTimer > 0){
+						button.timer = button.maxTimer;
+					}
+				} else{
+					inputButtonStates[buttonName] = false;
+				}
+				
+				if (inputButtonStates[buttonName]){
+					if (window[button.functionName] != undefined){
+						let args = button.functionArgs;
+						
+						if (args == "pressedNum"){
+							args = pressedNum;
+						}
+						
+						window[button.functionName](args);
+					}
 				}
 			}
 		}
 	}
 	
 </script>
-<script> //Piece Movement
+<script> //Piece and Block Movement
+	
+	function dropCurrentPiece(){
+		if (currentPiece.hasReleasedDown){
+			currentPiece.y++;
+			
+			if (!isCurrentPiecePositionValid()){
+				currentPiece.y--;
+				
+				nextPiece();
+			}
+		}
+	}
 	
 	function moveCurrentPiece(){
 		
@@ -2096,64 +2303,7 @@
 		
 		
 		
-		if (rules.keyboardMovement){
-			for (let i = 0; i <= 9; i++){
-				let previousX = currentPiece.x;
-				
-				if (inputs[keyboardMovementKeys.movement[i]]){
-					currentPiece.x = i;
-					
-					if (!isCurrentPiecePositionValid()){
-						currentPiece.x = previousX;
-						
-						if (i != currentPiece.x){
-							let increment = (i > currentPiece.x) ? -1 : 1;
-							
-							for (let j = i + increment; j != previousX; j += increment){ //if this ever goes on forever I'll cry
-								currentPiece.x = j;
-								
-								if (isCurrentPiecePositionValid()){
-									j = previousX - increment;
-								} else{
-									currentPiece.x = previousX;
-								}
-							}
-						}
-					}
-				}
-			}
-			
-			let rotationDirection = "";
-			
-			for (let i in keyboardMovementKeys.rotateLeft){
-				if (inputs[keyboardMovementKeys.rotateLeft[i]]){
-					rotationDirection = "left";
-				}
-			}
-			for (let i in keyboardMovementKeys.rotateRight){
-				if (inputs[keyboardMovementKeys.rotateRight[i]]){
-					rotationDirection = "right";
-				}
-			}
-			
-			if (keyboardMovementRotateTimer.num <= 0){
-				if (rotationDirection != ""){
-					if (rotationDirection == "left"){
-						onRotateLeft(true);
-					} else{
-						onRotateRight(true);
-					}
-					
-					keyboardMovementRotateTimer.num = keyboardMovementRotateTimer.max;
-				}
-			} else{
-				keyboardMovementRotateTimer.num--;
-				
-				if (rotationDirection == ""){
-					keyboardMovementRotateTimer.num = 0;
-				}
-			}
-		} else{
+		if (!rules.teleportMovement){
 			if (movementAxes.x != 0){
 				if (rules.movementTimer.x == 0){
 					currentPiece.x += (movementAxes.x < 0) ? -1 : 1;
@@ -2169,21 +2319,13 @@
 			}
 		}
 		
-		if ((movementAxes.y > 0 && !rules.keyboardMovement) || (inputs["Space"] && rules.keyboardMovement)){
-			if (currentPiece.hasReleasedDown){
-				currentPiece.y++;
-				
-				if (!isCurrentPiecePositionValid()){
-					currentPiece.y--;
-					
-					nextPiece();
-				}
-			}
+		if ((movementAxes.y > 0 && !rules.teleportMovement)){
+			dropCurrentPiece();
 		} else{
 			currentPiece.hasReleasedDown = true;
 		}
 		
-		if (rules.movementTimer.y == 0){
+		if (rules.movementTimer.y <= 0){
 			currentPiece.y++;
 			
 			if (!isCurrentPiecePositionValid()){
@@ -2192,18 +2334,82 @@
 				nextPiece();
 			}
 			
-			rules.movementTimer.y = rules.movementTimer.max.y;
+			currentFallingSpeed = rules.movementTimer.max.y;
+			
+			let overallScore = lineClearNums.horizontal + lineClearNums.vertical;
+			
+			for (let i = 0; i < overallScore; i++){
+				currentFallingSpeed *= rules.fallingSpeedMultiplierPerClear;
+			}
+			
+			rules.movementTimer.y = currentFallingSpeed;
+		}
+	}
+	
+	function moveTeleportMovementPiece(pressedNum){
+		let i = Number(pressedNum);
+		
+		let previousX = currentPiece.x;
+		
+		currentPiece.x = i;
+		
+		if (!isCurrentPiecePositionValid()){
+			currentPiece.x = previousX;
+			
+			if (i != currentPiece.x){
+				let increment = (i > currentPiece.x) ? -1 : 1;
+				
+				for (let j = i + increment; j != previousX; j += increment){ //if this ever goes on forever I'll cry
+					currentPiece.x = j;
+					
+					if (isCurrentPiecePositionValid()){
+						j = previousX - increment;
+					} else{
+						currentPiece.x = previousX;
+					}
+				}
+			}
+		}
+	}
+	
+	
+	
+	function gravityNextFrame(){
+		let nextBoard = structuredClone(board);
+		
+		let didBoardChange = false;
+		
+		for (let i = 0; i < board.length - 1; i++){
+			for (let j = 0; j < board[i].length; j++){
+				if (board[i][j].num != 0 && board[i + 1][j].num == 0){
+					
+					nextBoard[i + 1][j].num = nextBoard[i][j].num;
+					nextBoard[i + 1][j].hasFallen = true;
+					
+					nextBoard[i][j] = {num: 0};
+					
+					didBoardChange = true;
+				}
+			}
+		}
+		
+		board = nextBoard;
+		
+		if (didBoardChange){
+			clearFullLines(board);
+			
+			refreshMultipleChoiceChoices();
 		}
 	}
 	
 </script>
 <script> //Piece Rotation
 	
-	function onRotateLeft(isKeyboardRotate, isInvertedCall){
+	function onRotateLeft(isTeleportRotate, isInvertedCall){
 		if (rules.invertedRotation && !isInvertedCall){
-			onRotateRight(isKeyboardRotate, true);
+			onRotateRight(isTeleportRotate, true);
 		} else{
-			if (!rules.keyboardMovement || isKeyboardRotate){
+			if (!rules.teleportMovement || isTeleportRotate){
 				let previousRotationNum = currentPiece.rotationNum;
 				
 				currentPiece.rotationNum--;
@@ -2219,11 +2425,11 @@
 		}
 	}
 	
-	function onRotateRight(isKeyboardRotate, isInvertedCall){
+	function onRotateRight(isTeleportRotate, isInvertedCall){
 		if (rules.invertedRotation && !isInvertedCall){
-			onRotateLeft(isKeyboardRotate, true);
+			onRotateLeft(isTeleportRotate, true);
 		} else{
-			if (!rules.keyboardMovement || isKeyboardRotate){
+			if (!rules.teleportMovement || isTeleportRotate){
 				let previousRotationNum = currentPiece.rotationNum;
 				
 				currentPiece.rotationNum++;
@@ -2250,7 +2456,7 @@
 			let hitPiece = false;
 			
 			for (let y in currentBoard){
-				if (currentBoard[y][x] != 0){
+				if (currentBoard[y][x].num != 0){
 					hitPiece = true;
 				} else{
 					if (hitPiece){
@@ -2269,7 +2475,7 @@
 			let hitPiece = false;
 			
 			for (let y in currentBoard){
-				if (currentBoard[y][x] != 0){
+				if (currentBoard[y][x].num != 0){
 					hitPiece = true;
 				} else{
 					if (hitPiece){
@@ -2288,7 +2494,7 @@
 		
 		for (let i = 0; i < currentBoard.length; i++){
 			for (let j in currentBoard[i]){
-				if (currentBoard[i][j] != 0){
+				if (currentBoard[i][j].num != 0){
 					height = currentBoard.length - i;
 					
 					i = currentBoard.length;
@@ -2306,7 +2512,7 @@
 			heightArr[j] = 0;
 			
 			for (let i = 0; i < currentBoard.length; i++){
-				if (currentBoard[i][j] != 0){
+				if (currentBoard[i][j].num != 0){
 					heightArr[j] = currentBoard.length - i;
 					
 					i = currentBoard.length;
@@ -2716,9 +2922,21 @@
 		
 		for (let i = 0; i < board.length; i++){
 			for (let j = 0; j < board[i].length; j++){
-				let colorNum = board[i][j] - 1;
+				let colorNum = board[i][j].num - 1;
 				
 				drawBlock(j, i, currentColors[colorNum]);
+				
+				if (board[i][j].hasFallen){
+					drawBlock(j, i, ["#000000","#ffffff"]);
+					//drawBlock(j, i, ["hsla(" + Math.round((t/4) % 256) + ",50%,50%,0.1)","hsla(" + Math.round((t/4) % 256) + ",50%,50%,0.333)"]);
+				}
+				
+				if (rules.clearVertical && i == board.length - rules.verticalLineHeight && false){
+					let lineHeight = 0.15;
+					
+					ctx.fillStyle = "#ffffff22";
+					scaledFillRect({x: j, y: i + (0.5 - lineHeight/2), w: 1, h: lineHeight});
+				}
 			}
 		}
 	}
@@ -2752,7 +2970,7 @@
 			}
 		}
 		
-		if (rules.keyboardMovement){
+		if (rules.teleportMovement){
 			drawBlock(x, y, ["#AAAAAA","#f0f0f0"]);
 		}
 	}
@@ -2854,7 +3072,7 @@
 			if (chanceText == "0%"){ chanceText = "~0%"; }
 			
 			
-			scaledFillText("Cursed Pieces Chance: " + chanceText, {x: 11, y: -1.5});
+			scaledFillText(chanceText + " Cursed Piece Chance", {x: 11, y: -1.5});
 			
 			//scaledFillText("danger: " + getBoardDangerScore(board), {x: 16.5, y: 3.5});
 		}
@@ -2862,25 +3080,28 @@
 	
 	
 	function drawControls(){
-		ctx.fillStyle = "#ffffff44";
-		ctx.font = Math.floor(canvas.width/90) + "px Consolas";
-		ctx.textAlign = "center";
-		
-		let pos = {x: -11.5, y: 15, gapY: 0.875};
-		
-		pos.x -= (rules.keyboardMovement) ? 1 : 0;
-		pos.y -= (rules.keyboardMovement) ? 1 : 0;
-		
-		scaledFillText("Controls: ", {x: pos.x, y: pos.y + pos.gapY*-0.5});
-		
-		if (rules.keyboardMovement){
-			scaledFillText("Movement: ASDFGHJKL;", {x: pos.x, y: pos.y + pos.gapY*1});
-			scaledFillText("Left Rotation: QWERTZXCVB", {x: pos.x, y: pos.y + pos.gapY*2});
-			scaledFillText("Right Rotation: YUIOP[]NM,./", {x: pos.x, y: pos.y + pos.gapY*3});
-			scaledFillText("Down: Space", {x: pos.x, y: pos.y + pos.gapY*4});
-		} else{
-			scaledFillText("Movement: Arrows", {x: pos.x, y: pos.y + pos.gapY*1});
-			scaledFillText("Rotation: Z X", {x: pos.x, y: pos.y + pos.gapY*2});
+		if (shouldDrawControls){
+			ctx.fillStyle = "#ffffff44";
+			ctx.font = Math.floor(canvas.width/90) + "px Consolas";
+			ctx.textAlign = "center";
+			
+			let pos = {x: -11.5, y: 15, gapY: 0.875};
+			
+			pos.x -= (rules.teleportMovement) ? 1 : 0;
+			pos.y -= (rules.teleportMovement) ? 1 : 0;
+			
+			
+			scaledFillText("Controls: ", {x: pos.x, y: pos.y + pos.gapY*-0.5});
+			
+			if (rules.teleportMovement){
+				scaledFillText("Movement: ASDFGHJKL;", {x: pos.x, y: pos.y + pos.gapY*1});
+				scaledFillText("Left Rotation: QWERTZXCVB", {x: pos.x, y: pos.y + pos.gapY*2});
+				scaledFillText("Right Rotation: YUIOP[]NM,./", {x: pos.x, y: pos.y + pos.gapY*3});
+				scaledFillText("Down: Space", {x: pos.x, y: pos.y + pos.gapY*4});
+			} else{
+				scaledFillText("Movement: Arrows", {x: pos.x, y: pos.y + pos.gapY*1});
+				scaledFillText("Rotation: Z X", {x: pos.x, y: pos.y + pos.gapY*2});
+			}
 		}
 	}
 	
@@ -2945,6 +3166,16 @@
 			
 			if (rules.solverTimer.num == 0){
 				setCurrentPieceOnBestLocation();
+			}
+		}
+		
+		if (rules.pieceGravity && rules.gravityTimer.max > 0){
+			rules.gravityTimer.num--;
+			
+			if (rules.gravityTimer.num <= 0){
+				gravityNextFrame();
+				
+				rules.gravityTimer.num = rules.gravityTimer.max;
 			}
 		}
 		
@@ -3065,6 +3296,20 @@
 	function setKeyDown(e){
 		e = e || window.event;
 		inputs[e.code] = true;
+		
+		if (isInRebindControls){
+			if (selectedRebindButton != ""){
+				let i = inputButtons[selectedRebindButton].keyboard.indexOf(e.code);
+				
+				if (i == -1){
+					inputButtons[selectedRebindButton].keyboard.push(e.code);
+				} else{
+					inputButtons[selectedRebindButton].keyboard.splice(i, 1);
+				}
+				
+				generateRebindControlsMenu();
+			}
+		}
 	}
 	
 	function setKeyUp(e){
