@@ -62,8 +62,8 @@
   </style>
  </head>
  <body>
- <div id="menuDiv" style="position: absolute; text-align: center; width: 100%;"></div>
- <div id="gameDiv" style="position: absolute; display: none;">
+ <div id="customMenuDiv" style="position: absolute; text-align: center; width: 100%;"></div>
+ <div id="canvasDiv" style="position: absolute; display: none;">
  <canvas id="canvasId"></canvas>
  </div>
 
@@ -97,9 +97,9 @@
 	}
 	
 	let inputButtons = {
-		rotateRight: {keyboard: ["KeyX","ArrowUp","KeyW","KeyK"], gamepads: [[1,3],[1,3],[1,3],[1,3]], timer: 0, maxTimer: 12, functionName: "onRotateRight"},
+		rotateRight: {keyboard: ["KeyX","ArrowUp","KeyW","KeyK"], gamepads: [[1,3],[1,3],[1,3],[1,3]], timer: 0, maxTimer: 15, functionName: "onRotateRight"},
 		
-		rotateLeft: {keyboard: ["KeyZ","KeyJ"], gamepads: [[0,2],[0,2],[0,2],[0,2]], timer: 0, maxTimer: 12, functionName: "onRotateLeft"},
+		rotateLeft: {keyboard: ["KeyZ","KeyJ"], gamepads: [[0,2],[0,2],[0,2],[0,2]], timer: 0, maxTimer: 15, functionName: "onRotateLeft"},
 		
 		teleportMovement: {keyboard: ["KeyA","KeyS","KeyD","KeyF","KeyG","KeyH","KeyJ","KeyK","KeyL","Semicolon"],
 						   gamepads: [[14,12,4,6,15,2,3,5,7,1],[14,12,4,6,15,2,3,5,7,1],[14,12,4,6,15,2,3,5,7,1],[14,12,4,6,15,2,3,5,7,1]],
@@ -107,15 +107,21 @@
 						   condition: {arrPath: ["rules","teleportMovement"], target: true}
 		},
 		teleportRotateRight: {keyboard: ["KeyY","KeyU","KeyI","KeyO","KeyP","BracketLeft","BracketRight","KeyN","KeyM","Comma","Period","Slash"],
-							  gamepads: [[0],[0],[0],[0]], timer: 0, maxTimer: 12, functionName: "onRotateRight", functionArgs: true,
+							  gamepads: [[0],[0],[0],[0]], timer: 0, maxTimer: 15, functionName: "onRotateRight", functionArgs: true,
 							  condition: {arrPath: ["rules","teleportMovement"], target: true}
 		},
 		teleportRotateLeft: {keyboard: ["KeyQ","KeyW","KeyE","KeyR","KeyT","KeyZ","KeyX","KeyC","KeyV","KeyB"],
-							 gamepads: [[13],[13],[13],[13]], timer: 0, maxTimer: 12, functionName: "onRotateLeft", functionArgs: true,
+							 gamepads: [[13],[13],[13],[13]], timer: 0, maxTimer: 15, functionName: "onRotateLeft", functionArgs: true,
 							 condition: {arrPath: ["rules","teleportMovement"], target: true}
 		},
 		teleportDrop: {keyboard: ["Space"], gamepads: [[10,11],[10,11],[10,11],[10,11]], timer: 0, maxTimer: 0, functionName: "dropCurrentPiece",
 					   condition: {arrPath: ["rules","teleportMovement"], target: true}
+		},
+		
+		multipleChoice: {keyboard: ["Digit1","Digit2","Digit3","Digit4","Digit5","Digit6","Digit7","Digit8","Digit9"],
+						   gamepads: [[14,12,4,6,15,2,3,5,7],[14,12,4,6,15,2,3,5,7],[14,12,4,6,15,2,3,5,7],[14,12,4,6,15,2,3,5,7]],
+						   timer: 0, maxTimer: 0, disableHold: true, functionName: "selectMultipleChoiceChoice", functionArgs: "pressedNum",
+						   condition: {arrPath: ["isCurrentlyMultipleChoice"], target: true}
 		}
 	}
 	let defaultInputButtons = structuredClone(inputButtons);
@@ -138,6 +144,12 @@
 				{text: "Teleport Movement Rotate Right", type: "teleportRotateRight"},
 				{text: "Teleport Movement Drop", type: "teleportDrop"}
 			]
+		},
+		{
+			text: "Multiple-Choice",
+			buttons: [
+				{text: "Multiple-Choice Keys (ordered left-to-right)", type: "multipleChoice"}
+			]
 		}
 	];
 	
@@ -157,7 +169,8 @@
 	//camera
 	let cameraState = {camera: true, zoom: true, shouldLockMouse: false};
 	
-	let camera = {x: -5, y: -9, speed: 0, zoom: {level: 0.02, min: 0.02, max: 2, speed: 0, scrollSpeed: 0}, areDimentionsEqual: true};
+	let camera = {x: -5, y: -9, speed: 0, zoom: {level: 0.02, min: 0.02, max: 2, speed: 0, scrollSpeed: 0, defaultTextLevel: 0.02},
+				  areDimentionsEqual: true, minWidthToHeightRatio: 2};
 	
 	let mouseLockFrames = 0;
 	
@@ -168,6 +181,19 @@
 		white: "#f0f0f0",
 		black: "#000000",
 		background: "#626262",
+		
+		emptyBlock: "#222222",
+		
+		defaultButton: "#ffffff",
+		defaultButtonText: "#000000",
+		defaultButtonHover: "hsla(0, 100%, 100%, {{alphaNum}})",
+		
+		
+		wizardBlack: "#2d2d2d",
+		wizardWhite: "#ffffff",
+		wizardPurple: "#9b59d0",
+		wizardYellow: "#fff433",
+		
 		debugText: "#AAAAAA"
 	}
 	
@@ -179,15 +205,47 @@
 		[["#222222","#5bcefa"],["#f5a9b8","#222222"],["#5bcefa","#222222"]]
 	];
 	
-	let emptyColors = ["#222222","#222222"];//,"#444444"];
+	let emptyColors = [colors.emptyBlock, colors.emptyBlock];
 	let ghostColors = ["#88444488", "#44884488", "#44448888", "#88448888", "#88884488", "#44888888"];
+	
+	let wizardColors = [
+		["#1f1f1f"],
+		[colors.wizardPurple],
+		[colors.wizardYellow, "#f0f0f0"],
+		[colors.wizardBlack],
+		[colors.wizardYellow],
+	];
 	
 	for (let i in levelColors){
 		levelColors[i][-1] = emptyColors;
 	}
 	
-	//buttons (currently unused)
-	let buttons = {}; //ex: {menu: [{pos: {x: 0.5, y: 0.5, w: 0.2, h: 0.1}, onclick: {f: "funcName", args: 12}}]};
+	//game state
+	let gameState = "menu";
+	
+	let drawFunctionNames = {menu: "drawMenu", challengeMenu: "drawChallengeMenu", game: "drawGame", versionLogs: "drawVersionLogs"};
+	let nextFrameFunctionNames = {game: "gameNextFrame"};
+	
+	let wasInCustomMenu = false;
+	
+	
+	//buttons
+	let buttons = {
+		menu: [
+			{pos: {x: 5, y: 9, w: 12, h: 1.75}, text: "The Wizard's Challenges", textSize: 0.07, onclick: {f: "generateChallengeMenu"}},
+			{pos: {x: 5, y: 12, w: 5, h: 1.5}, text: "Custom", textSize: 0.15, onclick: {f: "generateCustomMenu"}},
+			{pos: {x: -16.5, y: 19.75, w: 4, h: 1.25}, text: "{{currentVersion}}", textSize: 0.15, onclick: {f: "generateVersionLogs"}}
+		],
+		game: [
+			{pos: {x: 20, y: 17.5, w: 6, h: 1.75}, text: "Restart", textSize: 0.166, onclick: {f: "restartCall"}},
+			{pos: {x: 20, y: 19.5, w: 6, h: 1.75}, text: "Quit", textSize: 0.166, onclick: {f: "gameOverCall"}}
+		],
+		versionLogs: [
+			{pos: {x: -16.5, y: 19.75, w: 4, h: 1.25}, text: "Back", textSize: 0.166, onclick: {f: "generateMenu"}}
+		]
+	};
+	
+	let hoveredButtons = {gameState: "", arr: [], maxSeconds: 0.25, maxAlphaNum: 0.3, clickMultiplier: 1.75, releaseMultiplier: 2};
 	
 	let clickedButton = {i: "", j: 0};
 	
@@ -209,6 +267,7 @@
 	
 	let currentLevel = 0;
 	let lineClearNums = {horizontal: 0, vertical: 0};
+	let blockClearNums = {horizontal: 0, vertical: 0};
 	let previousScoreNum = 0;
 	let lineClearsPerLevel = 10;
 	let currentFallingSpeed = 30;
@@ -232,27 +291,31 @@
 	
 	
 	let multipleChoiceChoices = [];
-	let isCurrentlyMultipleChoice = false;
+	var isCurrentlyMultipleChoice = false;
 	
 	
-	var rules = {clearHorizontal: true, clearVertical: false, verticalLineHeight: 16, minConsecutiveLineClears: 1, noEasyPieces: false, noHardPieces: false,
-				teleportMovement: false, invertedRotation: false, cursedPiecesChance: 0.166, cursedPiecesChanceMultiplierPerHole: 0.875,
+	var rules = {horizontalClear: true, verticalClear: false, verticalLineHeight: 16, clearVerticalLinesWithHoles: true,
+				minConsecutiveLineClears: 1, noEasyPieces: false, noHardPieces: false,
+				teleportMovement: false, invertedRotation: false, cursedPiecesChance: 0.2, cursedPiecesChanceMultiplierPerHole: 0.7,
 				solverTakeoverChances: {easyPiece: 0, hardPiece: 0, cursedPiece: 0}, solverTimer: {num: 0, max: 4},
-				multipleChoiceChance: 0, isMultipleChoiceOrdered: false,
+				multipleChoiceChance: 0, isMultipleChoiceOrdered: false, multipleChoiceTimer: 720,
 				pieceGravity: false, gravityTimer: {num: 0, max: 8},
-				nextPieceDepth: 1, startingPieceNums: [], movementTimer: {x: 30, y: 30, max: {x: 6, y: 36}}, fallingSpeedMultiplierPerClear: 0.99 
+				nextPieceDepth: 1, startingPieceNums: [], fallingSpeedMultiplierPerClear: 0.9875,
+				recursionTimer: {num: 0, max: 0}, numberReplace: false,
+				movementTimer: {x: 30, y: 30, max: {x: 4, y: 36}, shiftDelayX: 10}
 	};
 	
-	let defaultRules = structuredClone(rules);
+	var defaultRules = structuredClone(rules);
+	var savedCustomRules = structuredClone(rules);
 	
 	let rulesPresets = {
 		"Uncursed": {
-			clearHorizontal: true, clearVertical: false, minConsecutiveLineClears: 1, noEasyPieces: false, noHardPieces: false,
+			horizontalClear: true, verticalClear: false, minConsecutiveLineClears: 1, noEasyPieces: false, noHardPieces: false,
 			teleportMovement: false, cursedPiecesChance: 0, cursedPiecesChanceMultiplierPerHole: 0,
 			solverTakeoverChances: {easyPiece: 0, hardPiece: 0, cursedPiece: 0},
 			multipleChoiceChance: 0, pieceGravity: false, startingPieceNums: []
 		},
-		"Tetrises-only": {
+		"4 Lines Clears": {
 			minConsecutiveLineClears: 4
 		},
 		"Default Cursed%": {
@@ -298,7 +361,7 @@
 		},
 		
 		"Default Vertical-only": {
-			clearHorizontal: false, clearVertical: true, verticalLineHeight: 16
+			horizontalClear: false, verticalClear: true, verticalLineHeight: 16
 		},
 		"Multiple-Choice": {
 			multipleChoiceChance: 1, isMultipleChoiceOrdered: false
@@ -308,10 +371,10 @@
 		},
 		
 		"Easy Gravity": {
-			clearHorizontal: true, clearVertical: true, verticalLineHeight: 4, pieceGravity: true,
+			horizontalClear: true, verticalClear: true, verticalLineHeight: 4, pieceGravity: true,
 		},
 		"Difficult Gravity": {
-			clearHorizontal: true, clearVertical: true, verticalLineHeight: 12, pieceGravity: true,
+			horizontalClear: true, verticalClear: true, verticalLineHeight: 12, pieceGravity: true,
 		},
 		
 		"Checkerboard Piece": {
@@ -324,15 +387,58 @@
 		"Reset to Default": defaultRules,
 	};
 	
-	//ideas: 33.3 solver and 50% multiple-choice, clear a line with 2,2 speed
+	
+	
+	let currentChallenge = {};
+	let challengeStats = {highestSpeedCleared: {}};
+	
+	let challengeSpeedMultiplier = 1;
+	let challengeType = "Basic";
+	
+	let challengesData = {
+		"Basic": {winCondition: {clearNum: 16}},
+		"Digging": {rules: {startingPieceNums: [specialPieceNums.checkerboard]}, winCondition: {clearNum: 16}},
+		"Solver": {rules: {solverTakeoverChances: {easyPiece: 0.4, hardPiece: 0.7, cursedPiece: 1}}, winCondition: {clearNum: 16}},
+		"Vertical": {rules: {verticalClear: true, horizontalClear: false}, winCondition: {verticalClearNum: 10}},
+		"Multiple Choice": {rules: {multipleChoiceChance: 1}, winCondition: {clearNum: 16}},
+		"Teleport": {rules: {teleportMovement: true}, winCondition: {clearNum: 16}},
+		"4 Lines Clears": {rules: {minConsecutiveLineClears: 4}, winCondition: {clearNum: 16}},
+		"Full Digging": {rules: {startingPieceNums: [specialPieceNums.checkerboard], cursedPiecesChance: 0.1}, winCondition: {clearNum: 1, holesNum: 0}},
+		"Fast Movement": {rules: {"movementTimer.max.x": 1, "movementTimer.shiftDelayX": 1, cursedPiecesChance: 1, cursedPiecesChanceMultiplierPerHole: 0.98}, winCondition: {clearNum: 1}, shouldOverwriteWizardRules: true},
+		"Gravity": {rules: {verticalClear: true, pieceGravity: true}, winCondition: {clearNum: 16}},
+		"Solver/Multiple/Basic": {rules: {solverTakeoverChances: {easyPiece: 0.33, hardPiece: 0.33, cursedPiece: 0.33}, multipleChoiceChance: 0.5}, winCondition: {clearNum: 16}},
+		"???": {rules: {recursionTimer: {num: 1200, max: 1200}}, winCondition: {blockClearNum: 400}}
+	};
+	
+	let challengeTypes = [];
+	for (let i in challengesData){ challengeTypes.push(i); }
 	
 	
 	
+	//LocalStorage Save
+	
+	let savedSpeeds = localStorage.getItem("Cursetris.highestSpeedCleared");
+	
+	if (savedSpeeds != null){
+		if (typeof savedSpeeds == "string"){
+			savedSpeeds = JSON.parse(savedSpeeds);
+			
+			challengeStats.highestSpeedCleared = savedSpeeds;
+		} else{
+			localStorage.setItem('Cursetris.highestSpeedCleared', "");
+		}
+	}
 	
 	
-	let currentVersion = "v1.1";
 	
-	let versionLogs = [ //Not yet displayed anywhere
+	//Version
+	
+	var currentVersion = "v1.2";
+	
+	let versionLogs = [
+		["v1.2 (Sep 20, 2024)",
+			"Curse Wizard >:(", "The Wizard's Challenges", "Main Menu", "Button Animations", "Multiple-Choice Timer", "More Forgiving Vertical Clears", "Dynamic Vertical Clears Height Indicator Lines (works with piece gravity)", "Multiple-Choice Rebind", "Delayed Auto-Shift", "Better Next Piece List", "Widescreen Support", "Version Log", "Something big..."
+		],
 		["v1.1 (July 4, 2024)",
 			"Piece Gravity", "Basic Rebind Controls", "Falling Speed Multiplier per Cleared Line", "Vertical Clear Height Indicator Line", "Renamed Keyboard Movement to Teleport Movement since it works with the controller as well now", "Other Smaller Changes"
 		],
@@ -340,7 +446,6 @@
 			"Initial Release"
 		]
 	];
-	
 	
 </script>
 <script> //Pieces
@@ -1111,386 +1216,6 @@
 	
 </script>
 
-<script> //Menu
-	
-	function getRuleValueFromArrPath(arrPath){
-		let value = rules;
-		
-		for (let i in arrPath){
-			value = value[arrPath[i]];
-		}
-		return value;
-	}
-	
-	
-	function onMenuInputChange(id, isPercentage, canGoOver100){
-		if (document.getElementById(id).value == ""){
-			document.getElementById(id).value = 0;
-		}
-		
-		if (document.getElementById(id).value < 0){
-			document.getElementById(id).value *= -1;
-		}
-		
-		if (isPercentage){
-			if (!canGoOver100){
-				while (document.getElementById(id).value > 100){
-					document.getElementById(id).value /= 10;
-				}
-			}
-		} else{
-			document.getElementById(id).value = Math.round(document.getElementById(id).value);
-		}
-	}
-	
-	
-	function rulesPresetsClick(type){
-		changeRulesByMenu();
-		
-		let arr = rulesPresets[type];
-		
-		for (let i in arr){
-			rules[i] = arr[i];
-		}
-		
-		generateMenu();
-	}
-	
-	
-	function removeStartingPiece(){
-		rules.startingPieceNums = [];
-		
-		generateMenu();
-	}
-	
-	
-	let menuExplanations = {
-		clearHorizontal: "Remove horizontal rows that are fully filled up",
-		clearVertical: "Remove vertical columns that are filled up to the Vertical Line Height",
-		verticalLineHeight: "This is how many blocks are need to be filled in from the bottom for the Vertical Clears to learn a column",
-		movementTimerMaxX: "How many frames it takes for a piece to move left or right, 1 frame is 1/60th of a second",
-		movementTimerMaxY: "How many frames it takes for a piece to fall one block, 1 frame is 1/60th of a second",
-		fallingSpeedMultiplierPerClear: "If this is below 100% then the game speeds up for each cleared line\n(Falling Speed is multiplied by this for each clear)",
-		pieceGravity: "Blocks fall down if they would be in the air otherwise, fallen blocks turn into a different color, lines can only be cleared if either none of them all fallen blocks or all of them are fallen blocks.\n\nPlaying with both Horizontal Clears and Vertical Clears is recommended.",
-		gravityTimer: "How many frames it takes for a piece to fall if the Piece Gravity is on, 1 frame is 1/60th of a second",
-		nextPieceDepth: "How many pieces you can see in advance on the side of the board",
-		invertedRotation: "Changes rotation from left/right to right/left",
-		noEasyPieces: "Removes these basic pieces: I L J T",
-		noHardPieces: "Removes these basic pieces: Z S O",
-		cursedPiecesChance: "How likely cursed pieces are, cursed pieces are pieces that are made out of 4 blocks but some of them are only diagonally connected",
-		cursedPiecesChanceMultiplierPerHole: "How much the Cursed Pieces Chance should be multiplied by for each hole on the board, if it's less than 100% then cursed pieces get less likely the more holes there are. A 'hole' is an empty space that has a block somewhere above it",
-		minConsecutiveLineClears: "Normally a line is cleared if it's fully filled in, even when it's only 1 block tall. If you change this to 4 for example, lines will only get cleared if 4 of them are filled in on top of each other",
-		solverTakeoverChances: "How likely is it that the computer puts down a piece instead of you",
-		solverTakeoverChancesEasyPiece: "How likely is it that the computer puts down an easy piece instead of you, easy pieces are the basic I L J T shapes",
-		solverTakeoverChancesHardPiece: "How likely is it that the computer puts down a hard piece instead of you, hard pieces are the basic Z S O shapes",
-		solverTakeoverChancesCursedPiece: "How likely is it that the computer puts down a cursed piece instead of you, cursed pieces are pieces that are made out of 4 blocks but some of them are only diagonally connected",
-		solverTimer: "How many frames the computer should wait between putting down pieces, 1 frame is 1/60th of a second",
-		multipleChoiceChance: "How likely is it that instead of having to move a piece, you get to choose from a few places to put your piece. You can choose by pressing the number keys",
-		isMultipleChoiceOrdered: "When a Multiple-Choice happens, the numbers associated to the choices normally goes from left to right, but with this toggled, the numbers will go in order of how much the computer likes the move, 1 being to computers #1 choice",
-		teleportMovement: "You teleport your pieces instead of moving them left-to-right\nYou teleport the center of the piece, which is highlighted in gray\nYou can use a keyboard or a controller, but you can only rebind the keyboard for now\n\nThe default controls:\nKeyboard: Middle row of the keyboard is the teleport, ASDFGHJKL; keys teleport the piece to their column\nOther letter keys rotate the piece, if they're on the left side of the keyboard they rotate it left and if they're on the right they rotate it right\nSpace drops down the piece faster\n\nController: The teleport from left-to-right is: Left, Up, Left Button, Left Trigger, Right, X, Y, Right Button, Right Trigger, B\nRotate left and right is Down and A\nPressing down either of the analog sticks makes the pieces drop down faster"
-	};
-	
-	let menuTexts = [
-		[
-			{text: "Horizontal Clears", title: "clearHorizontal"}, {checkBox: {arrPath: ["clearHorizontal"]}},
-			{text: "Vertical Clears", title: "clearVertical"}, {checkBox: {arrPath: ["clearVertical"]}},
-			{text: "Vertical Line Height:", title: "verticalLineHeight"}, {numInput: {arrPath: ["verticalLineHeight"]}}, {text: "blocks (out of 20)"}
-		],
-		[
-			{text: "Movement Speed:", title: "movementTimerMaxX"}, {numInput: {arrPath: ["movementTimer","max","x"]}}, {text: "frames"}, {gap: true},
-			{text: "Falling Speed:", title: "movementTimerMaxY"}, {numInput: {arrPath: ["movementTimer","max","y"]}}, {text: "frames"}, {gap: true},
-			{text: "Falling Speed Multiplier:", title: "fallingSpeedMultiplierPerClear"}, {numInput: {arrPath: ["fallingSpeedMultiplierPerClear"], isPercentage: true}}
-		],
-		[
-			{text: "Next Piece List Size:", title: "nextPieceDepth"}, {numInput: {arrPath: ["nextPieceDepth"]}}, {text: "pieces"}, {gap: true},
-			{text: "Inverted Rotation", title: "invertedRotation"}, {checkBox: {arrPath: ["invertedRotation"]}},
-			{button: {text: "Rebind Controls", onclick: "generateRebindControlsMenu()"}},
-		],
-		[
-			{text: "Disable Easy Pieces", title: "noEasyPieces"}, {checkBox: {arrPath: ["noEasyPieces"]}},
-			{text: "Disable Hard Pieces", title: "noHardPieces"}, {checkBox: {arrPath: ["noHardPieces"]}}
-		],
-		[
-			{text: "Smallest Consecutive Line Clears:", title: "minConsecutiveLineClears"}, {numInput: {arrPath: ["minConsecutiveLineClears"]}}, {text: "lines"}
-		],
-		[],
-		[
-			{text: "Cursed Pieces Chance:", title: "cursedPiecesChance"}, {numInput: {arrPath: ["cursedPiecesChance"], isPercentage: true}}, {gap: true},
-			{text: "Cursed Pieces Chance Multiplier per Hole:", title: "cursedPiecesChanceMultiplierPerHole"}, {numInput: {arrPath: ["cursedPiecesChanceMultiplierPerHole"], isPercentage: true, canGoOver100: true}}
-		],
-		[
-			{text: "Piece Gravity", title: "pieceGravity"}, {checkBox: {arrPath: ["pieceGravity"]}},
-			{text: "Gravity Speed:", title: "gravityTimer"}, {numInput: {arrPath: ["gravityTimer","max"]}}, {text: "frames"}
-		],
-		[
-			{text: "Solver Takeover Chances: ", title: "solverTakeoverChances"}, {gap: true},
-			{text: "Easy Piece", title: "solverTakeoverChancesEasyPiece"}, {numInput: {arrPath: ["solverTakeoverChances","easyPiece"], isPercentage: true}}, {gap: true},
-			{text: "Hard Piece", title: "solverTakeoverChancesHardPiece"}, {numInput: {arrPath: ["solverTakeoverChances","hardPiece"], isPercentage: true}}, {gap: true},
-			{text: "Cursed Piece", title: "solverTakeoverChancesCursedPiece"}, {numInput: {arrPath: ["solverTakeoverChances","cursedPiece"], isPercentage: true}}
-		],
-		[
-			{text: "Solver Delay", title: "solverTimer"}, {numInput: {arrPath: ["solverTimer","max"]}}, {text: "frames"}
-		],
-		[],
-		[
-			{text: "Multiple-Choice Chance:", title: "multipleChoiceChance"}, {numInput: {arrPath: ["multipleChoiceChance"], isPercentage: true}}, {gap: true},
-			{text: "Order Multiple-Choice", title: "isMultipleChoiceOrdered"}, {checkBox: {arrPath: ["isMultipleChoiceOrdered"]}}
-		],
-		[
-			{text: "Teleport Movement", title: "teleportMovement"}, {checkBox: {arrPath: ["teleportMovement"]}}
-		],
-	];
-	
-	function generateMenu(){
-		isInRebindControls = false;
-		selectedRebindButton = "";
-		
-		let text = '';
-		
-		text += '<br><br><button onclick="startButtonClick()">Start Cursetris</button><br><br>';
-		
-		text += "Presets: ";
-		
-		let presetNum = 0;
-		for (let i in rulesPresets){
-			text += '<button onclick="rulesPresetsClick(\'' + i + '\')">' + i + '</button> ';
-			
-			presetNum++;
-			if (presetNum % 5 == 0){
-				text += '<br>';
-			}
-		}
-		
-		text += '<br><br>';
-		
-		
-		if (specialPieceDescriptions[specialPieceNames[rules.startingPieceNums[0]]] != undefined){
-			text += 'Starting Piece: ' + specialPieceDescriptions[specialPieceNames[rules.startingPieceNums[0]]];
-			text += ' <button onclick="removeStartingPiece()">Remove</button>'
-		}
-		
-		text += '<br><br>';
-		
-		for (let i in menuTexts){
-			for (let arr of menuTexts[i]){
-				if (arr.text != undefined){
-					if (menuExplanations[arr.title] != undefined){
-						text += '<label title="' + menuExplanations[arr.title] + '" style="border-bottom: 0.05vw dotted white;">' + arr.text + '</label>'
-					} else{
-						text += arr.text;
-					}
-					
-					text += " ";
-				}
-				
-				if (arr.numInput != undefined){
-					text += '<input type="number" min="0"';
-					
-					text += (arr.numInput.isPercentage) ? 'max="100" step="0.1" ' : 'step="1"';
-					
-					
-					let num = getRuleValueFromArrPath(arr.numInput.arrPath);
-					num *= (arr.numInput.isPercentage) ? 100 : 1;
-					
-					text += 'value="' + num + '"';
-					
-					
-					let id = arr.numInput.arrPath.toString().replaceAll(',', '');
-					
-					text += 'id="' + id + '"';
-					
-					text += 'onchange="onMenuInputChange(\'' + id + '\', ' + arr.numInput.isPercentage + ', ' + arr.numInput.canGoOver100 + ')"';
-					
-					text += '></input>';
-					
-					text += (arr.numInput.isPercentage) ? '%' : '';
-				}
-				
-				if (arr.checkBox != undefined){
-					text += '<input type="checkbox"';
-					
-					let isChecked = getRuleValueFromArrPath(arr.checkBox.arrPath);
-					
-					text += (isChecked) ? 'checked' : '';
-					
-					
-					let id = arr.checkBox.arrPath.toString().replaceAll(",", "");
-					
-					text += ' id="' + id + '"';
-					
-					text += '></input>';
-					
-					text += '&emsp;'.repeat(5);
-				}
-				
-				if (arr.button != undefined){
-					let onclickText = (arr.button.onclick != undefined) ? "onclick='" + arr.button.onclick + "'" : "";
-					
-					text += '<button ' + onclickText + '>';
-					
-					text += arr.button.text;
-					
-					text += '</button>';
-					
-					text += '&emsp;'.repeat(5);
-				}
-				
-				if (arr.gap){
-					text += '&emsp;'.repeat(5);
-				}
-			}
-			
-			text += '<br><br>';
-		}
-		
-		text += '<br>Made by <a href="https://www.youtube.com/@Soverthe">Sover the</a>'
-		
-		document.getElementById("menuDiv").innerHTML = text;
-	}
-	
-	
-	function selectRebindButton(type){
-		selectedRebindButton = (selectedRebindButton != type) ? type : "";
-		
-		generateRebindControlsMenu();
-	}
-	
-	function removeInputButtons(type){
-		inputButtons[type].keyboard = [];
-		
-		generateRebindControlsMenu();
-	}
-	
-	function resetInputButtons(type){
-		inputButtons[type].keyboard = structuredClone(defaultInputButtons[type].keyboard);
-		
-		generateRebindControlsMenu();
-	}
-	
-	function generateRebindControlsMenu(){
-		isInRebindControls = true;
-		
-		let text = '<div style="text-align: left; margin-left: 20vw;">';
-		
-		text += '<br><br><br><br>';
-		
-		
-		for (let arr of inputButtonRebindLayout){
-			text += arr.text;
-			
-			text += "<br><br><br><br>";
-			
-			for (let button of arr.buttons){
-				let styleText = (selectedRebindButton == button.type) ? 'style="background-color:#8811ff"' : '';
-				
-				text += '<button onclick="selectRebindButton(\'' + button.type + '\')" ' + styleText + '>' + button.text + ':</button> ';
-				
-				text += inputButtons[button.type].keyboard.join(", ").replaceAll("Key","").replaceAll("Arrow","").replaceAll("Digit","");
-				
-				text += ' <button onclick="removeInputButtons(\'' + button.type + '\')">Remove All</button>';
-				text += '<button onclick="resetInputButtons(\'' + button.type + '\')">Reset</button>';
-				
-				text += "<br><br>";
-			}
-			
-			text += "<br><br>";
-		}
-		
-		text += (selectedRebindButton != "") ? "Press any button on your keyboard to add/remove it" : "";
-		
-		text += "<br><br><br><br>";
-		
-		text += '<button onclick="generateMenu()">Back</button>';
-		
-		text += '</div>';
-		
-		document.getElementById("menuDiv").innerHTML = text;
-	}
-	
-	
-	
-	function changeRulesByMenu(){
-		for (let i in menuTexts){
-			for (let arr of menuTexts[i]){
-				let value = 0;
-				
-				let arrPath;
-				
-				if (arr.numInput != undefined){
-					arrPath = arr.numInput.arrPath;
-					
-					let id = arrPath.toString().replaceAll(',', '');
-					
-					value = Number(document.getElementById(id).value);
-					
-					if (arr.numInput.isPercentage){
-						value /= 100;
-					}
-				}
-				
-				if (arr.checkBox != undefined){
-					arrPath = arr.checkBox.arrPath;
-					
-					let id = arrPath.toString().replaceAll(",", "");
-					
-					value = document.getElementById(id).checked;
-				}
-				
-				if (arrPath != undefined){
-					let pathText = "rules";
-					
-					for (let i in arrPath){
-						pathText += "['" + arrPath[i] + "']";
-					}
-					
-					eval(pathText + "=" + value);
-				}
-			}
-		}
-	}
-	
-	function startButtonClick(){
-		changeRulesByMenu();
-		
-		document.getElementById("menuDiv").style.display = "none";
-		document.getElementById("gameDiv").style.display = "inline-block";
-		document.body.overflow = "hidden";
-		
-		generateEmptyBoard();
-		
-		generateInitialPiece();
-		
-		currentLevel = 0;
-		lineClearNums = {horizontal: 0, vertical: 0};
-		previousScoreNum = 0;
-		
-		
-		for (let i in inputButtons){
-			inputButtons[i].timer = 0;
-		}
-		shouldDrawControls = (JSON.stringify(inputButtons) == JSON.stringify(defaultInputButtons));
-		
-		
-		currentFallingSpeed = rules.movementTimer.max.y;
-		
-		
-		shouldPauseNextFrame = false;
-		
-		nextFrame();
-	}
-	
-	function returnToMenu(){
-		generateMenu();
-		
-		document.getElementById("menuDiv").style.display = "inline-block";
-		document.getElementById("gameDiv").style.display = "none";
-		document.body.overflow = "auto";
-		
-		shouldPauseNextFrame = true;
-	}
-	
-</script>
-
 <script> //General
 	
 	let t = 0;
@@ -1518,13 +1243,53 @@
 	}
 	
 	
+	function getNumWithTruncatedDecimals(num, decimalsAmount){ //https://stackoverflow.com/a/11818658
+		let regex = new RegExp('^-?\\d+(?:\.\\d{0,' + decimalsAmount + '})?');
+		
+		return num.toString().match(regex)[0];
+	}
+	
+	
 	function getRandomNum(min, max){
 		return Math.floor(Math.random() * (max - min + 1) + min);
 	}
 	
 	
-	function toggleWindowBoolean(name){
+	function toggleWindowBoolean(name){ //unused
 		window[name] = !window[name];
+	}
+	
+	
+	function getEvaluatedText(text){
+		let evalText = "";
+		
+		if ((text + "").includes("{{")){
+			let arr = text.split("{{");
+			
+			for (let i in arr){
+				if (arr[i].includes("}}")){
+					let currentArr = arr[i].split("}}");
+					
+					arr[i] = (eval(currentArr[0]) + currentArr[1]);
+				}
+			}
+			evalText = arr.join("");
+			
+		} else{
+			evalText = text;
+		}
+		
+		return evalText;
+	}
+	
+	
+	function objectLength(arr){
+		let length = 0;
+		
+		if (arr != undefined){
+			length = Object.keys(arr).length;
+		}
+		return length;
 	}
 	
 	
@@ -1545,8 +1310,18 @@
 	}
 	
 	
+	function getObjectKeyWithHighestValue(arr){ //https://stackoverflow.com/a/27376421
+		return Object.keys(arr).reduce((a, b) => arr[a] > arr[b] ? a : b);
+	}
+	
+	
 	function getAverageOfArray(arr){
 		return arr.reduce((a, b) => a + b) / arr.length;
+	}
+	
+	
+	function compareObjects1D(a, b){ //https://stackoverflow.com/a/68091909
+		return (Object.entries(a).sort().toString() === Object.entries(b).sort().toString());
 	}
 	
 	
@@ -1596,6 +1371,18 @@
 
 <script> //General Board Functions
 	
+	function generateTallerBoard(){
+		tallerBoard = structuredClone(board);
+		
+		for (let i = -1; i > -6; i--){
+			tallerBoard[i] = [];
+			
+			for (let j = 0; j < board[0].length; j++){
+				tallerBoard[i][j] = {num: 0};
+			}
+		}
+	}
+	
 	function generateEmptyBoard(){
 		board = [];
 		
@@ -1607,16 +1394,7 @@
 			}
 		}
 		
-		
-		tallerBoard = structuredClone(board);
-		
-		for (let i = -1; i > -6; i--){
-			tallerBoard[i] = [];
-			
-			for (let j of range(boardData.w)){
-				tallerBoard[i][j] = {num: 0};
-			}
-		}
+		generateTallerBoard();
 	}
 	
 	
@@ -1679,18 +1457,57 @@
 					currentBoard[reverseI] = structuredClone(currentBoard[reverseI - 1]);
 				}
 				
+				let previousLength = currentBoard[0].length;
+				
 				currentBoard[0] = [];
-				for (let j of range(boardData.w)){
+				for (let j = 0; j < previousLength; j++){
 					currentBoard[0][j] = {num: 0};
 				}
 				
 				if (!disableScoreIncrement){
 					lineClearNums.horizontal++;
+					blockClearNums.horizontal += currentBoard[0].length;
 				}
 			}
 			
 			previousShouldClear = shouldClear;
 		}
+	}
+	
+	
+	function getVerticalLineBlockCounts(j, currentBoard){
+		let blockCounts = {nonFallen: 0, fallen: 0, highestBlock: undefined, wrongBlocksBelowHighestBlock: 0, wrongBlocksBelowHighestFallen: 0};
+		
+		for (let i = 0; i < currentBoard.length; i++){
+			if (currentBoard[i][j].num != 0){
+				
+				if (blockCounts.highestBlock == undefined){
+					blockCounts.highestBlock = i;
+				}
+				
+				if (currentBoard[i][j].hasFallen){
+					blockCounts.fallen++;
+					
+					blockCounts.wrongBlocksBelowHighestBlock++;
+				} else{
+					blockCounts.nonFallen++;
+					
+					blockCounts.wrongBlocksBelowHighestFallen++;
+				}
+			} else{
+				if (blockCounts.highestBlock != undefined){
+					blockCounts.wrongBlocksBelowHighestBlock++;
+					
+					blockCounts.wrongBlocksBelowHighestFallen++;
+				}
+			}
+		}
+		
+		return blockCounts;
+	}
+	
+	function getRequiredVerticalLineHeight(currentBoard){
+		return Math.floor((rules.verticalLineHeight / 20) * currentBoard.length);
 	}
 	
 	function clearVerticalFullLines(currentBoard, disableScoreIncrement){
@@ -1699,20 +1516,28 @@
 			let isLineFull = true;
 			let isLineFallen;
 			
-			for (let i = currentBoard.length - rules.verticalLineHeight; i < currentBoard.length; i++){
-				if (currentBoard[i][j].num == 0){
-					isLineFull = false;
-				}
+			if (rules.clearVerticalLinesWithHoles){
+				let blockCounts = getVerticalLineBlockCounts(j, currentBoard);
 				
+				let minHeight = getRequiredVerticalLineHeight(currentBoard);
 				
-				let hasFallen = (currentBoard[i][j].hasFallen == true);
-				
-				if (isLineFallen == undefined){
-					isLineFallen = hasFallen;
-				}
-				
-				if (hasFallen != isLineFallen){
-					isLineFull = false;
+				isLineFull = (blockCounts.nonFallen >= minHeight || blockCounts.fallen >= minHeight);
+			} else{
+				for (let i = currentBoard.length - rules.verticalLineHeight; i < currentBoard.length; i++){
+					if (currentBoard[i][j].num == 0){
+						isLineFull = false;
+					}
+					
+					
+					let hasFallen = (currentBoard[i][j].hasFallen == true);
+					
+					if (isLineFallen == undefined){
+						isLineFallen = hasFallen;
+					}
+					
+					if (hasFallen != isLineFallen){
+						isLineFull = false;
+					}
 				}
 			}
 			
@@ -1757,6 +1582,15 @@
 				
 				fullLines[j] = false;
 				
+				
+				let emptyBlocksCount = 0;
+				
+				for (let i in currentBoard){
+					if (currentBoard[i][j].num == 0){
+						emptyBlocksCount++;
+					}
+				}
+				
 				if (j > 4){
 					for (let i in currentBoard){
 						for (let k = j; k > 0; k--){
@@ -1787,6 +1621,7 @@
 				
 				if (!disableScoreIncrement){
 					lineClearNums.vertical++;
+					blockClearNums.vertical += currentBoard.length - emptyBlocksCount;
 				}
 				
 				j++;
@@ -1798,10 +1633,10 @@
 	
 	
 	function clearFullLines(currentBoard, disableScoreIncrement){
-		if (rules.clearVertical){
+		if (rules.verticalClear){
 			clearVerticalFullLines(currentBoard, disableScoreIncrement);
 		}
-		if (rules.clearHorizontal){
+		if (rules.horizontalClear){
 			clearHorizontalFullLines(currentBoard, disableScoreIncrement);
 		}
 		
@@ -1905,6 +1740,22 @@
 	}
 	
 	
+	function refreshCurrentFallingSpeed(){
+		currentFallingSpeed = rules.movementTimer.max.y;
+		
+		let currentScore = lineClearNums.horizontal + lineClearNums.vertical;
+		
+		for (let i = 0; i < currentScore; i++){
+			currentFallingSpeed *= rules.fallingSpeedMultiplierPerClear;
+			
+			if (i > currentChallenge.winScore){
+				currentFallingSpeed *= 0.75;
+			}
+		}
+		
+		currentFallingSpeed = Math.ceil(currentFallingSpeed);
+	}
+	
 	function nextPiece(isPieceless){
 		let isGameOver = false;
 		
@@ -1929,11 +1780,14 @@
 			
 			generateNextPieceNums();
 			
-			currentPiece.x = 5;
+			
+			refreshCurrentFallingSpeed();
+			
+			currentPiece.x = Math.ceil(board[0].length / 2);
 			currentPiece.y = pieceStartingY[currentPiece.pieceNum] ?? 0;
 			currentPiece.rotationNum = 0;
 			rules.movementTimer.x = rules.movementTimer.max.x;
-			rules.movementTimer.y = currentFallingSpeed * 2;
+			rules.movementTimer.y = currentFallingSpeed * 1;
 			currentPiece.hasReleasedDown = false;
 			
 			currentPiece.startingPos = {x: currentPiece.x, y: currentPiece.y};
@@ -1951,12 +1805,12 @@
 					isCurrentlyMultipleChoice = true;
 					
 					refreshMultipleChoiceChoices();
+					
+					rules.multipleChoiceTimer = getMultipleChoiceMaxTimer();
 				}
 			}
 		} else{
-			shouldPauseNextFrame = true;
-			
-			setTimeout(returnToMenu, 333);
+			gameOver();
 		}
 	}
 	
@@ -1972,6 +1826,21 @@
 		generateNextPieceNums();
 		
 		nextPiece(true);
+	}
+	
+</script>
+<script> //Speed Conversion
+	
+	function getConvertedSpeed(speed){
+		if (speed != undefined){
+			speed = (101 - speed);
+			
+			speed = Math.min(speed, 100);
+			
+			if (speed < 1){ speed = "<1"; }
+		}
+		
+		return speed;
 	}
 	
 </script>
@@ -2104,7 +1973,54 @@
 			}
 		}
 		return isTouching;
-		console.log(p1, p2);
+	}
+	
+</script>
+
+<script> //Buttons Click
+	
+	function buttonsClick(isDown, isHover){
+		let i = gameState;
+		
+		closestButton = {i: "", j: 0, distance: -1};
+		
+		if (buttons[i] != undefined){
+			for (let j = 0; j < buttons[i].length; j++){
+				let scaledPos = getScaledPosition(buttons[i][j].pos);
+				
+				if (buttons[i][j].isCentered != false){
+					scaledPos = getCenterPosition(scaledPos);
+				}
+				
+				let distance = getVertexToRectDistance(mousePos, scaledPos);
+				
+				if (isVertexInRect(mousePos, scaledPos)){
+					if (isHover){
+						closestButton = {i: i, j: j, distance: distance, isHover: true};
+					} else{
+						if (isDown){
+							clickedButton = {i: i, j: j};
+						} else{
+							if (clickedButton.i === i && clickedButton.j === j){
+								let arr = buttons[i][j].onclick;
+								
+								if (arr != undefined){
+									window[arr.f](arr.args);
+								}
+								
+								hoveredButtons.arr[clickedButton.j] = hoveredButtons.maxSeconds * hoveredButtons.releaseMultiplier;
+								
+								closestButton = {i: i, j: j, distance: distance, isHover: true};
+							}
+						}
+					}
+				} else{
+					if (distance < closestButton.distance || closestButton.distance == -1){
+						closestButton = {i: i, j: j, distance: distance};
+					}
+				}
+			}
+		}
 	}
 	
 </script>
@@ -2201,14 +2117,14 @@
 					value = value[button.condition.arrPath[1]];
 				}
 				
-				isConditionFulfilled = value == button.condition.target;
+				isConditionFulfilled = (value == button.condition.target);
 			}
 			
 			
 			if (isConditionFulfilled){
 				let isPressed = false;
 				
-				let pressedNum = 0;
+				let pressedNum;
 				
 				for (let i in button.keyboard){
 					if (inputs[button.keyboard[i]]){
@@ -2245,6 +2161,12 @@
 					}
 				}
 				
+				if (button.disableHold){
+					if (pressedNum == button.previousPressedNum){
+						isDelayed = true;
+					}
+				}
+				
 				if (!isDelayed && isPressed){
 					inputButtonStates[buttonName] = true;
 					
@@ -2266,6 +2188,10 @@
 						window[button.functionName](args);
 					}
 				}
+				
+				button.previousPressedNum = pressedNum;
+			} else{
+				button.previousPressedNum = undefined;
 			}
 		}
 	}
@@ -2294,6 +2220,7 @@
 		movementAxes = getGamepadMovementAxes(movementAxes);
 		
 		
+		
 		if (rules.movementTimer.x > 0){
 			rules.movementTimer.x--;
 		}
@@ -2313,9 +2240,17 @@
 					}
 					
 					rules.movementTimer.x = rules.movementTimer.max.x;
+					
+					rules.movementTimer.moveCountX++;
+					
+					if (rules.movementTimer.moveCountX == 1){
+						rules.movementTimer.x = rules.movementTimer.shiftDelayX;
+					}
 				}
 			} else{
 				rules.movementTimer.x = 0;
+				
+				rules.movementTimer.moveCountX = 0;
 			}
 		}
 		
@@ -2325,6 +2260,10 @@
 			currentPiece.hasReleasedDown = true;
 		}
 		
+		
+		refreshCurrentFallingSpeed();
+		
+		
 		if (rules.movementTimer.y <= 0){
 			currentPiece.y++;
 			
@@ -2332,14 +2271,6 @@
 				currentPiece.y--;
 				
 				nextPiece();
-			}
-			
-			currentFallingSpeed = rules.movementTimer.max.y;
-			
-			let overallScore = lineClearNums.horizontal + lineClearNums.vertical;
-			
-			for (let i = 0; i < overallScore; i++){
-				currentFallingSpeed *= rules.fallingSpeedMultiplierPerClear;
 			}
 			
 			rules.movementTimer.y = currentFallingSpeed;
@@ -2747,66 +2678,1614 @@
 	}
 	
 	
+	function getMultipleChoiceMaxTimer(){
+		refreshCurrentFallingSpeed();
+		
+		return currentFallingSpeed * 20;
+	}
+	
+	function selectMultipleChoiceChoice(i){
+		if (i <= multipleChoiceChoices.length - 1){
+			board = multipleChoiceChoices[i].board;
+			
+			
+			previousScoreNum = lineClearNums.vertical + lineClearNums.horizontal;
+			
+			currentPiece.x = multipleChoiceChoices[i].piece.x;
+			currentPiece.y = multipleChoiceChoices[i].piece.y;
+			
+			
+			clearFullLines(board);
+			
+			nextPiece(true);
+			
+			rules.multipleChoiceTimer = getMultipleChoiceMaxTimer();
+		}
+	}
 	
 	function multipleChoiceNextFrame(){
-		for (let i = 0; i < multipleChoiceChoices.length; i++){
+		rules.multipleChoiceTimer--;
+		
+		if (rules.multipleChoiceTimer <= 0){
+			selectMultipleChoiceChoice(getRandomNum(0, multipleChoiceChoices.length - 1));
+		}
+	}
+	
+</script>
+
+<script> //Recursion Rule
+	
+	function multiplyBoard(size){
+		let nextBoard = [];
+		
+		for (let y = 0; y < board.length; y++){
+			for (let subY = 0; subY < size; subY++){
+				nextBoard[y * size + subY] = [];
+				
+				for (let x = 0; x < board[y].length; x++){
+					for (let subX = 0; subX < size; subX++){
+						let pos = {
+							x: x * size + subX,
+							y: y * size + subY
+						};
+						
+						nextBoard[pos.y][pos.x] = structuredClone(board[y][x]);
+					}
+				}
+			}
+		}
+		
+		board = nextBoard;
+		
+		generateTallerBoard();
+		
+		
+		currentPiece.x *= size;
+		currentPiece.y *= size;
+	}
+	
+	function divideBoard(size){
+		let nextBoard = [];
+		
+		for (let y = 0; y < Math.ceil(board.length / size); y++){
 			
-			let digitNum = "Digit" + (i + 1);
-			
-			if (inputs[digitNum]){
-				board = multipleChoiceChoices[i].board;
+			if (y < Math.floor(board.length / size) || (board.length < board[0].length * 2)){
 				
+				nextBoard[y] = [];
 				
-				previousScoreNum = lineClearNums.vertical + lineClearNums.horizontal;
+				for (let x = 0; x < Math.ceil(board[0].length / size); x++){
+					
+					if (x < Math.floor(board[0].length / size) || (board.length > board[0].length * 2)){
+						let emptyCount = 0;
+						let fallenCount = 0;
+						let blockCount = 0;
+						let numCounts = {};
+						
+						for (let subY = 0; subY < size; subY++){
+							for (let subX = 0; subX < size; subX++){
+								let arr = getPosInArr({x: x * size + subX, y: y * size + subY}, board);
+								
+								if (arr != undefined){
+									blockCount++;
+									
+									if (arr.num == 0){
+										emptyCount++;
+									} else{
+										if (numCounts[arr.num] == undefined){
+											numCounts[arr.num] = 0;
+										}
+										
+										numCounts[arr.num]++;
+									}
+									
+									if (arr.hasFallen){
+										fallenCount++;
+									}
+								}
+							}
+						}
+						
+						nextBoard[y][x] = {
+							num: (emptyCount > blockCount / 2) ? 0 : getObjectKeyWithHighestValue(numCounts)
+						};
+						
+						if (fallenCount > blockCount / 2){
+							nextBoard[y][x].hasFallen = true;
+						}
+					}
+				}
+			}
+		}
+		
+		board = nextBoard;
+		
+		generateTallerBoard();
+		
+		
+		currentPiece.x = Math.floor(currentPiece.x / size);
+		currentPiece.y = Math.floor(currentPiece.y / size);
+		
+		
+		if (!isCurrentPiecePositionValid()){
+			for (let i = 1; i <= 3; i++){
+				currentPiece.x += (currentPiece.x < board[0].length/2) ? 1 : -1;
 				
-				currentPiece.x = multipleChoiceChoices[i].piece.x;
-				currentPiece.y = multipleChoiceChoices[i].piece.y;
-				
-				
-				clearFullLines(board);
-				
-				nextPiece(true);
-				
-				inputs[digitNum] = false;
+				if (isCurrentPiecePositionValid()){
+					i = 4;
+				}
 			}
 		}
 	}
 	
 </script>
 
-<script> //Buttons
+<script> //Toggle Canvas
 	
-	function buttonsClick(isDown){
-		for (let i in buttons){
-			for (let j in buttons[i]){
-				let scaledPos = getScaledPosition(buttons[i][j].pos);
-				
-				if (buttons[i][j].isCentered != false){
-					scaledPos = getCenterPosition(scaledPos);
+	function turnOnCanvas(){
+		document.getElementById("customMenuDiv").style.display = "none";
+		document.getElementById("canvasDiv").style.display = "inline-block";
+		document.body.overflow = "hidden";
+		
+		
+		let wasPaused = shouldPauseNextFrame;
+		shouldPauseNextFrame = false;
+		
+		if (wasPaused){
+			nextFrame();
+		}
+	}
+	
+	function turnOffCanvas(){
+		document.getElementById("customMenuDiv").style.display = "inline-block";
+		document.getElementById("canvasDiv").style.display = "none";
+		document.body.overflow = "auto";
+		
+		shouldPauseNextFrame = true;
+	}
+	
+</script>
+<script> //Custom Menu
+	
+	function getRuleValueFromArrPath(arrPath){
+		let value = rules;
+		
+		for (let i in arrPath){
+			value = value[arrPath[i]];
+		}
+		return value;
+	}
+	
+	
+	function onCustomMenuInputChange(id, isPercentage, canGoOver100){
+		if (document.getElementById(id).value == ""){
+			document.getElementById(id).value = 0;
+		}
+		
+		if (document.getElementById(id).value < 0){
+			document.getElementById(id).value *= -1;
+		}
+		
+		if (isPercentage){
+			if (!canGoOver100){
+				while (document.getElementById(id).value > 100){
+					document.getElementById(id).value /= 10;
+				}
+			}
+		} else{
+			document.getElementById(id).value = Math.round(document.getElementById(id).value);
+		}
+	}
+	
+	
+	function rulesPresetsClick(type){
+		changeRulesByCustomMenu();
+		
+		let arr = rulesPresets[type];
+		
+		for (let i in arr){
+			rules[i] = arr[i];
+		}
+		
+		savedCustomRules = structuredClone(rules);
+		
+		generateCustomMenu();
+	}
+	
+	
+	function removeStartingPiece(){
+		rules.startingPieceNums = [];
+		
+		generateCustomMenu();
+	}
+	
+	
+	let customMenuExplanations = {
+		horizontalClear: "Remove horizontal rows that are fully filled up",
+		verticalClear: "Remove vertical columns that are filled up to the Vertical Line Height",
+		verticalLineHeight: "This is how many blocks are need to be filled in for the Vertical Clears to clear a column",
+		movementTimerMaxX: "How many frames it takes for a piece to move left or right.\n1 frame is 1/60th of a second",
+		movementTimerShiftDelayX: "How many frames a piece waits before moving left or right after it has already moved once while the button was held down\n1 frame is 1/60th of a second",
+		movementTimerMaxY: "How many frames it takes for a piece to fall one block.\n1 frame is 1/60th of a second.\n\n(The higher the slower, the game displays speed in the inverted way with this formula: 101 - speed)",
+		fallingSpeedMultiplierPerClear: "If this is below 100% then the game speeds up for each cleared line.\n(Falling Speed is multiplied by this for each clear)",
+		pieceGravity: "Blocks fall down if they would be in the air otherwise, fallen blocks turn into a different color, lines can only be cleared if either none of them all fallen blocks or all of them are fallen blocks.\n\nPlaying with both Horizontal Clears and Vertical Clears is recommended.",
+		gravityTimer: "How many frames it takes for a piece to fall if the Piece Gravity is turned on.\n1 frame is 1/60th of a second",
+		nextPieceDepth: "How many pieces you can see in advance on the side of the board",
+		invertedRotation: "Changes rotation from left/right to right/left",
+		noEasyPieces: "Removes these basic pieces: I L J T",
+		noHardPieces: "Removes these basic pieces: Z S O",
+		cursedPiecesChance: "How likely cursed pieces are, cursed pieces are pieces that are made out of 4 blocks but some of them are only diagonally connected",
+		cursedPiecesChanceMultiplierPerHole: "How much the Cursed Pieces Chance should be multiplied by for each hole on the board, if it's less than 100% then cursed pieces get less likely the more holes there are. A 'hole' is an empty space that has a block somewhere above it",
+		minConsecutiveLineClears: "Normally a line is cleared if it's fully filled in, even when it's only 1 block tall. If you change this to 4 for example, lines will only get cleared if 4 of them are filled in on top of each other",
+		solverTakeoverChances: "How likely is it that the computer puts down a piece instead of you",
+		solverTakeoverChancesEasyPiece: "How likely is it that the computer puts down an easy piece instead of you, easy pieces are the basic I L J T shapes",
+		solverTakeoverChancesHardPiece: "How likely is it that the computer puts down a hard piece instead of you, hard pieces are the basic Z S O shapes",
+		solverTakeoverChancesCursedPiece: "How likely is it that the computer puts down a cursed piece instead of you, cursed pieces are pieces that are made out of 4 blocks but some of them are only diagonally connected",
+		solverTimer: "How many frames the computer should wait between putting down pieces, 1 frame is 1/60th of a second",
+		multipleChoiceChance: "How likely is it that instead of having to move a piece, you get to choose from a few places to put your piece. You can choose by pressing the number keys",
+		isMultipleChoiceOrdered: "When a Multiple-Choice happens, the numbers associated to the choices normally goes from left to right, but with this toggled, the numbers will go in order of how much the computer likes the move, 1 being to computers #1 choice",
+		teleportMovement: "You teleport your pieces instead of moving them left-to-right\nYou teleport the center of the piece, which is highlighted in gray\nYou can use a keyboard or a controller, but you can only rebind the keyboard for now\n\nThe default controls:\nKeyboard: Middle row of the keyboard is the teleport, ASDFGHJKL; keys teleport the piece to their column\nOther letter keys rotate the piece, if they're on the left side of the keyboard they rotate it left and if they're on the right they rotate it right\nSpace drops down the piece faster\n\nController: The teleport from left-to-right is: Left, Up, Left Button, Left Trigger, Right, X, Y, Right Button, Right Trigger, B\nRotate left and right is Down and A\nPressing down either of the analog sticks makes the pieces drop down faster",
+		'???': "How many frames it takes for something to happen. I don't know what though, but I would set this to about 1200.\n1 frame is 1/60th of a second"
+	};
+	
+	let customMenuTexts = [
+		[
+			{text: "Horizontal Clears", title: "horizontalClear"}, {checkBox: {arrPath: ["horizontalClear"]}},
+			{text: "Vertical Clears", title: "verticalClear"}, {checkBox: {arrPath: ["verticalClear"]}},
+			{text: "Vertical Line Height:", title: "verticalLineHeight"}, {numInput: {arrPath: ["verticalLineHeight"]}}, {text: "blocks (out of 20)"}
+		],
+		[
+			{text: "Movement Speed:", title: "movementTimerMaxX"}, {numInput: {arrPath: ["movementTimer","max","x"]}}, {text: "frames"}, {gap: true},
+			{text: "Shift Delay:", title: "movementTimerShiftDelayX"}, {numInput: {arrPath: ["movementTimer","shiftDelayX"]}}, {text: "frames"}, {gap: true},
+			{text: "Falling Speed:", title: "movementTimerMaxY"}, {numInput: {arrPath: ["movementTimer","max","y"]}}, {text: "frames"}, {gap: true},
+			{text: "Falling Speed Multiplier:", title: "fallingSpeedMultiplierPerClear"}, {numInput: {arrPath: ["fallingSpeedMultiplierPerClear"], isPercentage: true}}
+		],
+		[
+			{text: "Next Piece List Size:", title: "nextPieceDepth"}, {numInput: {arrPath: ["nextPieceDepth"]}}, {text: "pieces"}, {gap: true},
+			{text: "Inverted Rotation", title: "invertedRotation"}, {checkBox: {arrPath: ["invertedRotation"]}},
+			{button: {text: "Rebind Controls", onclick: "generateRebindControlsMenu()"}},
+		],
+		[
+			{text: "Disable Easy Pieces", title: "noEasyPieces"}, {checkBox: {arrPath: ["noEasyPieces"]}},
+			{text: "Disable Hard Pieces", title: "noHardPieces"}, {checkBox: {arrPath: ["noHardPieces"]}}
+		],
+		[
+			{text: "Smallest Consecutive Line Clears:", title: "minConsecutiveLineClears"}, {numInput: {arrPath: ["minConsecutiveLineClears"]}}, {text: "lines"}
+		],
+		[],
+		[
+			{text: "Cursed Pieces Chance:", title: "cursedPiecesChance"}, {numInput: {arrPath: ["cursedPiecesChance"], isPercentage: true}}, {gap: true},
+			{text: "Cursed Pieces Chance Multiplier per Hole:", title: "cursedPiecesChanceMultiplierPerHole"}, {numInput: {arrPath: ["cursedPiecesChanceMultiplierPerHole"], isPercentage: true, canGoOver100: true}}
+		],
+		[
+			{text: "Piece Gravity", title: "pieceGravity"}, {checkBox: {arrPath: ["pieceGravity"]}},
+			{text: "Gravity Speed:", title: "gravityTimer"}, {numInput: {arrPath: ["gravityTimer","max"]}}, {text: "frames"}
+		],
+		[
+			{text: "Solver Takeover Chances: ", title: "solverTakeoverChances"}, {gap: true},
+			{text: "Easy Piece:", title: "solverTakeoverChancesEasyPiece"}, {numInput: {arrPath: ["solverTakeoverChances","easyPiece"], isPercentage: true}}, {gap: true},
+			{text: "Hard Piece:", title: "solverTakeoverChancesHardPiece"}, {numInput: {arrPath: ["solverTakeoverChances","hardPiece"], isPercentage: true}}, {gap: true},
+			{text: "Cursed Piece:", title: "solverTakeoverChancesCursedPiece"}, {numInput: {arrPath: ["solverTakeoverChances","cursedPiece"], isPercentage: true}}
+		],
+		[
+			{text: "Solver Delay:", title: "solverTimer"}, {numInput: {arrPath: ["solverTimer","max"]}}, {text: "frames"}
+		],
+		[],
+		[
+			{text: "Multiple-Choice Chance:", title: "multipleChoiceChance"}, {numInput: {arrPath: ["multipleChoiceChance"], isPercentage: true}}, {gap: true},
+			{text: "Order Multiple-Choice", title: "isMultipleChoiceOrdered"}, {checkBox: {arrPath: ["isMultipleChoiceOrdered"]}}
+		],
+		/*[
+			{text: "???:", title: "???"}, {numInput: {arrPath: ["recursionTimer","max"]}}, {text: "frames"}
+		],*/
+		[
+			{text: "Teleport Movement", title: "teleportMovement"}, {checkBox: {arrPath: ["teleportMovement"]}}
+		],
+		[],
+		[
+			{button: {text: "Back to Menu", onclick: "exitCustomMenu()"}},
+		]
+	];
+	
+	function generateCustomMenu(){
+		gameState = "customMenu";
+		
+		wasInCustomMenu = true;
+		
+		turnOffCanvas();
+		
+		isInRebindControls = false;
+		selectedRebindButton = "";
+		
+		
+		rules = structuredClone(savedCustomRules);
+		
+		
+		let text = '';
+		
+		text += '<br><br><button onclick="startButtonClick()">Start Cursetris</button><br><br>';
+		
+		text += "Presets: ";
+		
+		let presetNum = 0;
+		for (let i in rulesPresets){
+			text += '<button onclick="rulesPresetsClick(\'' + i + '\')">' + i + '</button> ';
+			
+			presetNum++;
+			if (presetNum % 5 == 0){
+				text += '<br>';
+			}
+		}
+		
+		text += '<br><br>';
+		
+		
+		if (specialPieceDescriptions[specialPieceNames[rules.startingPieceNums[0]]] != undefined){
+			text += 'Starting Piece: ' + specialPieceDescriptions[specialPieceNames[rules.startingPieceNums[0]]];
+			text += ' <button onclick="removeStartingPiece()">Remove</button>'
+		}
+		
+		text += '<br><br>';
+		
+		for (let i in customMenuTexts){
+			for (let arr of customMenuTexts[i]){
+				if (arr.text != undefined){
+					if (customMenuExplanations[arr.title] != undefined){
+						text += '<label title="' + customMenuExplanations[arr.title] + '" style="border-bottom: 0.05vw dotted white;">' + arr.text + '</label>'
+					} else{
+						text += arr.text;
+					}
+					
+					text += " ";
 				}
 				
-				if (isVertexInRect(mousePos, scaledPos)){
-					if (isDown){
-						clickedButton = {i: i, j: j};
-					} else{
-						if (clickedButton.i === i && clickedButton.j === j){
-							let arr = buttons[i][j].onclick;
-							
-							window[arr.f](arr.args);
-						}
+				if (arr.numInput != undefined){
+					text += '<input type="number" min="0"';
+					
+					text += (arr.numInput.isPercentage) ? 'max="100" step="0.1" ' : 'step="1"';
+					
+					
+					let num = getRuleValueFromArrPath(arr.numInput.arrPath);
+					num *= (arr.numInput.isPercentage) ? 100 : 1;
+					
+					text += 'value="' + num + '"';
+					
+					
+					let id = arr.numInput.arrPath.toString().replaceAll(',', '');
+					
+					text += 'id="' + id + '"';
+					
+					text += 'onchange="onCustomMenuInputChange(\'' + id + '\', ' + arr.numInput.isPercentage + ', ' + arr.numInput.canGoOver100 + ')"';
+					
+					text += '></input>';
+					
+					text += (arr.numInput.isPercentage) ? '%' : '';
+				}
+				
+				if (arr.checkBox != undefined){
+					text += '<input type="checkbox"';
+					
+					let isChecked = getRuleValueFromArrPath(arr.checkBox.arrPath);
+					
+					text += (isChecked) ? 'checked' : '';
+					
+					
+					let id = arr.checkBox.arrPath.toString().replaceAll(",", "");
+					
+					text += ' id="' + id + '"';
+					
+					text += '></input>';
+					
+					text += '&emsp;'.repeat(5);
+				}
+				
+				if (arr.button != undefined){
+					let onclickText = (arr.button.onclick != undefined) ? "onclick='" + arr.button.onclick + "'" : "";
+					
+					text += '<button ' + onclickText + '>';
+					
+					text += arr.button.text;
+					
+					text += '</button>';
+					
+					text += '&emsp;'.repeat(5);
+				}
+				
+				if (arr.gap){
+					text += '&emsp;'.repeat(5);
+				}
+			}
+			
+			text += '<br><br>';
+		}
+		
+		text += '<br>Made by <a href="https://www.youtube.com/@Soverthe">Sover the</a>'
+		
+		document.getElementById("customMenuDiv").innerHTML = text;
+	}
+	
+</script>
+<script> //Menu
+	
+	function selectRebindButton(type){
+		selectedRebindButton = (selectedRebindButton != type) ? type : "";
+		
+		generateRebindControlsMenu();
+	}
+	
+	function removeInputButtons(type){
+		inputButtons[type].keyboard = [];
+		
+		generateRebindControlsMenu();
+	}
+	
+	function resetInputButtons(type){
+		inputButtons[type].keyboard = structuredClone(defaultInputButtons[type].keyboard);
+		
+		generateRebindControlsMenu();
+	}
+	
+	function generateRebindControlsMenu(){
+		let previousGameState = gameState;
+		
+		gameState = "rebindMenu";
+		
+		turnOffCanvas();
+		
+		
+		isInRebindControls = true;
+		
+		let text = '<div style="text-align: left; margin-left: 20vw;">';
+		
+		text += '<br><br><br><br>';
+		
+		
+		for (let arr of inputButtonRebindLayout){
+			for (let button of arr.buttons){
+				let styleText = (selectedRebindButton == button.type) ? 'style="background-color:#8811ff"' : '';
+				
+				text += '<button onclick="selectRebindButton(\'' + button.type + '\')" ' + styleText + '>' + button.text + ':</button> ';
+				
+				text += inputButtons[button.type].keyboard.join(", ").replaceAll("Key","").replaceAll("Arrow","").replaceAll("Digit","");
+				
+				text += ' <button onclick="removeInputButtons(\'' + button.type + '\')">Remove All</button>';
+				text += '<button onclick="resetInputButtons(\'' + button.type + '\')">Reset</button>';
+				
+				text += "<br><br>";
+			}
+			
+			text += "<br><br>";
+		}
+		
+		text += (selectedRebindButton != "") ? "Press any button on your keyboard to add/remove it" : "";
+		
+		text += "<br><br><br><br>";
+		
+		
+		let backFunction = (previousGameState == "customMenu") ? "generateCustomMenu()" : "generateChallengeMenu()";
+		
+		text += '<button onclick="' + backFunction + '">Back</button>';
+		
+		text += '<br><br><br><br><label style="color: #ffffff88">(Non-rebindable: A/D and Left/Right Arrows move the piece, S and Down Arrow drop the piece faster.)</label>';
+		
+		text += '</div>';
+		
+		document.getElementById("customMenuDiv").innerHTML = text;
+	}
+	
+	
+	
+	function changeRulesByCustomMenu(){
+		for (let i in customMenuTexts){
+			for (let arr of customMenuTexts[i]){
+				let value = 0;
+				
+				let arrPath;
+				
+				if (arr.numInput != undefined){
+					arrPath = arr.numInput.arrPath;
+					
+					let id = arrPath.toString().replaceAll(',', '');
+					
+					value = Number(document.getElementById(id).value);
+					
+					if (arr.numInput.isPercentage){
+						value /= 100;
+					}
+				}
+				
+				if (arr.checkBox != undefined){
+					arrPath = arr.checkBox.arrPath;
+					
+					let id = arrPath.toString().replaceAll(",", "");
+					
+					value = document.getElementById(id).checked;
+				}
+				
+				if (arrPath != undefined){
+					let pathText = "rules";
+					
+					for (let i in arrPath){
+						pathText += "['" + arrPath[i] + "']";
+					}
+					
+					eval(pathText + "=" + value);
+				}
+			}
+		}
+	}
+	
+	function startButtonClick(isRestart){
+		if (gameState == "customMenu"){
+			changeRulesByCustomMenu();
+			
+			savedCustomRules = structuredClone(rules);
+		} else{
+			if (!isRestart){
+				if (!wasWizardEngaged){
+					wizard.emotions.engaged = Math.max(wizard.emotions.engaged - wizardUnengagedPenaltyNum, -1);
+				}
+				
+				challengePlaycount++;
+				
+				increaseWizardDialogueRepeatNum();
+			}
+			
+			
+		}
+		
+		gameState = "game";
+		
+		
+		generateEmptyBoard();
+		
+		generateInitialPiece();
+		
+		currentLevel = 0;
+		lineClearNums = {horizontal: 0, vertical: 0};
+		blockClearNums = {horizontal: 0, vertical: 0};
+		previousScoreNum = 0;
+		
+		
+		for (let i in inputButtons){
+			inputButtons[i].timer = 0;
+		}
+		shouldDrawControls = (JSON.stringify(inputButtons) == JSON.stringify(defaultInputButtons));
+		
+		
+		currentFallingSpeed = rules.movementTimer.max.y;
+		
+		turnOnCanvas();
+	}
+	
+	
+	function generateMenu(){
+		gameState = "menu";
+		
+		turnOnCanvas();
+	}
+	
+	function generateVersionLogs(){
+		gameState = "versionLogs";
+		
+		turnOnCanvas();
+	}
+	
+	function generateChallengeMenu(){
+		gameState = "challengeMenu";
+		
+		turnOnCanvas();
+		
+		isInRebindControls = false;
+		selectedRebindButton = "";
+	}
+	
+	function exitCustomMenu(){
+		wasInCustomMenu = false;
+		
+		changeRulesByCustomMenu();
+		
+		savedCustomRules = structuredClone(rules);
+		
+		generateMenu();
+	}
+	
+	
+	function restartCall(){
+		onChallengeAction({
+			type: "restartedChallenge",
+			value: challengeType
+		});
+		
+		if (wasInCustomMenu){
+			gameState = "customMenu";
+			
+			startButtonClick(true);
+		} else{
+			startChallenge(true);
+		}
+	}
+	
+	function gameOverCall(){
+		if (wasInCustomMenu){
+			generateCustomMenu();
+		} else{
+			refreshCurrentChallengeDidWin();
+			
+			
+			let currentSpeed = getCurrentChallengeSpeed();
+			
+			let highestSpeed = challengeStats.highestSpeedCleared[challengeType];
+			
+			
+			
+			currentWizardDialogue = "";
+			wasWizardEngaged = false;
+			
+			onChallengeAction({
+				type: (currentChallenge.didWin) ? "wonChallenge" : "lostChallenge",
+				value: challengeType,
+				speed: currentSpeed,
+				multiplier: challengeSpeedMultiplier,
+				previousHighestSpeed: highestSpeed
+			});
+			
+			
+			
+			if (currentChallenge.didWin){
+				if (highestSpeed > currentSpeed || highestSpeed == undefined){
+					challengeStats.highestSpeedCleared[challengeType] = currentSpeed;
+					
+					localStorage.setItem('Cursetris.highestSpeedCleared', JSON.stringify(challengeStats.highestSpeedCleared));
+					
+					challengeSpeedMultiplier = 1;
+				}
+			}
+			
+			
+			generateChallengeMenu();
+		}
+		
+		currentChallenge = {};
+	}
+	
+	let lastGameOverFrame = 0;
+	function gameOver(){
+		if (t > lastGameOverFrame + fps*5){
+			setTimeout(gameOverCall, fps*5);
+			
+			lastGameOverFrame = t;
+		}
+	}
+	
+</script>
+
+
+<script> //Challenges
+	
+	function changeChallengeSpeedMultiplier(args){
+		challengeSpeedMultiplier = args.multiplier;
+		
+		let maxSpeeds = [73, 47, 37, 26, 16, 10, 7, 4, 2, 0];
+		
+		let currentSpeedNum = 0;
+		
+		for (let i = 0; i < maxSpeeds.length; i++){
+			if (args.speed >= maxSpeeds[i]){
+				currentSpeedNum = i;
+				
+				break;
+			}
+		}
+		
+		
+		let type = "SpeedSelect" + currentSpeedNum;
+		
+		if (challengeStats.highestSpeedCleared[challengeType] != undefined){
+			if (args.multiplier > 1){
+				type = "SlowerSpeed";
+			} else if (args.multiplier == 1){
+				type = "RepeatSpeed";
+			}
+		}
+		
+		
+		wizardButtonClick(type, true);
+	}
+	
+	
+	function changeChallengeType(type){
+		challengeType = type;
+		
+		onChallengeAction({type: "changedChallangeType", value: type});
+		
+		wizardButtonClick(type + "Select", true);
+	}
+	
+	
+	function getChallangeSpeedFromMultiplier(multiplier){
+		let speed = 45;
+		
+		if (challengeStats.highestSpeedCleared[challengeType] != undefined){
+			speed = challengeStats.highestSpeedCleared[challengeType];
+		}
+		
+		speed *= multiplier;
+		
+		speed = Math.max(Math.floor(speed), 1);
+		
+		speed = Math.min(Math.floor(speed), 100);
+		
+		return speed;
+	}
+	
+	function getCurrentChallengeSpeed(){
+		return getChallangeSpeedFromMultiplier(challengeSpeedMultiplier);
+	}
+	
+	
+	function refreshCurrentChallengeDidWin(){
+		if (objectLength(currentChallenge) > 0 && !currentChallenge.didWin){
+			let didWin = true;
+			
+			let currentScore = lineClearNums.horizontal + lineClearNums.vertical;
+			let blockClears = blockClearNums.horizontal + blockClearNums.vertical;
+			
+			
+			let arr = [
+				{type: "clearNum", num: currentScore},
+				{type: "blockClearNum", num: blockClears},
+				{type: "horizontalClearNum", num: lineClearNums.horizontal},
+				{type: "verticalClearNum", num: lineClearNums.vertical},
+				{type: "horizontalBlockClearNum", num: blockClearNums.horizontal},
+				{type: "verticalBlockClearNum", num: blockClearNums.vertical},
+				{type: "holesNum", num: getHolesNumInBoard(board), isDescending: true},
+			];
+			
+			for (let i in arr){
+				if (arr[i].isDescending){
+					if (currentChallenge.winCondition[arr[i].type] < arr[i].num){
+						didWin = false;
 					}
 				} else{
-					let distance = getVertexToRectDistance(mousePos, scaledPos);
-					
-					if (distance < closestButton.distance || closestButton.distance == -1){
-						closestButton = {i: i, j: j, distance: distance};
+					if (currentChallenge.winCondition[arr[i].type] > arr[i].num){
+						didWin = false;
 					}
+				}
+			}
+			
+			currentChallenge.didWin = didWin;
+			
+			if (didWin){
+				currentChallenge.winScore = currentScore;
+			}
+		}
+	}
+	
+	
+	function changeRulesByObject(arr){
+		for (let ruleType in arr){
+			if (ruleType.includes(".")){
+				eval("rules." + ruleType + " = " + JSON.stringify(arr[ruleType]));
+			} else{
+				rules[ruleType] = structuredClone(arr[ruleType]);
+			}
+		}
+	}
+	
+	function startChallenge(isRestart){
+		currentChallenge = {winCondition: challengesData[challengeType].winCondition, fallingSpeedMultiplierPerClear: 1};
+		
+		
+		rules = structuredClone(defaultRules);
+		
+		
+		rules.movementTimer.max.y = getCurrentChallengeSpeed();
+		
+		rules.fallingSpeedMultiplierPerClear = currentChallenge.fallingSpeedMultiplierPerClear;
+		
+		
+		changeRulesByObject(challengesData[challengeType].rules);
+		
+		changeRulesByObject(wizard.rules);
+		
+		if (challengesData[challengeType].shouldOverwriteWizardRules){
+			changeRulesByObject(challengesData[challengeType].rules);
+		}
+		
+		
+		onChallengeAction({type: "startChallenge", value: challengeType, speed: rules.movementTimer.max.y, multiplier: challengeSpeedMultiplier, previousHighestSpeed: challengeStats.highestSpeedCleared[challengeType]});
+		
+		startButtonClick(isRestart);
+	}
+	
+</script>
+<script> //Challenge Menu Buttons
+	
+	function generateChallengeButtons(){
+		let challengeMenu = [];
+		
+		challengeMenu.push({pos: {x: -15, y: 18.5, w: 4, h: 1.25}, text: "Back", textSize: 0.166, onclick: {f: "generateMenu"}});
+		challengeMenu.push({pos: {x: 20, y: 18.5, w: 6, h: 1.75}, text: "Start", textSize: 0.166, onclick: {f: "startChallenge"}});
+		
+		challengeMenu.push({pos: {x: -9, y: 18.5, w: 4, h: 1.25}, text: "Rebind Controls", textSize: 0.1, onclick: {f: "generateRebindControlsMenu"}});
+		
+		for (let i = 0; i < challengeTypes.length; i++){
+			let name = challengeTypes[i];
+			
+			let highestClearedNum = getConvertedSpeed(challengeStats.highestSpeedCleared[name]);
+			
+			let arr = {
+				pos: {x: -12, y: i * 1.3 + 0.5, w: 11, h: 1.2},
+				text: name + " Challenge", textSize: 0.055,
+				subtext: highestClearedNum ?? "-", subtextPos: {x: 0.42, y: 0.35}, subtextSize: 0.025,
+				onclick: {f: "changeChallengeType", args: challengeTypes[i]}
+			};
+			
+			if (challengeTypes[i] == "???"){
+				arr.color = "#00000000";
+				arr.textColor = "#00000007";
+				arr.maxAlphaNum = 0.1;
+			}
+			
+			if (challengeTypes[i] == challengeType){
+				arr.color = "wizardPurple";
+				arr.textColor = "white";
+			}
+			
+			
+			challengeMenu.push(arr);
+		}
+		
+		
+		let speedsNum = 9;
+		
+		for (let i = 0; i < speedsNum; i++){
+			let centeredI = (i - Math.floor(speedsNum/2));
+			
+			let multiplier = 1 / (1.25 ** centeredI);
+			
+			let speed = getChallangeSpeedFromMultiplier(multiplier);
+			let text = getConvertedSpeed(speed);
+			let subtext = getNumWithTruncatedDecimals(1/multiplier, 2) + "x";
+			
+			subtext = subtext.replaceAll("00x", "x").replaceAll("0x", "x");
+			
+			
+			let arr = {pos: {x: 5 + (-centeredI)*1.85, y: 7, w: 1.35, h: 1.2}, text: text, textSize: 0.5, subtext: subtext, subtextSize: 0.25, subtextPos: {x: 0, y: 0.35},
+					  onclick: {f: "changeChallengeSpeedMultiplier", args: {multiplier: multiplier, speed: speed}}};
+			
+			if (multiplier == challengeSpeedMultiplier){
+				arr.color = "wizardPurple";
+				arr.textColor = "white";
+			}
+			
+			challengeMenu.push(arr);
+		}
+		
+		
+		let dialogue = getWizardDialogue();
+		
+		for (let i = 0; i < dialogue.buttons.length; i++){
+			let arr = {
+				pos: structuredClone(challengeMenuWizardPos.buttons),
+				text: dialogue.buttons[i].text, textSize: 0.04,
+				onclick: {f: "wizardButtonClick", args: dialogue.buttons[i].to},
+				color: colors["wizardBlack"] + "88",
+				textColor: (dialogue.buttons[i].isFriendly) ? "wizardWhite" : "wizardYellow"
+			};
+			
+			arr.pos.y += i;
+			
+			challengeMenu.push(arr);
+		}
+		
+		
+		buttons.challengeMenu = challengeMenu;
+	}
+	
+</script>
+
+<script> //Wizard Dialogue	
+	
+	let wizardDialogues = {
+		'Intro': {text: "An uncursed soul has entered the program. Finally. Go now and choose a challenge.", repeatTexts: ["Choose a challenge, curseless soul."],
+				buttons: [{text: "How do I choose a challenge?", to: "IntroExplanation"}, {text: "Who are you?", to: "IntroWho"}, {text: "What if I don't want to choose?", to: "IntroNo"}]},
+		'IntroExplanation': {text: "Simply click on a challenge button on the left, then select one of the 9 available speed options, where currently 56 is selected.",
+						   buttons: [{text: "(Back)", to: "Intro"}]},
+		'IntroWho': {text: "I shall only share information with souls who are truly worthy.", repeatTexts: ["As I said, I will only share information with souls who are worthy of it."],
+				   buttons: [{text: "(Back)", to: "Intro"}]},
+		'IntroNo': {text: "Well then you would miss out on a lot of Cursetris...", repeatTexts: ["Stop saying this please."],
+				   buttons: [{text: "(Back)", to: "Intro"}], acception: -0.1},
+		
+		'Unengaged': {text: "What's the point of me talking if you're not going to reply?", repeatTexts: ["You're not replying.", "One of these days you'll answer...", "Please reply.", "Why are you not answering?", "Okay, from now on I won't say anything if you don't either.", "..."],
+					buttons: [{text: "I'm sorry for not answering", to: "UnengagedApology"}, {text: "Stop complaining and let me play", to: "UnengagedRude"}]},
+		'UnengagedApology': {text: "Well, it's not that much of a problem after all, it's only that I don't react well to being ignored.", repeatTexts: ["Again, it's not that big of a problem, but I would like to ask you to interact with me more often."],
+						   buttons: [{text: "What did you want to say?", to: "UnengagedApologyAftermath"}], acception: 0.05},
+		'UnengagedApologyAftermath': {text: "At times like these everything exits my mind, I would suggest you choose a challenge and then I'll think of something.", repeatTexts: ["Simply choose a challenge and I'll explain things about it."],
+									buttons: [], acception: 0.15},
+		'UnengagedRude': {text: "...I see how it is. Don't think I will forget this.",
+						  buttons: [], acception: -1.5},
+		
+		'BasicSelect': {text: "Basic Challenge: Clear 16 Lines. Really simple.",
+						buttons: []},
+		'BasicSelectFriendly': {text: "Basic Challenge: Clear 16 Lines. Really simple, but beware of the cursed pieces which are quite tricky.",
+						buttons: []},
+		'BasicSelectNegative': {text: "Basic Challenge: Clear 16 Lines. Really simple. Even for you.",
+						buttons: []},
+				
+		'DiggingSelect': {text: "Digging Challenge: Start with a huge checkerboard piece and clear 16 lines.",
+						buttons: []},
+		'DiggingSelectFriendly': {text: "Digging Challenge: Start with a huge checkerboard piece and clear 16 lines. Cursed pieces are less likely because the checkerboard piece creates a lot of holes on the board, and holes make the cursed pieces appear less often.",
+						buttons: []},
+		'DiggingSelectNegative': {text: "Digging Challenge: Start with a huge checkerboard piece and clear 16 lines. It's not that hard but you've done worse before.",
+						buttons: []},
+				
+		'SolverSelect': {text: "Solver Challenge: I'll sometimes put down pieces instead of you, using a solver algorithm.",
+						buttons: []},
+		'SolverSelectFriendly': {text: "Solver Challenge: I'll sometimes put down pieces instead of you, using a solver algorithm. I'll always put down the cursed pieces.",
+						buttons: []},
+		'SolverSelectNegative': {text: "Solver Challenge: I'll sometimes put down pieces instead of you. You might have a chance at winning if you just let me play.",
+						buttons: []},
+				
+		'VerticalSelect': {text: "Vertical Challenge: You can clear vertically, but not horizontally.",
+						buttons: []},
+		'VerticalSelectFriendly': {text: "Vertical Challenge: You can clear vertically, but not horizontally. You only need to fill a line up to the indicated height. I recommend only clearing on the right side.",
+						buttons: []},
+		'VerticalSelectNegative': {text: "Vertical Challenge: You can clear vertically, but not horizontally. Not like you could before regardless.",
+						buttons: []},
+				
+		'Multiple ChoiceSelect': {text: "Multiple Choice Challenge: Choose where a piece goes by pressing the corresponding number buttons on your keyboard.",
+						buttons: []},
+		'Multiple ChoiceSelectFriendly': {text: "Multiple Choice Challenge: Choose where a piece goes by pressing the corresponding number buttons on your keyboard. A random choice will be picked if you're not fast enough.",
+						buttons: []},
+		'Multiple ChoiceSelectNegative': {text: "Multiple Choice Challenge: Choose where a piece goes by pressing the corresponding number buttons on your keyboard. Good luck messing this one up.",
+						buttons: []},
+				
+		'TeleportSelect': {text: "Teleport Challenge: Use the middle row of your keyboard to move your pieces, and the rest of the keys to rotate them. Click on Rebind Controls for more information.",
+						buttons: []},
+		'TeleportSelectFriendly': {text: "Teleport Challenge: Use the middle row of your keyboard to move your pieces, and the rest of the keys to rotate them (buttons on the left rotate left, others rotate right). Click on Rebind Controls for more information.",
+						buttons: []},
+		'TeleportSelectNegative': {text: "Teleport Challenge: Use the middle row of your keyboard to move your pieces, and the rest of the keys to rotate them. Click on Rebind Controls for more information. I doubt you will, though.",
+						buttons: []},
+				
+		'4 Lines ClearsSelect': {text: "4 Lines Clears: You can only clear 4 lines at a time.",
+						buttons: []},
+		'4 Lines ClearsSelectFriendly': {text: "4 Lines Clears: You can only clear 4 lines at a time. I recommend creating some holes on the bottom (empty spaces with a block somewhere above them) to avoid the cursed pieces.",
+						buttons: []},
+		'4 Lines ClearsSelectNegative': {text: "4 Lines Clears: You can only clear 4 lines at a time. This is going to be entertaining.",
+						buttons: []},
+				
+		'Full DiggingSelect': {text: "Digging Challenge: Start with a huge checkerboard piece, clear a single line and fill in all the holes on the board.",
+						buttons: []},
+		'Full DiggingSelectFriendly': {text: "Digging Challenge: Start with a huge checkerboard piece, clear a single line and fill in all the holes on the board. Cursed pieces are more likely the fewer holes you have so be cautious. This challenge is very difficult.",
+						buttons: []},
+		'Full DiggingSelectNegative': {text: "Digging Challenge: Start with a huge checkerboard piece, clear a single line and fill in all the holes on the board. This is the only challenge that you deserve to play.",
+						buttons: []},
+				
+		'Fast MovementSelect': {text: "Fast Movement Challenge: Clear 1 line while your left and right movement is very fast.",
+						buttons: []},
+		'Fast MovementSelectFriendly': {text: "Fast Movement Challenge: Clear 1 line while your left and right movement is very fast, and cursed pieces are a lot more frequent. Feel free to restart when things feel too chaotic.",
+						buttons: []},
+		'Fast MovementSelectNegative': {text: "Fast Movement Challenge: Clear 1 line while your left and right movement is very fast. Surely you can clear a single line, correct?",
+						buttons: []},
+				
+		'GravitySelect': {text: "Gravity Challenge: Blocks fall down and become fallen blocks. Lines only clear if all of the blocks are either fallen or not fallen. You can clear lines both horizontally and vertically.",
+						buttons: []},
+		'GravitySelectFriendly': {text: "Gravity Challenge: Blocks fall down and become fallen blocks. Lines only clear if all of the blocks are either fallen or not fallen. You can clear lines both horizontally and vertically. There's an outdated 'Sover the' video on this.",
+						buttons: []},
+		'GravitySelectNegative': {text: "Gravity Challenge: Blocks fall down and become fallen blocks. Lines only clear if all of the blocks are either fallen or not fallen. You can clear lines both horizontally and vertically. I doubt you understood any of that.",
+						buttons: []},
+				
+		'Solver/Multiple/BasicSelect': {text: "Solver/Multiple/Basic Challenge: The Solver, Multiple Choice, and the Basic Challenges combined, each challenge has an equal chance of occurring for every new piece.",
+						buttons: []},
+		'Solver/Multiple/BasicSelectFriendly': {text: "Solver/Multiple/Basic Challenge: The Solver, Multiple Choice, and the Basic Challenges combined, each challenge has an equal chance of occurring for every new piece. I recommend mastering them one by one first.",
+						buttons: []},
+		'Solver/Multiple/BasicSelectNegative': {text: "Solver/Multiple/Basic Challenge: The Solver, Multiple Choice, and the Basic Challenges combined, each challenge has an equal chance of occurring for every new piece. Don't mess this up for me.",
+						buttons: []},
+		
+		
+		'???Select': {text: "I don't know what this is.",
+						buttons: []},
+						
+		
+		'SpeedSelect0': {text: "You've selected a slow speed, pieces take their time to fall so feel free to practice with this.",
+						buttons: []},
+		'SpeedSelect0Friendly': {text: "While this is a slow speed, sometimes that's exactly what you need to learn how to play a particular challenge. You've got this.",
+						buttons: []},
+		'SpeedSelect0Negative': {text: "Your pride doesn't blind you at the least, this speed is perfect for someone like you.",
+						buttons: []},
+						
+		'SpeedSelect1': {text: "A slow-yet-not-the-slowest speed, sometimes even easier than the slowest of speeds since you are a little bit less likely to get impatient with these.",
+						buttons: []},
+		'SpeedSelect1Friendly': {text: "I think you will play really well on this speed. It's not too fast and not too slow, it's perfect. Like you.",
+						buttons: []},
+		'SpeedSelect1Negative': {text: "Of course you would select something like this.",
+						buttons: []},
+				
+		'SpeedSelect2': {text: "You've selected the default speed, which I would call something like medium speed.",
+						buttons: []},
+		'SpeedSelect2Friendly': {text: "This is the default speed for every challenge, yet some are harder than others, so don't feel like you're bound by it. But alas, I wish you the best of luck.",
+						buttons: []},
+		'SpeedSelect2Negative': {text: "The default speed, of course. Of course.",
+						buttons: []},
+				
+		'SpeedSelect3': {text: "A faster-than-default speed.",
+						buttons: []},
+		'SpeedSelect3Friendly': {text: "This speed is slightly faster than the default one, so if you're confident with that you will easily beat this one as well.",
+						buttons: []},
+		'SpeedSelect3Negative': {text: "Too afraid to pick higher speeds, I see.",
+					buttons: []},
+				
+		'SpeedSelect4': {text: "One of the highest speeds that are initially playable, but once you beat it you can unlock faster speeds up to 100.",
+						buttons: []},
+		'SpeedSelect4Friendly': {text: "When you'll beat this speed you will unlock higher ones, which can go up to 100. But I still consider this speed as the final goal, the rest are just bonus speeds. So good luck, I believe in you.",
+						buttons: []},
+		'SpeedSelect4Negative': {text: "I am sure that this will not go well.",
+						buttons: []},
+				
+		'SpeedSelect5': {text: "A moderately fast speed.",
+						buttons: []},
+		'SpeedSelect5Friendly': {text: "A good practice-speed for the faster ones. You got this.",
+						buttons: []},
+		'SpeedSelect5Negative': {text: "I will never understand you.",
+						buttons: []},
+				
+		'SpeedSelect6': {text: "A fast-yet-usually-achievable speed, I suggest giving it a chance.",
+						buttons: []},
+		'SpeedSelect6Friendly': {text: "This is a fast speed but I think you can complete it if you're determined enough, but feel free to take a break and move on to another challenge if it stops being fun.",
+						buttons: []},
+		'SpeedSelect6Negative': {text: "Everything is a waste of time when you're the one playing, but this might be a little bit entertaining at the least.",
+						buttons: []},
+				
+		'SpeedSelect7': {text: "A properly fast speed, it's like you are playing on a different planet.",
+						buttons: []},
+		'SpeedSelect7Friendly': {text: "It gets really hard from here, but I still think you can complete it. Nice job getting this far.",
+						buttons: []},
+		'SpeedSelect7Negative': {text: "Not a chance.",
+						buttons: []},
+						
+		'SpeedSelect8': {text: "This is almost as fast as it can get, and for most challenges the fastest feasible speed unless you are a wizard yourself.",
+						buttons: []},
+		'SpeedSelect8Friendly': {text: "This speed is really fast, do not worry too much about completing it. I might get a little bit more proud of you if you do, but that wouldn't change much. I already think you are great.",
+						buttons: []},
+		'SpeedSelect8Negative': {text: "I am highly doubtful that your almost-strengthless self could win on the almost-fastest speed. Do your worst.",
+						buttons: []},
+						
+		'SpeedSelect9': {text: "You've selected the fastest speed, where pieces fall on every frame. It doesn't hurt to try this out but don't be disappointed by the result.",
+						buttons: []},
+		'SpeedSelect9Friendly': {text: "Just getting to the point where you can select 100 is impressive on its own, I wish you the best of luck.",
+						buttons: []},
+		'SpeedSelect9Negative': {text: "Don't even think about it. Watching you fail is a waste of my time and we both know that's all that would happen.",
+						buttons: []},
+						
+		'RepeatSpeed': {text: "You've won on this speed before so you're likely to be able to win again in my opinion.",
+						buttons: []},
+		'RepeatSpeedFriendly': {text: "You have already mastered this speed, but feel free to play it as many times as you wish. You play well.",
+						buttons: []},
+		'RepeatSpeedNegative': {text: "The same speed again I see. Perhaps you are too scared to venture into the unknown. Too scared to fail.",
+						buttons: []},
+						
+		'SlowerSpeed': {text: "This is a slower speed than your best work but that's okay.",
+						buttons: []},
+		'SlowerSpeedFriendly': {text: "You've completed this challenge on faster speeds before, this will be a pie run for you.",
+						buttons: []},
+		'SlowerSpeedNegative': {text: "I see you've lost the already scarce faith you had in yourself.",
+						buttons: []},
+		
+		
+		'ChallengeWin0': {text: "Nice job, you've won the {{challengeType}} Challenge on {{previousChallengeSpeed}} speed on your first try.",
+						  buttons: []},
+		'ChallengeWin0Friendly': {text: "You did it! You've won the {{challengeType}} Challenge on {{previousChallengeSpeed}} speed on your very first try! You're amazing.",
+						  buttons: []},
+		'ChallengeWin0Negative': {text: "...Maybe pick a harder challenge next time?",
+						  buttons: []},
+						  
+		'ChallengeWin1': {text: "You've won the {{challengeType}} Challenge on {{previousChallengeSpeed}} speed.",
+						  buttons: []},
+		'ChallengeWin1Friendly': {text: "You've won the {{challengeType}} Challenge on {{previousChallengeSpeed}} speed in just a few tries, nice job!",
+						  buttons: []},
+		'ChallengeWin1Negative': {text: "Riveting...",
+						  buttons: []},
+						  
+		'ChallengeWin2': {text: "You've won the {{challengeType}} Challenge on {{previousChallengeSpeed}} speed.",
+						  buttons: []},
+		'ChallengeWin2Friendly': {text: "You've won the {{challengeType}} Challenge on {{previousChallengeSpeed}} speed! I'm proud of you!",
+						  buttons: []},
+		'ChallengeWin2Negative': {text: "That took a while.",
+						  buttons: []},
+						  
+		'ChallengeWin3': {text: "You've won the {{challengeType}} Challenge on {{previousChallengeSpeed}} speed.",
+						  buttons: []},
+		'ChallengeWin3Friendly': {text: "You've won the {{challengeType}} Challenge on {{previousChallengeSpeed}} speed! That was a difficult one but you got it.",
+						  buttons: []},
+		'ChallengeWin3Negative': {text: "Finally...",
+						  buttons: []},
+				  
+				  
+		'ChallengeLose0': {text: "You can try again.",
+						  buttons: []},
+		'ChallengeLose0Friendly': {text: "The first try is the hardest, you got this!",
+						  buttons: []},
+		'ChallengeLose0Negative': {text: "The first failure in this setting.",
+						  buttons: []},
+						  
+		'ChallengeLose1': {text: "A few more tries couldn't hurt.",
+						  buttons: []},
+		'ChallengeLose1Friendly': {text: "Keep going!",
+						  buttons: []},
+		'ChallengeLose1Negative': {text: "Don't get too hopeful.",
+						  buttons: []},
+						  
+		'ChallengeLose2': {text: "Seems challenging.",
+						  buttons: []},
+		'ChallengeLose2Friendly': {text: "Just a few more tries and you got it!",
+						  buttons: []},
+		'ChallengeLose2Negative': {text: "This is taking a while.",
+						  buttons: []},
+						  
+		'ChallengeLose3': {text: "I see you are persistent.",
+						  buttons: []},
+		'ChallengeLose3Friendly': {text: "This is a tough one but I think you can do it.",
+						  buttons: []},
+		'ChallengeLose3Negative': {text: "You can give up anytime.",
+						  buttons: []},
+				
+			
+		'WizardQuestions': {text: "Of course, what would you like to know about?",
+							buttons: [{text: "Cursetris Advice", to: "CursetrisAdvice"},{text: "Cursetris and You", to: "WizardGameLore"},{text: "Yourself", to: "WizardLore"},{text: "Why did your eye turn purple?", to: "WhyPurpleEye"}]},
+		
+		'WizardLore': {text: "Feel free to ask anything about me.",
+						buttons: [{text: "Age", to: "QuestionAge"},{text: "Height", to: "QuestionHeight"},{text: "Gender", to: "QuestionGender"},{text: "Weight", to: "QuestionWeight"},{text: "Hobbies", to: "QuestionHobbies"},{text: "(Back)", to: "WizardQuestions"}]},
+		'QuestionAge': {text: "I'm significantly older than you, and I say this with only knowing what species you belong to. But there have been other wizards before me, more powerful ones in fact. Yet still, I think I might be the only wizard left.",
+						buttons: [{text: "(Back)", to: "WizardLore"}]},
+		'QuestionGender': {text: "I don't belong to any genders that I've heard of so far, and I've heard of a lot of them.",
+						buttons: [{text: "(Back)", to: "WizardLore"}]},
+		'QuestionHeight': {text: "You're currently talking to the digital version of me, but my physical form is around 164 centimeters, which makes it easy to blend into crowds when I let the lights bounce off of me.",
+						buttons: [{text: "What do you mean by that?", to: "QuestionHeightDarkness"}, {text: "(Back)", to: "WizardLore"}]},
+		'QuestionHeightDarkness': {text: "It's just a simple spell that makes it look like I'm always in complete darkness.",
+						buttons: [{text: "(Back)", to: "WizardLore"}]},
+		'QuestionWeight': {text: "I don't enjoy thinking of weight, but not for the reason you might think. It reminds me of another wizard who could control the weight of any object. They're not here with us anymore.",
+						buttons: [{text: "(Back)", to: "WizardLore"}]},
+		'QuestionHobbies': {text: "I used to cause a lot more chaos than I do now, but I still enjoy breaking into computers and changing some code around, although it's not quite the same as doing an actual curse like I used to.",
+						buttons: [{text: "(Back)", to: "WizardLore"}]},
+		
+		'CursetrisAdvice': {text: "I can share a few things, what would you like to hear about?",
+							buttons: [{text: "Next Piece", to: "NextPieceAdvice"},{text: "Speed", to: "DistanceDividedByTimeAdvice"},{text: "Cursed Pieces", to: "CursedPiecesAdvice"},{text: "Taking Breaks", to: "BreakAdvice"},{text: "(Back)", to: "WizardQuestions"}]},
+		'CursedPiecesAdvice': {text: "A piece that has blocks that are only diagonally connected is called a cursed piece. They are pretty difficult to work with, so to balance it out, you get significantly fewer of them the more holes you have in your board.",
+				buttons: [{text: "What are holes?", to: "HolesExplanation"},{text: "(Back)", to: "CursetrisAdvice"}]},
+		'HolesExplanation': {text: "Any empty space on the board that has a block somewhere above it counts as a hole. For example, if you have a column with one block at the very top of it, and everything below it is empty, then there would be 19 holes in that column.",
+				buttons: [{text: "(Back)", to: "CursetrisAdvice"}]},
+		'NextPieceAdvice': {text: "I recommend paying attention to what piece is coming next when you play, it can give you a big advantage and it can make the game feel a lot more strategic than luck-based.",
+				buttons: [{text: "(Back)", to: "CursetrisAdvice"}]},
+		'DistanceDividedByTimeAdvice': {text: "It might be tempting to always pick the highest speed options, but some challenges are pretty tricky, and for them it can help a lot to try slower speeds at first to develop the skills needed to conquer them.",
+				buttons: [{text: "(Back)", to: "CursetrisAdvice"}]},
+		'BreakAdvice': {text: "Like many other things, the Cursetris challenges are also harder to conquer if you just bash your head against them. If a challenge gets too much, take a break by either choosing a different challenge or by not playing for a while.",
+				buttons: [{text: "(Back)", to: "CursetrisAdvice"}]},
+				
+		'WizardGameLore': {text: "Go ahead, what would you like to know?",
+				buttons: [{text: "Why are you in the game?", to: "WizardInGame"},{text: "What's that symbol on your hat?", to: "WizardHatSymbol"},{text: "(Back)", to: "WizardQuestions"}]},
+		'WizardInGame': {text: "It was the perfect opportunity, everything just aligned perfectly for what I was searching for. It was really easy to curse this game and to expand on it.",
+				buttons: [{text: "But why did you curse it?", to: "WhyCurse"},{text: "Why was it easy to curse this game?", to: "EasyCurse"},{text: "(Back)", to: "WizardGameLore"}]},
+		'WhyCurse': {text: "Why do people wake up from sleeping? Why do they blink? I guess it's just nature.",
+				buttons: [{text: "(Back)", to: "WizardInGame"}]},
+		'EasyCurse': {text: "The non-technical answer would be that this game was made in a way where it's easy to modify, and it was made by a person who doesn't mind unexpected changes... that much.",
+				buttons: [{text: "(Back)", to: "WizardInGame"}]},
+		'WizardHatSymbol': {text: "It's the hardest 5 by 5 Nonogram board's solution, it's the reason I found out about the developer of this game in the first place.",
+				buttons: [{text: "You're not the developer?", to: "Developer"},{text: "Nonogram?", to: "Nonogram"},{text: "(Back)", to: "WizardGameLore"}]},
+		'Developer': {text: "Well I have made some changes to this game but I mostly just influenced the development.",
+				buttons: [{text: "(Back)", to: "WizardHatSymbol"}]},
+		'Nonogram': {text: "Nonograms are a type of puzzle games, there's an uncursed version of it from the person who made this game, but there are also a lot of other versions out there. It's a lot more universal than you would think. A lot more.",
+				buttons: [{text: "(Back)", to: "WizardHatSymbol"}]},
+		
+		'WhyPurpleEye': {text: "That just happens sometimes, especially when I feel like people accept me for what I do and who I am.",
+				buttons: [{text: "(Back)", to: "WizardQuestions"}]},
+		
+		
+		'TooRandom': {text: "I understand, cursed pieces are more likely the fewer holes you have on the board, but even with that knowledge it's hard to plan ahead, would you like me to change how many pieces you can see coming next?",
+					buttons: [
+						{text: "4 pieces ahead would be nice", to: "NextPiecesChange4"},
+						{text: "2 pieces are enough", to: "NextPiecesChange2"},
+						{text: "A single piece is perfect", to: "NextPiecesChange1"},
+						{text: "Not seeing any would be better", to: "NextPiecesChange0"},
+						{text: "I'd like to see infinite pieces", to: "NextPiecesChangeInfinite"}
+					]},
+		'NextPiecesChange4': {text: "You can now see 4 pieces in the future.",
+				buttons: [], variableChanges: {"nextPieceDepth": 4}},
+		'NextPiecesChange2': {text: "You can now see 2 pieces in the future.",
+				buttons: [], variableChanges: {"nextPieceDepth": 2}},
+		'NextPiecesChange1': {text: "You can now see 1 piece in the future.",
+				buttons: [], variableChanges: {"nextPieceDepth": 1}},
+		'NextPiecesChange0': {text: "You can no longer change what piece comes next.",
+				buttons: [], variableChanges: {"nextPieceDepth": 0}},
+		'NextPiecesChangeInfinite': {text: "The most I can do is 24, here you go.",
+				buttons: [], variableChanges: {"nextPieceDepth": 24}},
+		'NextPiecesThanks': {text: "Of course, feel free to bring this up again if you change your mind about your next pieces amount.",
+				buttons: [], acception: 0.25},
+		
+		
+		'HorizontalSlide': {text: "The high horizontal speed can help a lot with the faster speed options, but it is a double-edged sword. How fast would you like it to be?",
+				buttons: [{text: "Slower", to: "HorizontalSlideChangeSlower"},{text: "Default", to: "HorizontalSlideChangeDefault"},{text: "Slightly Faster", to: "HorizontalSlideChangeSlightlyFaster"},{text: "Way Faster", to: "HorizontalSlideChangeFaster"}]},
+		'HorizontalSlideChangeSlower': {text: "The sliding speed is now significantly slower. This does not impact the Fast Movement Challenge, though.",
+				buttons: [], variableChanges: {"movementTimer.max.x": 6, "movementTimer.shiftDelayX": 17}},
+		'HorizontalSlideChangeDefault': {text: "The sliding speed is now back to default.",
+				buttons: [], variableChanges: {"movementTimer.max.x": 4, "movementTimer.shiftDelayX": 10}},
+		'HorizontalSlideChangeSlightlyFaster': {text: "The sliding speed is now slightly faster.",
+				buttons: [], variableChanges: {"movementTimer.max.x": 3, "movementTimer.shiftDelayX": 8}},
+		'HorizontalSlideChangeFaster': {text: "The sliding speed is now significantly faster.",
+				buttons: [], variableChanges: {"movementTimer.max.x": 2, "movementTimer.shiftDelayX": 6}},
+		'HorizontalSlideThanks': {text: "No problem, keep in mind that we can change this again at any time.",
+				buttons: [], acception: 0.25},
+		
+		'WhichChooseMain': {text: "That depends on your preference, but I suggest trying out all of them. What kind of challenge are you looking for?",
+				buttons: [{text: "Something basic", to: "WhichChooseBasic"},{text: "Something weird", to: "WhichChooseWeird"},{text: "Something tricky", to: "WhichChooseTricky"},{text: "Something different", to: "WhichChooseDifferent"}]},
+		'WhichChooseBasic': {text: "The top 3 challenges are the most basic ones, especially the Basic Challenge of course. They all have something cursed about them but significantly less than most other challenges.",
+				buttons: []},
+		'WhichChooseWeird': {text: "The Vertical Challenge is a bit weird for sure, but you get used to it eventually, and then the Gravity Challenge is kind of an extension to that. And then there's the Solver/Multiple/Basic Challenge...",
+				buttons: []},
+		'WhichChooseTricky': {text: "The Fast Movement Challenge is pretty tricky because of all the cursed pieces, and the 4 Line Clears Challenge is difficult but there's a strategy for it. The trickiest one of them all is definitely the Full Digging Challenge.",
+				buttons: []},
+		'WhichChooseDifferent': {text: "The Multiple Choice Challenge is a nice break from the rest, while the Teleport Challenge has a whole new control scheme which takes a while to get used to. Both of them are different in their own ways.",
+				buttons: []},
+		'WhichChooseThanks': {text: "No problem, would you like to look at the rest?",
+				buttons: [{text: "Yes", to: "WhichChooseMain"}], acception: 0.25},
+		
+		'WhoMadeThese': {text: "It's a little complicated, but you can think of it like everything good was made by me and everything else was by someone else.",
+				buttons: [{text: "Fair.", to: "WhoMadeTheseFair"},{text: "That's hard to believe...", to: "WhoMadeTheseNo"}]},
+		'WhoMadeTheseFair': {text: "I'm glad you understand.",
+				buttons: [], acception: 0.25},
+		'WhoMadeTheseNo': {text: "It in fact is not.",
+				buttons: [], acception: -0.20},
+		
+		'BasicWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 99. This is my proudest achievement. I have done it on a higher sliding speed though. Would you like me to change yours as well?",
+				buttons: [{text: "I'd like to change my sliding speed", to: "HorizontalSlide"}]},
+		'DiggingWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 97. It's a bit tricky but at least there are virtually no cursed pieces.",
+				buttons: []},
+		'SolverWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 98. I had to ask someone else to play as the solver to make it fair, otherwise I could win in a single frame as the solver.",
+				buttons: []},
+		'VerticalWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 97. Though I've done it on a higher sliding speed, I can change yours as well if you would prefer that.",
+				buttons: [{text: "I'd like to change my sliding speed", to: "HorizontalSlide"}]},
+		'Multiple ChoiceWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 98. Faster speeds require a lot more concentration.",
+				buttons: []},
+		'TeleportWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 96. Cannot say that I've mastered the teleport movement but I've made good progress.",
+				buttons: []},
+		'4 Lines ClearsWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 97. If you make some holes on purpose then you won't see any cursed pieces and then it's not too bad.",
+				buttons: []},
+		'Full DiggingWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 94. I wasn't brave enough to try the faster speeds.",
+				buttons: []},
+		'Fast MovementWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 99. It took a fair amount of restarts to achieve it.",
+				buttons: []},
+		'GravityWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 97. It took a lot of focus.",
+				buttons: []},
+		'Solver/Multiple/BasicWizardRecord': {text: "The fastest speed I've cleared the {{challengeType}} Challenge on is 98. I had to ask someone to play as the solver here as well, it was pretty enjoyable.",
+				buttons: []},
+		'???WizardRecord': {text: "I've never seen this challenge before.",
+				buttons: []},
+		'GoodJobOnRecord': {text: "Thank you.",
+				buttons: [], acception: 0.35},
+		
+		'SpeedNumbers': {text: "100 is the fastest speed, and 1 is the slowest. Would you like to know how it's calculated?",
+				buttons: [{text: "Yes", to: "SpeedNumbersYes"},{text: "No", to: "SpeedNumbersNo"},{text: "I'm afraid of numbers", to: "SpeedNumbersAfraid"},{text: "All of the above", to: "SpeedNumbersAll"}]},
+		'SpeedNumbersYes': {text: "It's 101 minus how many frames it takes for a piece to fall a single block. 100 speed is when it falls on every frame because 101-100=1. 1 speed is when pieces take 100 frames to fall.",
+				buttons: [{text: "What is a frame?", to: "SpeedNumbersYesFrame"},{text: "Thanks!", to: "SpeedNumbersYesThanks"}]},
+		'SpeedNumbersYesFrame': {text: "The game runs at 60 frames per second, so a frame is 1/60th of a second. This also means speed 41 is when pieces fall one block per second, because 101-60=41.",
+				buttons: [{text: "Thanks!", to: "SpeedNumbersYesThanks"}]},
+		'SpeedNumbersYesThanks': {text: "My pleasure, I appreciate that you are interested in the details of this game.",
+				buttons: [], acception: 0.25},
+		'SpeedNumbersNo': {text: "Alright.",
+				buttons: []},
+		'SpeedNumbersAfraid': {text: "I'm sorry to hear that, would you like me to replace every number with letters?",
+				buttons: [{text: "I would love that", to: "SpeedNumbersAfraidYes"},{text: "Please don't", to: "SpeedNumbersAfraidNo"}]},
+		'SpeedNumbersAfraidYes': {text: "Alright, now counting upwards will look like this: 0 1 2 3 4 5 6 7 8 9. I hope this helps.",
+				buttons: [], variableChanges: {"numberReplace": true}, shouldChangeRules: true},
+		'SpeedNumbersAfraidNo': {text: "Understandable, I hope the numbers won't cause too much distress.",
+				buttons: [], variableChanges: {"numberReplace": false}, shouldChangeRules: true},
+		'SpeedNumbersAll': {text: "Ech weess net wat ech dozou soen soll.",
+				buttons: []},
+		
+		'Sorry': {text: "Just please be nicer next time...",
+				buttons: [], acception: 0.10},
+		
+		
+		'Sample': {text: "",
+				buttons: [{text: "", to: ""}]},
+		
+		"": {text: "I have absolutely nothing to say somehow.", repeatTexts: ["I again have nothing to say."], buttons: [{text: "*replying nothing to nothing*", to: ""}]},
+	};
+	
+	let responseButtons = [
+		{text: "The sliding speed is hard to work with", to: "HorizontalSlide", includeTexts: ["Challenge"], excludeTexts: ["Negative"]},
+		{text: "I'm having a hard time with the randomness", to: "TooRandom", includeTexts: ["Challenge"], excludeTexts: ["Negative"]},
+		{text: "Thank you!", to: "NextPiecesThanks", includeTexts: ["NextPiecesChange"], excludeTexts: []},
+		{text: "Thank you!", to: "HorizontalSlideThanks", includeTexts: ["HorizontalSlideChange"], excludeTexts: []},
+		{text: "Which challenge should I choose?", to: "WhichChooseMain", includeTexts: ["Select"], excludeTexts: ["SpeedSelect","Negative"]},
+		{text: "Thanks for sharing!", to: "WhichChooseThanks", includeTexts: ["WhichChoose"], excludeTexts: ["WhichChooseMain", "WhichChooseThanks"]},
+		{text: "(Back)", to: "WhichChooseMain", includeTexts: ["WhichChoose"], excludeTexts: ["WhichChooseMain", "WhichChooseThanks"]},
+		{text: "Good job on the record!", to: "GoodJobOnRecord", includeTexts: ["WizardRecord"], excludeTexts: ["???"]},
+		{text: "Who made these challenges?", to: "WhoMadeThese", includeTexts: ["Select"], excludeTexts: ["SpeedSelect","Friendly","Negative"]},
+		{text: "How do these speed numbers work?", to: "SpeedNumbers", includeTexts: ["SpeedSelect"], excludeTexts: ["Negative"]},
+		{text: "What's your record on this challenge?", to: "{{challengeType}}WizardRecord", includeTexts: ["Select"], excludeTexts: ["Negative"]},
+		{text: "I'm sorry for what I said.", to: "Sorry", includeTexts: ["Negative"], excludeTexts: []},
+		{text: "Can I ask some questions?", to: "WizardQuestions", includeTexts: ["Friendly"], excludeTexts: [], isFriendly: true},
+	];
+	
+	
+	for (let button of responseButtons){
+		for (let i in wizardDialogues){
+			
+			let isExcluded = false;
+			
+			for (let j in button.excludeTexts){
+				if (i.includes(button.excludeTexts[j])){
+					isExcluded = true;
+				}
+			}
+			
+			if (!isExcluded){
+				let isIncluded = false;
+				
+				for (let j in button.includeTexts){
+					if (i.includes(button.includeTexts[j])){
+						isIncluded = true;
+					}
+				}
+				
+				if (isIncluded){
+					let arr = {text: button.text, to: button.to};
+					
+					if (button.isFriendly){
+						arr.isFriendly = true;
+					}
+					
+					wizardDialogues[i].buttons.push(arr);
 				}
 			}
 		}
 	}
 	
 </script>
+<script> //Wizard
+	
+	let currentWizardDialogue = "Intro";
+	let wizardEngagedRewardNum = 1;
+	let wizardUnengagedPenaltyNum = 0.05;
+	let wasWizardEngaged = false;
+	let challengePlaycount = 0;
+	let challengeRestartCounts = {};
+	let previousChallengeSpeed = 56;
+	
+	
+	let challengeMenuWizardPos = {
+		text: {x: 22, y: 7, w: 12, h: 0.8},
+		buttons: {x: 22, y: 12, w: 12, h: 0.8},
+		
+		head: {x: 22, y: 2},
+		blockSize: {w: 0.25, h: 0.25},
+	};
+	
+	
+	let wizardHead = [
+		[0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+		[0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],
+		[0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0],
+		[0,0,0,0,0,0,0,0,0,1,2,1,0,0,0,0,0,0],
+		[0,0,0,0,0,0,0,0,1,1,2,1,0,0,0,0,0,0],
+		[0,0,0,0,0,0,0,0,1,2,2,1,0,0,0,0,0,0],
+		[0,0,0,0,0,0,0,1,1,2,2,1,1,0,0,0,0,0],
+		[0,0,0,0,0,0,0,1,2,2,2,2,1,0,0,0,0,0],
+		[0,0,0,0,0,0,1,1,2,2,2,2,1,0,0,0,0,0],
+		[0,0,0,0,0,0,1,2,2,2,2,2,1,0,0,0,0,0],
+		[0,0,0,0,0,1,1,2,2,2,2,2,1,1,0,0,0,0],
+		[0,0,0,0,0,1,2,2,2,2,2,2,2,1,0,0,0,0],
+		[0,0,0,0,1,1,2,2,2,3,3,2,2,1,0,0,0,0],
+		[0,0,0,0,1,2,2,3,2,2,3,3,2,1,1,0,0,0],
+		[0,0,0,0,1,2,2,3,3,2,2,3,2,2,1,0,0,0],
+		[0,0,0,1,1,2,2,2,3,3,3,2,2,2,1,0,0,0],
+		[0,0,0,1,2,2,2,2,2,3,2,2,2,2,1,1,0,0],
+		[0,0,1,1,2,2,2,2,2,2,2,2,2,2,2,1,0,0],
+		[0,0,1,2,2,2,2,2,2,2,2,2,2,2,2,1,0,0],
+		[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+		
+		[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0],
+		[0,0,1,4,5,5,4,4,4,4,4,4,4,5,5,1,0,0],
+		[0,0,1,4,5,5,5,4,4,4,4,4,5,5,5,1,0,0],
+		[0,0,1,4,4,5,5,4,4,4,4,4,5,5,4,1,0,0],
+		[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0],
+		
+		[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0],
+		[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0],
+		[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0],
+		[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0],
+		[0,0,0,1,4,4,4,4,4,4,4,4,4,4,1,0,0,0],
+		[0,0,0,0,1,4,4,4,4,4,4,4,4,1,0,0,0,0],
+		[0,0,0,0,0,1,4,4,4,4,4,4,1,0,0,0,0,0],
+		[0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0],
+		[0,0,1,1,1,1,2,2,2,2,2,2,1,1,1,1,0,0],
+		[1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1]
+	];
+	
+	let wizardEyes = {
+		Neutral: [
+			[0,0,1,1,1,1,4,4,4,4,4,4,4,1,1,1,0,0],
+			[0,0,1,1,5,5,1,4,4,4,4,4,1,5,5,1,0,0],
+			[0,0,1,1,5,5,5,1,4,4,4,1,5,5,5,1,0,0],
+			[0,0,1,4,1,5,5,1,4,4,4,1,5,5,1,1,0,0],
+			[0,0,1,4,4,1,1,4,4,4,4,4,1,1,4,1,0,0]
+		],
+		Unengaged: [
+			[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0],
+			[0,0,1,4,1,1,1,4,4,4,4,4,1,1,1,1,0,0],
+			[0,0,1,1,5,5,5,1,4,4,4,1,5,5,5,1,0,0],
+			[0,0,1,4,1,1,1,4,4,4,4,4,1,1,1,1,0,0],
+			[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0]
+		],
+		Friendly: [
+			[0,0,1,1,1,1,4,4,4,4,4,4,4,1,1,1,0,0],
+			[0,0,1,1,2,2,1,4,4,4,4,4,1,2,2,1,0,0],
+			[0,0,1,1,2,2,2,1,4,4,4,1,2,2,2,1,0,0],
+			[0,0,1,4,1,2,2,1,4,4,4,1,2,2,1,1,0,0],
+			[0,0,1,4,4,1,1,4,4,4,4,4,1,1,4,1,0,0]
+		],
+		Negative: [
+			[0,0,1,4,4,4,4,4,4,4,4,4,4,4,4,1,0,0],
+			[0,0,1,1,1,1,4,4,4,4,4,4,4,1,1,1,0,0],
+			[0,0,1,1,5,5,1,4,4,4,4,4,1,5,5,1,0,0],
+			[0,0,1,4,1,5,5,1,4,4,4,1,5,5,1,1,0,0],
+			[0,0,1,4,4,1,1,4,4,4,4,4,1,1,4,1,0,0]
+		]
+	};
+	
+	let wizardEyesPos = 20;
+	
+	
+
+	let wizard = {emotions: {engaged: -0.3, accepted: -0.75, proud: 0}, rules: []};
+		
+	function onChallengeAction(arr){
+		let restartRanges = [0,1,6,16];
+		let restartDialogueNum = 0;
+		
+		
+		if (arr.type == "wonChallenge" || arr.type == "lostChallenge"){
+			let restartCount = challengeRestartCounts[arr.value][arr.speed];
+			
+			for (let i = 0; i < restartRanges.length; i++){
+				if (restartCount >= restartRanges[i]){
+					restartDialogueNum = i;
+				}
+			}
+		}
+		
+		switch (arr.type){
+			case "startChallenge":
+				if (challengeRestartCounts[arr.value] == undefined){
+					challengeRestartCounts[arr.value] = [];
+				}
+				
+				if (challengeRestartCounts[arr.value][arr.speed] == undefined){
+					challengeRestartCounts[arr.value][arr.speed] = 0;
+				} else{
+					challengeRestartCounts[arr.value][arr.speed]++;
+				}
+				
+				previousChallengeSpeed = getConvertedSpeed(getCurrentChallengeSpeed());
+			break;
+			case "restartedChallenge":
+				//challengeRestartCounts[arr.value][getCurrentChallengeSpeed()]++;
+			break;
+			case "wonChallenge":
+				currentWizardDialogue = "ChallengeWin" + restartDialogueNum;
+				
+				if (challengeRestartCounts[arr.value][getCurrentChallengeSpeed()] > 1){
+					challengeRestartCounts[arr.value][getCurrentChallengeSpeed()]--;
+				}
+			break;
+			case "lostChallenge":
+				currentWizardDialogue = "ChallengeLose" + restartDialogueNum;
+			break;
+			case "changedChallangeType":
+				//probably not needed
+			break;
+		}
+	}
+	
+	
+	function getWizardDialogueName(){
+		let dialogue = currentWizardDialogue;
+		
+		if (wizard.emotions.engaged <= -0.5 && wizard.emotions.accepted > -1){
+			dialogue = "Unengaged";
+		}
+		
+		return dialogue;
+	}
+	
+	
+	function getCurrentWizardEmotion(){
+		let emotion = "Neutral";
+		
+		if (wizard.emotions.accepted <= -1){
+			emotion = "Negative";
+		} else if (wizard.emotions.engaged <= -0.5){
+			emotion = "Unengaged";
+		} else if (wizard.emotions.accepted >= 0.5){
+			emotion = "Friendly";
+		}
+		return emotion;
+	}
+	
+	function getWizardDialogue(){
+		let dialogueName = getWizardDialogueName();
+		
+		if (wizardDialogues[getWizardDialogueName()] == undefined){
+			dialogueName = "";
+		} else{
+			let emotionText = "";
+			
+			let currentEmotion = getCurrentWizardEmotion();
+			
+			if (currentEmotion == "Negative" || currentEmotion == "Friendly"){
+				emotionText = currentEmotion;
+			}
+			
+			if (wizardDialogues[dialogueName + emotionText] != undefined){
+				dialogueName += emotionText;
+			}
+		}
+		
+		return wizardDialogues[dialogueName];
+	}
+	
+	
+	function increaseWizardDialogueRepeatNum(){
+		let dialogue = getWizardDialogue();
+		
+		if (dialogue.repeatNum == undefined){
+			dialogue.repeatNum = 0;
+		} else if (dialogue.repeatPlaycountNum != challengePlaycount){
+			dialogue.repeatNum++;
+		}
+		
+		dialogue.repeatPlaycountNum = challengePlaycount;
+	}
+	
+	
+	function wizardButtonClick(defaultName, isNonAnswerButton){
+		increaseWizardDialogueRepeatNum();
+		
+		let name = getEvaluatedText(defaultName);
+		
+		currentWizardDialogue = name;
+		
+		if (wizardDialogues[name].acception != undefined){
+			wizard.emotions.accepted += wizardDialogues[name].acception;
+			
+			wizard.emotions.accepted = getNumInRange(wizard.emotions.accepted, -1, 1);
+			
+			if (wizardDialogues[name].acception > 0){
+				wizardDialogues[name].acception /= 2;
+			}
+		}
+		
+		
+		if (!isNonAnswerButton){
+			wizard.emotions.engaged = Math.min(wizard.emotions.engaged + wizardEngagedRewardNum, 1);
+			
+			wasWizardEngaged = true;
+		}
+		
+		if (wizardDialogues[name].variableChanges != undefined){
+			for (let i in wizardDialogues[name].variableChanges){
+				wizard.rules[i] = wizardDialogues[name].variableChanges[i];
+				
+				if (wizardDialogues[name].shouldChangeRules){
+					rules[i] = wizard.rules[i];
+				}
+			}
+		}
+	}
+	
+</script>
+
 
 <script> //General Draw Functions
 	
@@ -2815,16 +4294,17 @@
 		
 		let sizes = {x: canvas.width, y: canvas.height, w: canvas.width, h: canvas.height};
 		
+		if (camera.areDimentionsEqual){
+			let size = Math.min(canvas.width, canvas.height * camera.minWidthToHeightRatio);
+			
+			sizes = {x: size, y: size, w: size, h: size};
+		}
+		
 		for (let i in scaledArr){
 			if (sizes[i] != undefined){
 				
 				scaledArr[i] *= sizes[i];
 			}
-		}
-		
-		if (camera.areDimentionsEqual){
-			scaledArr.y *= canvas.width/canvas.height;
-			scaledArr.h *= canvas.width/canvas.height;
 		}
 		
 		return scaledArr;
@@ -2883,24 +4363,178 @@
 		shortFillRect(scaledPos);
 	}
 	
+	function centeredScaledFillRect(pos, isAbsolutePositioned){
+		scaledFillRect(getCenterPosition(pos, isAbsolutePositioned));
+	}
+	
+	
+	function getFontSizeFromRatio(ratio){
+		return Math.floor(getCanvasScaledPositions({h: ratio}).h) * (camera.zoom.level / camera.zoom.defaultTextLevel);
+	}
+	
 	function scaledFillText(text, pos, isAbsolutePositioned){
 		let scaledPos = (isAbsolutePositioned) ? getCanvasScaledPositions(pos) : getScaledPosition(pos);
 		
-		ctx.fillText(text, scaledPos.x, scaledPos.y);
+		if (rules.numberReplace && text != undefined){
+			text = (text + "").replaceAll("0", "O").replaceAll("1", "I").replaceAll("2", "Z").replaceAll("3", "E").replaceAll("4", "A").replaceAll("5", "S").replaceAll("6", "G").replaceAll("7", "T").replaceAll("8", "B").replaceAll("9", "P");
+		}
+		
+		let evalText = getEvaluatedText(text);
+		
+		ctx.fillText(evalText, scaledPos.x, scaledPos.y);
+	}
+	
+	function scaledFillTextAndBreakToFitWidth(text, pos, width, gapY, isAbsolutePositioned){
+		let textArr = [];
+		
+		let remainingText = getEvaluatedText(text);
+		
+		let lastSpaceNum = 0;
+		
+		while (remainingText.length > 0){
+			remainingText = remainingText.trimStart();
+			
+			for (let i = 0; i < width; i++){
+				if (remainingText.length > width){
+					if (i + 1 == width){
+						
+						let lineWidth = (lastSpaceNum > 0) ? lastSpaceNum : width;
+						
+						textArr.push(remainingText.substring(0, lineWidth));
+						
+						remainingText = remainingText.substring(lineWidth);
+						
+						lastSpaceNum = 0;
+					} else{
+						if (remainingText[i] == " "){
+							lastSpaceNum = i;
+						}
+					}
+				} else{
+					textArr.push(remainingText);
+					
+					remainingText = "";
+				}
+			}
+		}
+		
+		for (let i = 0; i < textArr.length; i++){
+			scaledFillText(textArr[i], {x: pos.x, y: pos.y + gapY*i}, isAbsolutePositioned);
+		}
 	}
 	
 </script>
 <script> //Draw Buttons
 	
-	function drawButtons(){
-		for (let i in buttons){
-			for (let j in buttons[i]){
-				let pos = buttons[i][j].pos;
-				
-				if (buttons[i][j].isCentered != false){
-					pos = getCenterPosition(pos, true);
+	function buttonHoverNextFrame(){
+		if (hoveredButtons.gameState != gameState){
+			hoveredButtons.gameState = gameState;
+			hoveredButtons.arr = [];
+		}
+		
+		
+		let hoveredIndex = -1;
+		
+		if (closestButton.isHover && closestButton.i == gameState){
+			if (!(hoveredButtons.arr[closestButton.j] > hoveredButtons.maxSeconds)){
+				if (hoveredButtons.arr[closestButton.j] == undefined){
+					hoveredButtons.arr[closestButton.j] = 0;
 				}
 				
+				hoveredButtons.arr[closestButton.j] += 1/fps;
+				
+				hoveredButtons.arr[closestButton.j] = Math.min(hoveredButtons.maxSeconds, hoveredButtons.arr[closestButton.j]);
+				
+				hoveredIndex = closestButton.j;
+			}
+		}
+		
+		for (let i in hoveredButtons.arr){
+			if (hoveredButtons.arr[i] > 0 && i != hoveredIndex){
+				hoveredButtons.arr[i] -= 1/fps;
+				
+				hoveredButtons.arr[i] = Math.max(0, hoveredButtons.arr[i]);
+			}
+		}
+		
+		if (clickedButton.i == gameState){
+			hoveredButtons.arr[clickedButton.j] = hoveredButtons.maxSeconds * hoveredButtons.clickMultiplier;
+		}
+	}
+	
+	function drawButtons(){
+		let i = gameState;
+		
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		
+		buttonHoverNextFrame();
+		
+		for (let j in buttons[i]){
+			let pos = buttons[i][j].pos;
+			
+			if (buttons[i][j].isCentered != false){
+				pos = getCenterPosition(pos, true);
+			}
+			
+			//hover color
+			let hoverColor;
+			if (hoveredButtons.arr[j] > 0){
+				let alphaNum = hoveredButtons.arr[j] / hoveredButtons.maxSeconds;
+				
+				alphaNum *= buttons[i][j].maxAlphaNum ?? hoveredButtons.maxAlphaNum;
+				
+				hoverColor = (buttons[i][j].hoverColor ?? colors["defaultButtonHover"]).replaceAll("{{alphaNum}}", alphaNum);
+			}
+			
+			//button color
+			let color = (buttons[i][j].color ?? "defaultButton");
+			ctx.fillStyle = colors[color] ?? color;
+			scaledFillRect(pos);
+			
+			
+			//button text
+			let textColor = (buttons[i][j].textColor ?? "defaultButtonText");
+			
+			if (buttons[i][j].text != undefined){
+				let size = getScaledPosition(buttons[i][j].pos).w * (buttons[i][j].textSize ?? 0.1);
+				
+				ctx.font = size + "px Consolas";
+				ctx.fillStyle = colors[textColor] ?? textColor;
+				scaledFillText(buttons[i][j].text, buttons[i][j].pos);
+				
+				if (hoverColor != undefined){
+					ctx.fillStyle = hoverColor;
+					scaledFillText(buttons[i][j].text, buttons[i][j].pos);
+				}
+			}
+			
+			//button subtext
+			if (buttons[i][j].subtext != undefined){
+				let size = getScaledPosition(buttons[i][j].pos).w * (buttons[i][j].subtextSize ?? 0.05);
+				
+				if (buttons[i][j].subtextPos == undefined){
+					buttons[i][j].subtextPos = {x: 0.45, y: 0.3};
+				}
+				
+				let subtextPos = {
+					x: buttons[i][j].subtextPos.x * buttons[i][j].pos.w,
+					y: buttons[i][j].subtextPos.y * buttons[i][j].pos.h
+				}
+				
+				ctx.font = size + "px Consolas";
+				ctx.fillStyle = colors[textColor] ?? textColor;
+				scaledFillText(buttons[i][j].subtext, {x: buttons[i][j].pos.x + subtextPos.x, y: buttons[i][j].pos.y + subtextPos.y});
+				
+				if (hoverColor != undefined){
+					ctx.fillStyle = hoverColor;
+					scaledFillText(buttons[i][j].subtext, {x: buttons[i][j].pos.x + subtextPos.x, y: buttons[i][j].pos.y + subtextPos.y});
+				}
+			}
+			
+			//button color hover
+			if (hoverColor != undefined){
+				ctx.fillStyle = hoverColor;
 				scaledFillRect(pos);
 			}
 		}
@@ -2909,12 +4543,36 @@
 </script>
 <script> //Draw Board
 	
-	function drawBlock(x, y, colors){
-		ctx.fillStyle = colors[1];
-		scaledFillRect({x: x, y: y, w: 1, h: 1});
+	function getResizedBlockPos(x, y, currentBoard){
+		let pos = {
+			w: 10 / currentBoard[0].length,
+			h: 10 / currentBoard[0].length
+		}
 		
-		ctx.fillStyle = colors[0];
-		scaledFillRect({x: x + boardData.border, y: y + boardData.border, w: 1 - boardData.border*2, h: 1 - boardData.border*2});
+		pos.x = 5 + ((x - currentBoard[0].length/2) * pos.w);
+		pos.y = y * pos.h;
+		
+		return pos;
+	}
+	
+	function drawBlock(x, y, colorsArr, shouldResize, size = {w: 1, h: 1}){
+		let pos = {x: x, y: y, w: size.w, h: size.h};
+		
+		if (shouldResize){
+			pos = getResizedBlockPos(x, y, board);
+		}
+		
+		
+		ctx.fillStyle = colorsArr[1] ?? colorsArr[0];
+		scaledFillRect(pos);
+		
+		let borderSize = {
+			w: boardData.border * pos.w,
+			h: boardData.border * pos.h
+		}
+		
+		ctx.fillStyle = colorsArr[0];
+		scaledFillRect({x: pos.x + borderSize.w, y: pos.y + borderSize.h, w: pos.w - borderSize.w*2, h: pos.h - borderSize.h*2});
 	}
 	
 	function drawBoard(){
@@ -2924,25 +4582,65 @@
 			for (let j = 0; j < board[i].length; j++){
 				let colorNum = board[i][j].num - 1;
 				
-				drawBlock(j, i, currentColors[colorNum]);
+				drawBlock(j, i, currentColors[colorNum], true);
 				
 				if (board[i][j].hasFallen){
-					drawBlock(j, i, ["#000000","#ffffff"]);
-					//drawBlock(j, i, ["hsla(" + Math.round((t/4) % 256) + ",50%,50%,0.1)","hsla(" + Math.round((t/4) % 256) + ",50%,50%,0.333)"]);
+					drawBlock(j, i, ["#000000","#ffffff"], true);
 				}
 				
-				if (rules.clearVertical && i == board.length - rules.verticalLineHeight){
-					let lineHeight = 0.15;
+				
+				if (rules.verticalClear){
+					let blockCounts = getVerticalLineBlockCounts(j, board);
 					
-					ctx.fillStyle = "#ffffff22";
-					scaledFillRect({x: j, y: i + (0.5 - lineHeight/2), w: 1, h: lineHeight});
+					let minHeight = getRequiredVerticalLineHeight(board);
+					
+					let lineY = board.length - minHeight;
+					
+					if (rules.clearVerticalLinesWithHoles){
+						lineY -= blockCounts.wrongBlocksBelowHighestBlock;
+					}
+					
+					if (i == lineY){
+						let pos = getResizedBlockPos(j, i, board);
+						
+						let lineHeight = 0.15 * pos.h;
+						
+						ctx.fillStyle = "#6f6f6f";
+						
+						pos.y += (0.5 * pos.h - lineHeight/2);
+						pos.h = lineHeight;
+						
+						scaledFillRect(pos);
+					}
+					
+					
+					if (rules.pieceGravity){
+						let fallenLineY = board.length - minHeight;
+						
+						if (rules.clearVerticalLinesWithHoles){
+							fallenLineY -= blockCounts.wrongBlocksBelowHighestFallen;
+						}
+						
+						if (i == fallenLineY){
+							let pos = getResizedBlockPos(j, i, board);
+							
+							let lineHeight = 0.15 * pos.h;
+							
+							ctx.fillStyle = "#0f0f0f";
+							
+							pos.y += (0.5 * pos.h - lineHeight/2);
+							pos.h = lineHeight;
+							
+							scaledFillRect(pos);
+						}
+					}
 				}
 			}
 		}
 	}
 	
 	
-	function drawPiece(x, y, rotationNum, pieceNum, currentColors){
+	function drawPiece(x, y, rotationNum, pieceNum, currentColors, isHud){
 		let pieceArr = pieces[pieceNum][rotationNum];
 		
 		if (currentColors == undefined){
@@ -2957,21 +4655,21 @@
 						y: y + (i - Math.floor(pieceArr.length/2))
 					}
 					
-					if (isPosInArr(pos, board)){
+					if (isPosInArr(pos, board) || isHud){
 						let color = currentColors[(pieceColorsNums[pieceNum] ?? 0)];
 						
 						if (!Array.isArray(color)){
 							color = currentColors;
 						}
 						
-						drawBlock(pos.x, pos.y, color);
+						drawBlock(pos.x, pos.y, color, !isHud);
 					}
 				}
 			}
 		}
 		
-		if (rules.teleportMovement){
-			drawBlock(x, y, ["#AAAAAA","#f0f0f0"]);
+		if (rules.teleportMovement && !isHud){
+			drawBlock(x, y, ["#AAAAAA","#f0f0f0"], true);
 		}
 	}
 	
@@ -2980,39 +4678,25 @@
 	}
 	
 	
-	function drawNextPieces(){ //this could use drawPiece
+	function drawNextPieces(){
 		for (let k = 0; k < nextPieceNums.length; k++){
 			if (k < rules.nextPieceDepth){
-				let pieceArr = pieces[nextPieceNums[k]][0];
 				
 				let currentColors = levelColors[currentLevel] ?? levelColors[0];
 				
-				for (let i = 0; i < pieceArr.length; i++){
-					for (let j = 0; j < pieceArr[i].length; j++){
-						if (pieceArr[i][j] != 0){
-							let pos = {
-								x: 13 + (j - Math.floor(pieceArr[i].length/2)),
-								y: 9 + (i - Math.floor(pieceArr.length/2)) + k*3.5
-							}
-							
-							if (nextPieceNums.length > 3){
-								pos.x += Math.floor(k / 6) * 4.5;
-								
-								pos.y = 0.5 + (i - Math.floor(pieceArr.length/2)) + (k % 6)*3.5;
-								
-							}
-							
-							drawBlock(pos.x, pos.y, currentColors[(pieceColorsNums[nextPieceNums[k]] ?? 0)]);
-						}
-					}
+				let pos = {
+					x: 13 + Math.floor(k / 6) * 4.5,
+					y: (9 - (Math.min(nextPieceNums.length - 1, 5) * 1.7)) + (k % 6)*3.5
 				}
+				
+				drawPiece(pos.x, pos.y, 0, nextPieceNums[k], currentColors[(pieceColorsNums[nextPieceNums[k]] ?? 0)], true);
 			}
 		}
 	}
 	
 	
 	function drawMultipleChoiceChoices(){
-		ctx.font = Math.floor(canvas.width/42) + "px Consolas";
+		ctx.font = getFontSizeFromRatio(0.023) + "px Consolas";
 		
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
@@ -3030,30 +4714,30 @@
 			let textColor = currentColor.substring(0, 7).replaceAll("88", "FF").replaceAll("44", "00");
 			
 			ctx.fillStyle = colors.black;
-			scaledFillText(i + 1, {x: arr.x + 0.55, y: arr.y + 0.55});
+			scaledFillText(i + 1, {x: arr.x + 0.55, y: arr.y + 0.6});
 			
 			ctx.fillStyle = textColor;
-			scaledFillText(i + 1, {x: arr.x + 0.5, y: arr.y + 0.5});
+			scaledFillText(i + 1, {x: arr.x + 0.5, y: arr.y + 0.55});
 		}
 	}
 	
 </script>
-<script> //Draw Hud Stats
+<script> //Draw Hud
 	
 	function drawLineClearNums(){
 		ctx.fillStyle = colors.white;
-			ctx.textAlign = "center";
+		ctx.textAlign = "center";
 		
-		if (rules.clearHorizontal && rules.clearVertical){
-			ctx.font = Math.floor(canvas.width/90) + "px Consolas";
+		if (rules.horizontalClear && rules.verticalClear){
+			ctx.font = getFontSizeFromRatio(0.011) + "px Consolas";
 			
 			scaledFillText("Vertical Lines: " + lineClearNums.vertical, {x: 5, y: -2});
 			scaledFillText("Horizontal Lines: " + lineClearNums.horizontal, {x: 5, y: -1});
 			
-		} else if (rules.clearHorizontal || rules.clearVertical){
-			ctx.font = Math.floor(canvas.width/45) + "px Consolas";
+		} else if (rules.horizontalClear || rules.verticalClear){
+			ctx.font = getFontSizeFromRatio(0.022) + "px Consolas";
 			
-			let linesNum = (rules.clearHorizontal) ? lineClearNums.horizontal : lineClearNums.vertical;
+			let linesNum = (rules.horizontalClear) ? lineClearNums.horizontal : lineClearNums.vertical;
 			
 			scaledFillText("Lines: " + linesNum, {x: 5, y: -1.5});
 		}
@@ -3062,7 +4746,7 @@
 	function drawCursedPieceChances(){
 		if (rules.cursedPiecesChance != 0){
 			ctx.fillStyle = colors.white;
-			ctx.font = Math.floor(canvas.width/90) + "px Consolas";
+			ctx.font = getFontSizeFromRatio(0.011) + "px Consolas";
 			ctx.textAlign = "left";
 			
 			let chance = getCursedPiecesChance();
@@ -3078,35 +4762,264 @@
 		}
 	}
 	
+	function drawSpeed(){
+		ctx.fillStyle = colors.white;
+		ctx.font = getFontSizeFromRatio(0.011) + "px Consolas";
+		ctx.textAlign = "left";
+		
+		refreshCurrentFallingSpeed();
+		
+		scaledFillText("Speed: " + getConvertedSpeed(currentFallingSpeed), {x: 11, y: -1.5});
+	}
+	
+	
+	function drawMultipleChoiceTimer(){
+		let ratio = rules.multipleChoiceTimer / getMultipleChoiceMaxTimer();
+		
+		ctx.fillStyle = colors.emptyBlock;
+		scaledFillRect({x: 0, y: -0.4, w: 10, h: 0.11});
+		scaledFillRect({x: 0, y: 20.29, w: 10, h: 0.11});
+		
+		
+		ctx.fillStyle = colors.white + "66";
+		scaledFillRect({x: 0, y: -0.4, w: 10 * ratio, h: 0.11});
+		scaledFillRect({x: 0, y: 20.29, w: 10 * ratio, h: 0.11});
+	}
+	
 	
 	function drawControls(){
 		if (shouldDrawControls){
 			ctx.fillStyle = "#ffffff44";
-			ctx.font = Math.floor(canvas.width/90) + "px Consolas";
+			ctx.font = getFontSizeFromRatio(0.011) + "px Consolas";
 			ctx.textAlign = "center";
 			
 			let pos = {x: -11.5, y: 15, gapY: 0.875};
 			
-			pos.x -= (rules.teleportMovement) ? 1 : 0;
-			pos.y -= (rules.teleportMovement) ? 1 : 0;
-			
-			
-			scaledFillText("Controls: ", {x: pos.x, y: pos.y + pos.gapY*-0.5});
-			
-			if (rules.teleportMovement){
-				scaledFillText("Movement: ASDFGHJKL;", {x: pos.x, y: pos.y + pos.gapY*1});
-				scaledFillText("Left Rotation: QWERTZXCVB", {x: pos.x, y: pos.y + pos.gapY*2});
-				scaledFillText("Right Rotation: YUIOP[]NM,./", {x: pos.x, y: pos.y + pos.gapY*3});
-				scaledFillText("Down: Space", {x: pos.x, y: pos.y + pos.gapY*4});
+			if (isCurrentlyMultipleChoice){
+				scaledFillText("Controls: ", {x: pos.x, y: pos.y + pos.gapY*-0.5});
+				scaledFillText("Pick Choice: Number Buttons", {x: pos.x, y: pos.y + pos.gapY*1});
 			} else{
-				scaledFillText("Movement: Arrows", {x: pos.x, y: pos.y + pos.gapY*1});
-				scaledFillText("Rotation: Z X", {x: pos.x, y: pos.y + pos.gapY*2});
+				pos.x -= (rules.teleportMovement) ? 1 : 0;
+				pos.y -= (rules.teleportMovement) ? 1 : 0;
+				
+				
+				scaledFillText("Controls: ", {x: pos.x, y: pos.y + pos.gapY*-0.5});
+				
+				if (rules.teleportMovement){
+					scaledFillText("Movement: ASDFGHJKL;", {x: pos.x, y: pos.y + pos.gapY*1});
+					scaledFillText("Left Rotation: QWERTZXCVB", {x: pos.x, y: pos.y + pos.gapY*2});
+					scaledFillText("Right Rotation: YUIOP[]NM,./", {x: pos.x, y: pos.y + pos.gapY*3});
+					scaledFillText("Down: Space", {x: pos.x, y: pos.y + pos.gapY*4});
+				} else{
+					scaledFillText("Movement: Arrows", {x: pos.x, y: pos.y + pos.gapY*1});
+					scaledFillText("Rotation: Z X", {x: pos.x, y: pos.y + pos.gapY*2});
+				}
+			}
+		}
+	}
+	
+	function drawChallengeTexts(){
+		if (objectLength(currentChallenge) > 0){
+			
+			let textColor = "#f0f0f0";
+			
+			ctx.font = getFontSizeFromRatio(0.014) + "px Consolas";
+			ctx.textAlign = "center";
+			
+			//let arr = currentChallenge.winCondition;
+			let winArr = currentChallenge.winCondition;
+			
+			let arr = [
+				{type: "clearNum", score: (lineClearNums.horizontal + lineClearNums.vertical), isIncreasing: true, text: "Line Clears"},
+				
+				{type: "horizontalClearNum", score: lineClearNums.horizontal, isIncreasing: true, text: "Horizontal Line Clears"},
+				{type: "verticalClearNum", score: lineClearNums.vertical, isIncreasing: true, text: "Vertical Line Clears"},
+				
+				{type: "blockClearNum", score: (blockClearNums.horizontal + blockClearNums.vertical), isIncreasing: true, text: "Block Clears"},
+				
+				{type: "horizontalBlockClearNum", score: blockClearNums.horizontal, isIncreasing: true, text: "Horizontal Block Clears"},
+				{type: "verticalBlockClearNum", score: blockClearNums.vertical, isIncreasing: true, text: "Vertical Block Clears"},
+				
+				{type: "holesNum", score: getHolesNumInBoard(board), isIncreasing: false, text: "Maximum Holes"}
+			];
+			
+			
+			let y = 5.75;
+			
+			for (let i in arr){
+				let winScore = winArr[arr[i].type];
+				
+				if (winScore != undefined){
+					let score = arr[i].score;
+					
+					let isActive = (arr[i].isIncreasing) ? (score < winScore) : (score > winScore);
+					
+					ctx.fillStyle = textColor + ((isActive && !currentChallenge.didWin) ? "" : "44");
+					
+					scaledFillText(arr[i].text + ": " + score + " / " + winScore, {x: -10, y: y});
+					
+					y -= 1.25;
+				}
+			}
+			
+			
+			refreshCurrentChallengeDidWin();
+			
+			if (currentChallenge.didWin){
+				ctx.font = getFontSizeFromRatio(0.044) + "px Consolas";
+				
+				ctx.fillStyle = textColor;
+				
+				scaledFillText("Victory!", {x: -10, y: 10});
 			}
 		}
 	}
 	
 </script>
-<script> //Draw Call
+<script> //Draw Game Call
+	
+	function drawGame(){
+		drawBoard();
+		
+		if (isCurrentlyMultipleChoice){
+			drawMultipleChoiceChoices();
+			
+			drawMultipleChoiceTimer();
+		} else{
+			drawCurrentPiece();
+		}
+		
+		drawNextPieces();
+		
+		drawLineClearNums();
+		//drawCursedPieceChances();
+		drawSpeed();
+		
+		drawChallengeTexts();
+		
+		if (lineClearNums.vertical + lineClearNums.horizontal == 0){
+			drawControls();
+		}
+	}
+	
+</script>
+
+<script> //Draw Menu
+	
+	function drawMenu(){
+		ctx.fillStyle = colors.white;
+		
+		ctx.font = getFontSizeFromRatio(0.07) + "px Consolas";
+		scaledFillText("Cursetris", {x: 5, y: 3});
+		
+		ctx.font = getFontSizeFromRatio(0.01) + "px Consolas";
+		scaledFillText("Made by soverthe", {x: 5, y: 20});
+		
+		ctx.fillStyle = colors.wizardYellow;
+		centeredScaledFillRect({x: 6.075, y: 19.99, w: 2.25, h: 0.1});
+		ctx.fillStyle = colors.wizardYellow;
+		scaledFillText("The Wizard", {x: 6.7, y: 19.55});
+	}
+	
+	
+	
+	function drawWizardDialogue(){
+		ctx.fillStyle = colors["wizardBlack"] + "88";
+		let pos = challengeMenuWizardPos.text;
+		centeredScaledFillRect({x: pos.x, y: pos.y + pos.h * 2, w: pos.w, h: pos.h * 5.5});
+		
+		let dialogue = getWizardDialogue();
+		let wizardText = dialogue.text;
+		
+		if (dialogue.repeatNum > 0 && dialogue.repeatTexts != undefined){
+			let repeatNum = dialogue.repeatNum - 1;
+			
+			if (repeatNum >= dialogue.repeatTexts.length){
+				repeatNum = dialogue.repeatTexts.length - 1;
+			}
+			
+			wizardText = dialogue.repeatTexts[repeatNum];
+		}
+		
+		ctx.fillStyle = colors["wizardWhite"];
+		ctx.font = getFontSizeFromRatio(0.01) + "px Consolas";
+		scaledFillTextAndBreakToFitWidth(wizardText, challengeMenuWizardPos.text, 42, 0.65);
+	}
+	
+	function drawWizard(){
+		let center = challengeMenuWizardPos.head;
+		let blockSize = challengeMenuWizardPos.blockSize;
+		
+		let currentEmotion = getCurrentWizardEmotion();
+		
+		for (let y = 0; y < wizardHead.length; y++){
+			for (let x = 0; x < wizardHead[y].length; x++){
+				let num = wizardHead[y][x];
+				
+				if (y >= wizardEyesPos && y <= wizardEyesPos + (wizardEyes[currentEmotion].length-1)){
+					num = wizardEyes[currentEmotion][y - wizardEyesPos][x];
+				}
+				
+				if (num > 0 && (num - 1 < wizardColors.length)){
+					let pos = {
+						x: (x - wizardHead[y].length/2) * blockSize.w,
+						y: (y - wizardHead.length/2) * blockSize.h
+					};
+					
+					drawBlock(center.x + pos.x, center.y + pos.y, wizardColors[num - 1], false, blockSize);
+				}
+			}
+		}
+	}
+	
+	function drawChallengeMenu(){
+		ctx.fillStyle = colors.white;
+		
+		ctx.font = getFontSizeFromRatio(0.0175) + "px Consolas";
+		scaledFillText("Selected Speed: " + getConvertedSpeed(getCurrentChallengeSpeed()), {x: 5, y: 4.75});
+		
+		
+		drawWizardDialogue();
+		
+	
+		wizardColors[3][0] = "hsl(0,0%," + (15 + Math.cos(t * 0.005) * 4) +"%)";
+		
+		drawWizard();
+		
+		
+		generateChallengeButtons();
+	}
+	
+	function drawVersionLogs(){
+		ctx.fillStyle = colors.white;
+		ctx.textAlign = "left";
+		
+		y = -2;
+		
+		for (let i = 0; i < versionLogs.length; i++){
+			ctx.font = getFontSizeFromRatio(0.02) + "px Consolas";
+			
+			scaledFillText(versionLogs[i][0], {x: -10, y: y});
+			
+			ctx.font = getFontSizeFromRatio(0.01) + "px Consolas";
+			
+			y += 1.2;
+			
+			for (let j = 1; j < versionLogs[i].length; j++){
+				scaledFillText("- " + versionLogs[i][j], {x: -10, y: y});
+				
+				y += 0.8;
+			}
+			
+			y += 1.2;
+		}
+		
+		ctx.textAlign = "center";
+	}
+	
+</script>
+
+<script> //Draw Calls
 	
 	function draw(){
 		canvas.width |= 0;
@@ -3117,21 +5030,10 @@
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
 		
-		drawBoard();
+		camera.canvasSize = Math.min(canvas.width, canvas.height);
 		
-		if (isCurrentlyMultipleChoice){
-			drawMultipleChoiceChoices();
-		} else{
-			drawCurrentPiece();
-		}
-		
-		drawNextPieces();
-		
-		drawLineClearNums();
-		drawCursedPieceChances();
-		
-		if (lineClearNums.vertical + lineClearNums.horizontal == 0){
-			drawControls();
+		if (drawFunctionNames[gameState] != undefined){
+			window[drawFunctionNames[gameState]]();
 		}
 		
 		drawButtons();
@@ -3147,15 +5049,13 @@
 	let currentFrameTime = getCurrentTime();
 	let wasPreviousCatchUpFrame = false;
 	
-	function nextFrame(){
-		t++;
-		
-		gamepads = navigator.getGamepads();
-		
-		
+	
+	function gameNextFrame(){
 		if (rules.solverTimer.num <= 0){
 			if (isCurrentlyMultipleChoice){
 				multipleChoiceNextFrame();
+				
+				refreshButtonPressStates();
 			} else{
 				refreshButtonPressStates();
 				
@@ -3177,6 +5077,43 @@
 				
 				rules.gravityTimer.num = rules.gravityTimer.max;
 			}
+		}
+		
+		if (rules.recursionTimer.max > 0){
+			rules.recursionTimer.num--;
+			
+			if (rules.recursionTimer.num <= 0){
+				if (board[0].length <= 15){
+					multiplyBoard(getRandomNum(2, 3));
+					
+					while (board[0].length > 40){
+						divideBoard(2);
+					}
+				} else{
+					let maxNum = (board[0].length >= 30) ? 3 : 2;
+					
+					divideBoard(getRandomNum(2, maxNum));
+					
+					while (board[0].length < 10){
+						multiplyBoard(getRandomNum(2, 3));
+					}
+				}
+				
+				rules.recursionTimer.num = rules.recursionTimer.max;
+			}
+		}
+		
+		refreshCurrentChallengeDidWin();
+	}
+	
+	function nextFrame(){
+		t++;
+		
+		gamepads = navigator.getGamepads();
+		
+		
+		if (nextFrameFunctionNames[gameState] != undefined){
+			window[nextFrameFunctionNames[gameState]]();
 		}
 		
 		
@@ -3366,8 +5303,8 @@
 					y: mousePos.y + i * directions.y
 				};
 				
-				
 				//mouse move
+				buttonsClick(false, true);
 			}
 		}
 	}
@@ -3394,8 +5331,18 @@
 	
 </script>
 
+<script> //Close Confirmation
+	
+	window.onbeforeunload = function(e) {
+		return "";
+	};
+	
+</script>
+
 <script> //Calls
 	generateMenu();
+	
+	nextFrame();
   </script>
  </body>
 </html>
