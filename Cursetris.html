@@ -7,8 +7,6 @@
 	
 	html, body { height: 100%; margin: 0; }
 	body {
-		background-color: gray;
-		
 		background-color: #3A3A3A;
 	}
 	
@@ -520,9 +518,12 @@
 	
 	//Version
 	
-	var currentVersion = "v1.4";
+	var currentVersion = "v1.4.1";
 	
 	let versionLogs = [
+		["v1.4.1 (Dec 28, 2024)",
+			"Scrollbar hiding fix", "(This is planned to be the final update, thank you for playing Cursetris <3)",
+		],
 		["v1.4 (Nov 14, 2024)",
 			"Cursetris TV", "Solver Improvements", "Animated Main Menu", "Questionable Wizard Dialogue Options", "Bug Fixes"
 		],
@@ -3774,7 +3775,7 @@
 	function turnOnCanvas(){
 		document.getElementById("customMenuDiv").style.display = "none";
 		document.getElementById("canvasDiv").style.display = "inline-block";
-		document.body.overflow = "hidden";
+		document.body.style.overflow = "hidden";
 		
 		
 		let wasPaused = shouldPauseNextFrame;
@@ -3788,7 +3789,7 @@
 	function turnOffCanvas(){
 		document.getElementById("customMenuDiv").style.display = "inline-block";
 		document.getElementById("canvasDiv").style.display = "none";
-		document.body.overflow = "auto";
+		document.body.style.overflow = "auto";
 		
 		shouldPauseNextFrame = true;
 	}
@@ -5520,7 +5521,7 @@
 						buttons: [{text: "(Beak)", to: "Flirt"}]},
 		'OhYeah': {text: "Oh yeah?",
 						buttons: [{text: "Oh yeah", to: "OhYeah"}, {text: "(Stop saying oh yeah)", to: "Flirt"}]},
-		'YesWantLiquor': {text: "Me to. *blink*",
+		'YesWantLiquor': {text: "Me too. *blink*",
 						buttons: [{text: "(Back to more *flirt*)", to: "Flirt"}]},
 		'NotLemonSqueezer': {text: "...Like what?",
 						buttons: [{text: "Forget it.", to: "FlirtForget"}]},
@@ -6082,7 +6083,6 @@
 			
 			let size = (button.lockedTitleSize ?? 0.0125);
 			ctx.font = getFontSizeFromRatioWithFont(size);
-			
 			
 			let shadowColor = (button.lockedTitleShadowColor ?? "defaultButtonLockedTitleShadow");
 			ctx.fillStyle = colors[shadowColor] ?? shadowColor;
