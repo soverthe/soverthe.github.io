@@ -1,2 +1,2 @@
 # soverthe.github.io
-This place is for cool people, welcome :)
+HII welcome to SOVER THE Website!!! Feel free to read either books
