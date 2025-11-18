@@ -635,7 +635,7 @@ var earthCountriesNotes = {
 	"Pakistan": "It has the largest irrigation system in the world, the \"Indus Basin Irrigation System\".",
 	"Afghanistan": "It has the earliest known surviving oil paintings from the year 650.",
 	"Uzbekistan": "The second only double-landlocked country, because the Caspian Sea doesn't count apparently.",
-	"Bhutan": "Its flag got simplified but used to look very very spikey, look up \"Bahrain flag 1932-1972\". Also 98.8% of the country is mountainous.",
+	"Bhutan": "The most mountainous country in the world, with 98.8% of it being covered in mountains.", //hidden fact: used to accidentally have the bahrain flag fact
 	"Bangladesh": "Its flag has a red circle on it that's off-center so it looks centered when it's hoisted up.",
 	"Kazakhstan": "The largest landlocked country in the world, as well as the largest country that ends in -stan (meaning land in Persian).",
 	"Kyrgyzstan": "Over 90% of its area is mountainous, with its highest peak at 7439 meters, called \"Pobeda Peak\".",
@@ -654,7 +654,7 @@ var earthCountriesNotes = {
 	"Vietnam": "Has a \"Water puppetry\" tradition where puppets are in a waist-deep pool.",
 	"Laos": "The only landlocked country in Southeast Asia, over 70% of it is covered in forests.",
 	"Maldives": "Flattest country in the world with just 1.5 meters of elevation. Do you relate?",
-	"Bahrain": "Its name means \"two seas\", and it's the smallest country in the Middle East.",
+	"Bahrain": "Its name means \"two seas\", and it's the smallest country in the Middle East, also its flag used to look very very spiky from 1932-1972.",
 	"Malaysia": "Has the largest known cave chamber in the world by area, the Sarawak Chamber, which is close to 10000000 cubic meters big.",
 	"Brunei": "Has the oldest and largest water village \"Kampong Ayer\", where the buildings are on stilts on the Brunei River. Over 10000 people live there.",
 	"Indonesia": "Has the most active volcanoes in the world, with around 130 active volcanoes currently.",
