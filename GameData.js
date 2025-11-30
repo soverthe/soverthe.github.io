@@ -15,7 +15,7 @@
 	
 	var currentVideos = [];
 	
-	var shouldConfirmBeforeClosing = (location.href[0] != "f"); //todo: check if this works, file:// shouldn't have confirmation but https:// should
+	var shouldConfirmBeforeClosing = (location.href[0] != "f");
 	
 	var gameData = {};
 	
@@ -1397,7 +1397,7 @@
 							pos: {x: 0.93 - 0.0333/2, y: 0.1, w: 0.0325 * 2, h: 0.045}, isAbsolutePositioned: true,
 							text: "Change Line Width", downscaleTextLength: 14,
 							textSize: 0.125, onclick: [`<<{
-								let text = prompt("(The default size is 0.04, the orange box has a width of 1)\\n\\nInput A Line Width:");
+								let text = prompt("(The default size is 0.04, the boundary box has a width of 1)\\n\\nInput A Line Width:");
 								
 								if (text != null){
 									if (!isObject(entities[1].lineWidth)){
@@ -1635,10 +1635,9 @@
 				description: "Draw a creature with paths and play some games to figure out their personality!\nThis game is used to draw sprites for other games as well",
 				releaseDate: "Late 2025",
 				tags: ["path editing", "quiz", "find the difference"],
-				/*videos: [
-					{name: "Showcase/Walkthrough Video"},
-					{name: '\\"How It Was Made\\" Video'},
-				]*/
+				videos: [
+					{name: "Showcase/Walkthrough Video", value: "https://www.youtube.com/watch?v=LzIyrpJ7T7M"},
+				]
 			},
 		},		
 		"Not-So-Quick Save": {
