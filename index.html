@@ -50,7 +50,6 @@
 		}
 	}
 	
-	
 	//FPS
 	var fps = 60;
 	
@@ -110,6 +109,9 @@
 				  areDimentionsEqual: true, minWidthToHeightRatio: 2, state: {canMove: false, canZoom: false, shouldLockMouse: false}};
 	
 	var mouseLockFrames = 0;
+	
+	//Uint8ClampedArray (for faster canvas drawing, currently unused)
+	var currentClampedArray = new Uint8ClampedArray(0);
 	
 	//Images
 	var images = {};
@@ -245,7 +247,8 @@
 		scrollbarHover: "hsla(0, 100%, 100%, {{alphaNum}})",
 		
 		
-		debugText: "#000000"
+		debugText: "#ffffff",
+		debugTextShadow: "#000000",
 	}
 	
 	//Default Values
@@ -273,6 +276,8 @@
 		spriteCharacter: "🕴",
 		channelIconPiece: "",
 		
+		doubleLessThan: "<<",
+		doubleMoreThan: ">>",
 		
 		minGravityJumpRatio: 0.75, //How much gravity direction is needed for jumps
 	}
@@ -281,8 +286,10 @@
 	var drawOrder = ["drawGrids", "drawEntities", "drawButtons", "drawScrollbars"];
 	var drawLayers = [];
 	
-	//
+	//Canvas Draw variables
 	var cancelNextDrawFrame = false;
+	
+	var shouldClearCanvas = true;
 	
 	//Eval (technically not eval but it works like it)
 	var shouldEvalText = true;
@@ -420,6 +427,12 @@
 		arr.splice(index, 0, value);
 	}
 	
+	function insertIntoArrayRandomly(arr, value){
+		let index = getRandomNum({min: 0, max: arr.length});
+		
+		arr.splice(index, 0, value);
+	}
+	
 	
 	function objectLength(arr){
 		let length = 0;
@@ -496,6 +509,45 @@
 			result += (arr[1] != undefined ? "e" + arr[1] : "");
 		}
 		return result;
+	}
+	
+	function getTextWithoutLeadingZeros(text){ //https://stackoverflow.com/a/8276474/12777947
+		return text.replace(/^0+/, "");
+	}
+	
+	
+	function getBinaryFromHexadecimal(hexText){
+		let binaryText = "";
+		
+		let binaryArr = {
+			"0": "0000", "1": "0001", "2": "0010", "3": "0011",
+			"4": "0100", "5": "0101", "6": "0110", "7": "0111",
+			"8": "1000", "9": "1001", "a": "1010", "b": "1011",
+			"c": "1100", "d": "1101", "e": "1110", "f": "1111"
+		};
+		
+		for (let i = 0; i < hexText.length; i++){
+			binaryText += binaryArr[hexText[i].toLowerCase()];
+		}
+		return binaryText;
+	}
+	function getHexadecimalFromBinary(binaryText){
+		while (binaryText.length % 4 != 0){
+			binaryText = "0" + binaryText;
+		}
+		
+		let hexText = "";
+		
+		let hexArr = {
+			"0000": "0", "0001": "1", "0010": "2", "0011": "3",
+			"0100": "4", "0101": "5", "0110": "6", "0111": "7",
+			"1000": "8", "1001": "9", "1010": "a", "1011": "b",
+			"1100": "c", "1101": "d", "1110": "e", "1111": "f"
+		};
+		for (let i = 0; i < binaryText.length; i += 4){
+			hexText += hexArr[binaryText.slice(i, i+4)];
+		}
+		return hexText;
 	}
 	
 	
@@ -605,7 +657,11 @@
 			try {
 				returnValue = eval(argsText + text);
 			} catch(e){
-				returnValue = eval(argsText + "let returnText = " + text + "; returnText"); //can return things like: "{a1: 1, a2: 2}"
+				try {
+					returnValue = eval(argsText + "let returnText = " + text + "; returnText"); //can return things like: "{a1: 1, a2: 2}"
+				} catch(e2){
+					returnValue = eval(argsText + text); //if both throw an error it should log the first error
+				}
 			}
 			
 			return returnValue;
@@ -615,7 +671,11 @@
 			try {
 				returnValue = (new Function(argsText + "return " + text)());
 			} catch (e){
-				returnValue = (new Function(argsText + text)());
+				try {
+					returnValue = (new Function(argsText + text)());
+				} catch (e2){
+					returnValue = (new Function(argsText + "return " + text)());
+				}
 			}
 			
 			return returnValue;
@@ -681,6 +741,30 @@
 		}
 		
 		return arr[elementNum];
+	}
+	function getRandomElementNameOfObjectWithWeights(arr){
+		let overallWeights = 0;
+		
+		for (let i in arr){
+			overallWeights += arr[i].weight;
+		}
+		
+		let num = getRandomNumWithDecimals({min: 0, max: overallWeights});
+		let counter = 0;
+		
+		let elementName = "";
+		
+		for (let i in arr){
+			counter += arr[i].weight;
+			
+			if (counter >= num){
+				elementName = i;
+				
+				break;
+			}
+		}
+		
+		return elementName;
 	}
 	
 	
@@ -1868,7 +1952,7 @@
 	
 	
 	function isRectInScreen(r){
-		let screen = getScreenSize();
+		let screen = getScreenSize(scrolledCamera);
 		
 		return (areRectsColliding(r, screen.size.absolute));
 	}
@@ -2463,9 +2547,9 @@
 		
 		let arr = clickedGridTile;
 		
+		let grid = window[arr.gridName];
+		
 		if (arr.pos.y != -1){
-			let grid = window[arr.gridName];
-			
 			let isClicked = (args.isUp && arr.pos.x == arr.lastOnDownPos.x && arr.pos.y == arr.lastOnDownPos.y);
 			
 			if (grid.data.isDragClick){
@@ -2495,6 +2579,21 @@
 				}
 				
 				refreshGridDrawValues({gridName: clickedGridTile.gridName});
+			}
+		}
+		
+		if (grid != undefined){
+			let isHover = (!args.isDown && !args.isUp); //todo: maybe also !arr.isDown?
+			if (isHover){
+				if (grid.data.onhover != undefined){
+					let value = grid.data.onhover;
+					
+					for (let i in value){
+						if ((value[i] + "").includes("<<")){
+							functionEval(value[i].replaceAll("<<","").replaceAll(">>",""));
+						}
+					}
+				}
 			}
 		}
 	}
@@ -2748,7 +2847,7 @@
 </script>
 <script> //Scrollbars
 	
-	function getScreenSize(){
+	function getScreenSize(cameraArr = camera){
 		let screen = {
 			pixelSize: {
 				relative: getCanvasScaledPositions({x: 0, y: 0, w: 1, h: 1/camera.minWidthToHeightRatio}),
@@ -2775,11 +2874,11 @@
 			};
 		}
 		
-		screen.size.relative.x = (-camera.x) - screen.size.relative.w/2;
-		screen.size.relative.y = (-camera.y) - screen.size.relative.h/2;
+		screen.size.relative.x = (-cameraArr.x) - screen.size.relative.w/2;
+		screen.size.relative.y = (-cameraArr.y) - screen.size.relative.h/2;
 		
-		screen.size.absolute.x = (-camera.x) - screen.size.absolute.w/2;
-		screen.size.absolute.y = (-camera.y) - screen.size.absolute.h/2;
+		screen.size.absolute.x = (-cameraArr.x) - screen.size.absolute.w/2;
+		screen.size.absolute.y = (-cameraArr.y) - screen.size.absolute.h/2;
 		
 		return screen;
 	}
@@ -3509,6 +3608,12 @@
 		}
 		
 		if (objectLength(currentPos) == 0){
+			if (isObject(window[args])){
+				currentPos = {x: 0, y: 0, w: 0, h: 0, shape: "rect", ...window[args]};
+			}
+		}
+		
+		if (objectLength(currentPos) == 0){
 			currentPos = getEntityById(args);
 		}
 		
@@ -3638,7 +3743,7 @@
 		}
 	}
 	
-	function generateSegmentedPathEntityFromLine(args){
+	function getSegmentedPathEntityFromLine(args){
 		let segmentCount = args.segmentCount;
 		
 		let start = args.linePos.start;
@@ -3671,7 +3776,7 @@
 			arr.push(currentArr);
 		}
 		
-		entities.push({...args.entityData, pos: {arr: arr, shape: "polygon"}});
+		return {...args.entityData, pos: {arr: arr, shape: "polygon"}};
 	}
 	
 </script>
@@ -3956,7 +4061,9 @@
 		
 		args.pathPercent ??= 0;
 		
-		let currentPos = getPolygonPosAtPercentage(target.pos.arr, target, args.pathPercent, args.movement.layer);
+		let currentPercent = (args.movement.isBackwards) ? 1 - args.pathPercent : args.pathPercent;
+		
+		let currentPos = getPolygonPosAtPercentage(target.pos.arr, target, currentPercent, args.movement.layer);
 		
 		let pos = args.boxPos ?? args.pos;
 		
@@ -4000,7 +4107,19 @@
 	
 	
 	function faceEntityTowardsClosestTargetInRadius(args){
-		let targets = getTargetEntities(args.movement.target);
+		let targets = [];
+		
+		if (isArray(args.movement.target)){
+			for (let i in args.movement.target){
+				let currentTargets = getTargetEntities(args.movement.target[i]);
+				
+				if (typeof currentTargets[0] != "string"){
+					targets.push(...currentTargets);
+				}
+			}
+		} else{
+			targets = getTargetEntities(args.movement.target);
+		}
 		
 		args.foundTarget = false;
 		
@@ -4144,7 +4263,7 @@
 <script> //Entity Attacks
 	
 	function createBullet(pos, type, entity){
-		let bullet = structuredClone(bullets[type]);
+		let bullet = structuredClone(((typeof type == "string") ? bullets[type] : type));
 		
 		if (bullet.shouldEval != false){
 			bullet = getEvaluatedObject(bullet, false);
@@ -4206,7 +4325,7 @@
 				if (entity.attackCooldown == undefined){
 					entity.attackCooldown = {time: 0, phaseNum: 0, bulletNum: 0, repeatNum: 0};
 					
-					entity.attackType = getRandomElementOfArray(entity.attacks);
+					entity.currentAttack = getRandomElementOfArray(entity.attacks);
 				}
 				
 				entity.attackCooldown.time--;
@@ -4214,7 +4333,7 @@
 				
 				let arr = entity.attackCooldown;
 				
-				let attack = attacks[entity.attackType];
+				let attack = (typeof entity.currentAttack == "string") ? attacks[entity.currentAttack] : entity.currentAttack;
 				if (attack.shouldEval != false){
 					attack = getEvaluatedObject(attack, false);
 				}
@@ -4303,8 +4422,6 @@
 <script> //Damage Entities
 	
 	function damageEntities(){
-		let destroyedIndexes = [];
-		
 		for (let entityNum = 0; entityNum < entities.length; entityNum++){
 			let entity = entities[entityNum];
 			
@@ -4312,68 +4429,94 @@
 			if (entity.shield?.time > 0){ entity.shield.time--; entity.shield.time = Math.max(entity.shield.time, 0); }
 			
 			if ((entity.invincibility ?? 0) <= 0 && entity.health != undefined){
-				
 				for (let attackerNum = 0; attackerNum < entities.length; attackerNum++){
-					let attacker = entities[attackerNum];
-					
-					if (attacker.hitbox != undefined){
-						if ((entity.isPlayer && attacker.canHitPlayers) || (!entity.isPlayer && attacker.canHitNotPlayers)){
-							
-							let isEntityAttacked;
-							
-							for (let hitbox of attacker.hitbox){
+					if (attackerNum != entityNum){
+						let attacker = entities[attackerNum];
+						
+						if (attacker.hitbox != undefined){
+							if ((entity.isPlayer && attacker.canHitPlayers) || (!entity.isPlayer && attacker.canHitNotPlayers) ||
+								(entity.canHitPlayers && attacker.canHitNotPlayers) || (entity.canHitNotPlayers && attacker.canHitPlayers)){
 								
-								if (isEntityAttacked != false){
-									
-									if (hitbox.isHitboxHole){
-										if (isCircleFullyInsideCircle(entity.pos, hitbox.pos)){
+								let isEntityAttacked;
+								
+								for (let hitbox of attacker.hitbox){
+									for (let entityHitbox of (entity.hitbox ?? [entity])){
+										
+										if (isEntityAttacked != false){
+											if (hitbox.isHitboxHole){
+												if (isCircleFullyInsideCircle(entityHitbox.pos, hitbox.pos)){
+													isEntityAttacked = false;
+												}
+											} else{
+												if (areCirclesColliding(entityHitbox.pos, hitbox.pos)){
+													isEntityAttacked = true;
+												}
+											}
+										}
+									}
+								}
+								
+								if (isEntityAttacked == true){
+									if (entity.bulletType != undefined && attacker.canHitBulletTypes != undefined){
+										if (!attacker.canHitBulletTypes.includes(entity.bulletType)){
 											isEntityAttacked = false;
 										}
-									} else{
-										if (areCirclesColliding(entity.pos, hitbox.pos)){
-											isEntityAttacked = true;
+									}
+								}
+								
+								if (isEntityAttacked == true){
+									let shieldMultiplier = 1;
+									
+									if (entity.shield?.time > 0){
+										shieldMultiplier = (entity.shield?.damageMultiplier ?? 1);
+									}
+									
+									entity.health -= (attacker.damage ?? 0) * shieldMultiplier;
+									entity.invincibility = entity.maxInvincibility;
+									
+									if (attacker.onHit != undefined){
+										if ((entity.shield?.time ?? 0) <= 0 || attacker.canHitThroughShield != false){
+											runEvent(attacker.onHit, {entityNum: entityNum, attackerNum: attackerNum});
 										}
 									}
-								}
-							}
-							
-							if (isEntityAttacked == true){
-								let shieldMultiplier = 1;
-								
-								if (entity.shield?.time > 0){
-									shieldMultiplier = (entity.shield?.damageMultiplier ?? 1);
-								}
-								
-								entity.health -= (attacker.damage ?? 0) * shieldMultiplier;
-								entity.invincibility = entity.maxInvincibility;
-								
-								if (attacker.onHit != undefined){
-									if ((entity.shield?.time ?? 0) <= 0 || attacker.canHitThroughShield != false){
-										runEvent(attacker.onHit, {entityNum: entityNum, attackerNum: attackerNum});
-									}
-								}
-								
-								if (attacker.destroyOnHit){
-									entities.splice(attackerNum, 1);
 									
-									if (entityNum > attackerNum){
+									if (attacker.destroyOnHit){
+										entities.splice(attackerNum, 1);
+										
+										if (entityNum > attackerNum){
+											entityNum--;
+										}
+										attackerNum--;
+									}
+									
+									if (entity.health <= 0){
+										entities.splice(entityNum, 1);
+										
 										entityNum--;
+										
+										break;
 									}
-									attackerNum--;
-								}
-								
-								if (entity.health <= 0){
-									entities.splice(entityNum, 1);
-									
-									entityNum--;
-									
-									break;
 								}
 							}
 						}
 					}
 				}
 				
+			}
+		}
+	}
+	
+	function removeEnemiesWithNoHealth(){
+		for (let entityNum = 0; entityNum < entities.length; entityNum++){
+		
+			let entity = entities[entityNum];
+			
+			if (entity.health <= 0 && entity.health != undefined){
+				entities.splice(entityNum, 1);
+				
+				entityNum--;
+				
+				break;
 			}
 		}
 	}
@@ -4798,7 +4941,6 @@
 	
 </script>
 <script> //Draw Shapes
-	
 	function drawRect(pos, args = {}){
 		if (args.isCentered){
 			pos = getCenteredPosition(pos);
@@ -4814,6 +4956,24 @@
 			
 			drawPolygon(polygon, {isScaled: false, isFill: false, lineWidth: args.lineWidth, minLinePixelSize: args.minLinePixelSize, isAbsolutePositioned: args.isAbsolutePositioned});
 		}
+		
+		//if ((args.addToClampedArray ?? false) == false){
+		/*} else{
+			for (let i = pos.y; i <= pos.y + pos.h; i++){ //I was trying out imageData stuff but it's just way too slow it seems
+				for (let j = pos.x; j <= pos.x + pos.w; j++){
+					let startingIndex = (i * canvas.width + j) * 4;
+					
+					if (startingIndex < canvas.width * canvas.height * 4 && startingIndex >= 0){
+						if (i == j){
+							currentClampedArray[startingIndex] = 255;
+							currentClampedArray[startingIndex + 1] = 255;
+							currentClampedArray[startingIndex + 2] = 0;
+							currentClampedArray[startingIndex + 3] = 255;
+						}
+					}
+				}
+			}
+		}*/
 	}
 	
 	function drawPolygonPoints(pArr, args){
@@ -5440,17 +5600,19 @@
 		let grid = window[args.gridName];
 		let data = grid.data;
 		
-		ctx.lineWidth = getScaledPosition({w: (args.borderSize ?? defaultValues.gridBorderSize)}).w;
+		let currentBorderSize = (args.borderSize ?? defaultValues.gridBorderSize);
+		ctx.lineWidth = getScaledPosition({w: currentBorderSize}).w;
 		
 		let layers = (args.layers ?? args.layer) ?? Object.keys(grid.grid);
 		if ( !isArray(layers) ){ layers = [layers]; }
 		
 		let shapeFunctions = {rect: drawRect, hex: drawGridHex, tri: drawGridTri, iso: drawGridIso};
 		
+		let shouldDrawBorders = (data.hideBorderWhenZoomedOut && !args.bypassHideBorderWhenZoomedOut) ? (getScaledPositionInverted({x: 0, y: 0, w: 1}).w <= currentBorderSize * 2) : true;
+		
 		for (let layerName of layers){
 			let currentGrid = grid.grid[layerName];
 			
-			//let pos = structuredClone(data); //todo: might be needed idk?
 			let pos = {...data};
 			
 			let offsets = getGridOffset(grid);
@@ -5478,25 +5640,71 @@
 							currentPos.x += (i % 2 == 0) * offsets.w/2;
 						}
 						
-						setDrawStyleToColor(extraArgs.color, {...extraArgs, pos: currentPos, isFill: true});
-						setDrawStyleToColor(extraArgs.borderColor, {...extraArgs, pos: currentPos, isFill: false});
-						
-						shapeFunctions[data.gridShape](currentPos);
-						
-						if (extraArgs.borderSize > 0){
-							shapeFunctions[data.gridShape](currentPos, {isFill: false});
+						let shapeHitbox = currentPos;
+						if (data.gridShape == "hex"){
+							shapeHitbox = {...currentPos};
+							shapeHitbox.h *= 1.155;
+							shapeHitbox.y -= (shapeHitbox.h - currentPos.h) / 2;
 						}
 						
-						//Hover
-						if (data.hover != undefined){
-							let currentHoverPos = layerName + ";" + j + ";" + i;
+						if (isRectInScreen(shapeHitbox)){
+							setDrawStyleToColor(extraArgs.color, {...extraArgs, pos: currentPos, isFill: true});
+							setDrawStyleToColor(extraArgs.borderColor, {...extraArgs, pos: currentPos, isFill: false});
 							
-							let hoverColor = getGridTileHoverColor(data, currentHoverPos);
+							shapeFunctions[data.gridShape](currentPos);
 							
-							if (hoverColor != undefined){
-								drawLayers[0] ??= [];
-								drawLayers[0].push({f: shapeFunctions[data.gridShape], args: [currentPos], color: hoverColor, isFill: true});
+							if (shouldDrawBorders && extraArgs.borderSize > 0 && (data.gridShape != "rect" || (!data.fastRectDrawing || args.bypassFastRectDrawing))){
+								shapeFunctions[data.gridShape](currentPos, {isFill: false});
 							}
+							
+							//Hover
+							if (data.hover != undefined){
+								let currentHoverPos = layerName + ";" + j + ";" + i;
+								
+								let hoverColor = getGridTileHoverColor(data, currentHoverPos);
+								
+								if (hoverColor != undefined){
+									drawLayers[0] ??= [];
+									drawLayers[0].push({f: shapeFunctions[data.gridShape], args: [currentPos], color: hoverColor, isFill: true});
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			//Draw grid borders with w+h many lines if data.fastRectDrawing is true
+			if ((data.fastRectDrawing && !args.bypassFastRectDrawing) && shouldDrawBorders && currentBorderSize > 0 && data.gridShape == "rect"){
+				let extraArgs = (args.id != undefined) ? data.gridDrawValues[layerName][0][0][args.id] : {};
+				
+				if (extraArgs != undefined){
+					extraArgs = {...args, ...extraArgs};
+					
+					setDrawStyleToColor(extraArgs.borderColor);
+					
+					for (let k = 0; k < 2; k++){
+						for (let i = 0; i <= ((k > 0) ? currentGrid[0].length : currentGrid.length); i++){
+							let currentPos = {};
+							
+							if (k > 0){
+								currentPos = {
+									x: pos.x + offsets.w * i + pos.gaps?.left ?? 0,
+									y: pos.y + offsets.h * 0 + pos.gaps?.up ?? 0,
+									w: currentBorderSize, h: offsets.h * currentGrid.length
+								}
+							} else{
+								currentPos = {
+									x: pos.x + offsets.w * 0 + pos.gaps?.left ?? 0,
+									y: pos.y + offsets.h * i + pos.gaps?.up ?? 0,
+									w: offsets.w * currentGrid[0].length, h: currentBorderSize
+								}
+							}
+							
+							if (extraArgs.isScaled != false){
+								currentPos = getScaledPosition(currentPos);
+							}
+							
+							ctx.fillRect(currentPos.x, currentPos.y, currentPos.w, currentPos.h);
 						}
 					}
 				}
@@ -5613,12 +5821,22 @@
 						
 						let text = extraArgs.text;
 						if (text != undefined){
-							drawText(text, currentPos, extraArgs);
+							if (extraArgs.drawLayer != undefined){
+								drawLayers[extraArgs.drawLayer] ??= [];
+								drawLayers[extraArgs.drawLayer].push({f: drawText, args: [text, currentPos, extraArgs]});
+							} else{
+								drawText(text, currentPos, extraArgs);
+							}
 						}
 						
 						text = currentGrid[i][j][extraArgs.value];
 						if (text != undefined){
-							drawText(text, currentPos, extraArgs);
+							if (extraArgs.drawLayer != undefined){
+								drawLayers[extraArgs.drawLayer] ??= [];
+								drawLayers[extraArgs.drawLayer].push({f: drawText, args: [text, currentPos, extraArgs]});
+							} else{
+								drawText(text, currentPos, extraArgs);
+							}
 						}
 						
 					}
@@ -5643,6 +5861,9 @@
 				}
 			}
 		}
+		
+		//currentClampedArray = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+		//ctx.putImageData(new ImageData(currentClampedArray, canvas.width, canvas.height), 0, 0);
 	}
 	
 </script>
@@ -5843,6 +6064,14 @@
 				
 				let drawFunction = (button.shouldBreakText) ? drawTextAndBreakToFitWidth : drawText;
 				
+				
+				let buttonMiddlePos = {...button.pos};
+				
+				if (!(button.isCentered ?? true)){
+					buttonMiddlePos.x += buttonMiddlePos.w/2;
+					buttonMiddlePos.y += buttonMiddlePos.h/2;
+				}
+				
 				if (text != undefined){
 					let textArgs = {
 						...button,
@@ -5851,13 +6080,13 @@
 						outlineColor: outlineColor,
 						textSize: (button.textSize ?? defaultValues.buttonTextSize),
 						outlineSize: (button.outlineSize ?? defaultValues.buttonOutlineSize),
-						marginY: (button.marginY ?? defaultValues.buttonTextMarginY)
+						marginY: (button.marginY ?? defaultValues.buttonTextMarginY),
 					}
 					
-					currentDrawLayer.push({f: drawFunction, args: [text, button.pos, textArgs]});
+					currentDrawLayer.push({f: drawFunction, args: [text, buttonMiddlePos, textArgs]});
 					
 					if (button.textHoverOverlay && hoverColor != undefined){
-						currentDrawLayer.push({f: drawFunction, args: [text, button.pos, {...textArgs, outlineColor: hoverColor, textColor: hoverColor}]});
+						currentDrawLayer.push({f: drawFunction, args: [text, buttonMiddlePos, {...textArgs, outlineColor: hoverColor, textColor: hoverColor}]});
 					}
 				}
 				
@@ -5866,10 +6095,10 @@
 					button.subtextPos ??= defaultValues.buttonSubtextPos;
 					
 					let subtextPos = {
-						x: button.pos.x + (button.subtextPos.x ?? defaultValues.buttonSubtextPos.x) * button.pos.w,
-						y: button.pos.y + (button.subtextPos.y ?? defaultValues.buttonSubtextPos.y) * button.pos.h,
-						w: button.pos.w,
-						h: button.pos.h
+						x: buttonMiddlePos.x + (button.subtextPos.x ?? defaultValues.buttonSubtextPos.x) * buttonMiddlePos.w,
+						y: buttonMiddlePos.y + (button.subtextPos.y ?? defaultValues.buttonSubtextPos.y) * buttonMiddlePos.h,
+						w: buttonMiddlePos.w,
+						h: buttonMiddlePos.h
 					}
 					
 					
@@ -6039,18 +6268,23 @@
 
 <script> //Draw Call
 	
+	function clearCanvas(){
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		
+		setDrawStyleToColor(colors.backgroundColor, {isAbsolutePositioned: true});
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+	}
+	
 	function drawCall(alwaysDraw){
 		if (!cancelNextDrawFrame || alwaysDraw){
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-			
-			setDrawStyleToColor(colors.backgroundColor, {isAbsolutePositioned: true});
-			
-			savedPolygons = {};
-			
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			if (shouldClearCanvas){
+				clearCanvas();
+			}
 			
 			ctx.textAlign = "center";
 			ctx.textBaseline = "middle";
+			
+			savedPolygons = {};
 			
 			
 			runEvent(drawOrder);
@@ -6069,12 +6303,14 @@
 				ctx.fillRect(0, 0, pos.w, canvas.height);
 				ctx.fillRect(canvas.width - pos.w, 0, pos.w, canvas.height);
 				
-				if (isNotesTextHidden){
+				if (!isNotesTextHidden){
 					ctx.textAlign = "left";
-					ctx.font = "16px " + defaultFont;
-					ctx.fillStyle = colors.debugText;
+					ctx.font = Math.floor(12 * Math.min(canvas.width/1000, canvas.height/500)) + "px " + defaultFont;
 					
-					ctx.fillText("*Notes Mode* [Press Tilde to Turn Off]", 10, 20);
+					ctx.fillStyle = colors.debugTextShadow;
+					drawText("*Notes Mode* [Press Tilde to Turn Off] [Right Click to Erase] [Number Keys to Change Color]", {x: 0.01, y: 0.03}, {isAbsolutePositioned: true});
+					ctx.fillStyle = colors.debugText;
+					drawText("*Notes Mode* [Press Tilde to Turn Off] [Right Click to Erase] [Number Keys to Change Color]", {x: 0.008, y: 0.028}, {isAbsolutePositioned: true});
 				}
 			}
 		}
@@ -6236,17 +6472,19 @@
 		
 		let amount = args.amount ?? 1;
 		
-		if (args.startWithoutDelay){
-			runEvent(args.event);
+		if (amount > 0){
+			if (args.startWithoutDelay){
+				runEvent(args.event);
+				
+				amount--;
+			}
 			
-			amount--;
-		}
-		
-		for (let i = 0; i < amount; i++){
-			delayedEvents.push({
-				time: (i + 1) * fps * args.delay + t,
-				event: args.event
-			});
+			for (let i = 0; i < amount; i++){
+				delayedEvents.push({
+					time: (i + 1) * fps * args.delay + t,
+					event: args.event
+				});
+			}
 		}
 	}
 	
@@ -6545,11 +6783,13 @@
 	//Window Resize
 	
 	function onResize(args = {}){
-		canvas.height = window.innerHeight;
-		canvas.width = window.innerWidth;
-		
-		notesCanvas.height = window.innerHeight;
-		notesCanvas.width = window.innerWidth;
+		if (shouldClearCanvas){
+			canvas.height = window.innerHeight;
+			canvas.width = window.innerWidth;
+			
+			notesCanvas.height = window.innerHeight;
+			notesCanvas.width = window.innerWidth;
+		}
 		
 		let resetKeys = ["ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight"];
 		
@@ -6583,9 +6823,15 @@
 		
 		if (e.code == "Backquote"){
 			isNotesClickable = !isNotesClickable;
-		}
-		if (e.code.includes("Digit")){
-			currentNotesColorNum = e.code[5];
+			isNotesTextHidden = true;
+		} else{
+			if (isNotesClickable){
+				if (e.code.includes("Digit")){
+					currentNotesColorNum = e.code[5];
+				} else{
+					isNotesTextHidden = false;
+				}
+			}
 		}
 		
 		if (scrolledCameras[gameState.currentState] != undefined){

@@ -9,6 +9,7 @@
 		"Shape-Shifting Minesweeper": {score: {Tiny: null, Medium: null, Huge: null}, text: "Explosions", trophies: {gold: 0, silver: 2, bronze: 5, mode: "less"}, sizes: ["Tiny", "Medium", "Huge", "Massive"]},
 		"Countries Quiz": {score: null, text: "First Tries", trophies: {gold: 198, silver: 100, bronze: 20, mode: "more"}},
 		"''Fascinating'' ''Possibilities''": {score: null, text: "Clicks", trophies: {gold: null, silver: null, bronze: null, mode: "less"}},
+		"Knight Patterns": {score: null, text: ""},
 	};
 	
 	currentGame.states = Object.keys(gameSaves);
@@ -1623,7 +1624,7 @@
 				gameState: {currentState: "game", states: ["game", "art"]},
 				
 				colors: {
-					backgroundColor: "#575757", //#646464
+					backgroundColor: "#575757",
 					gameText: "#000000",
 					drawBox: {
 						pos: {start: {x: 0, y: 0}, end: {x: 0, y: 1}},
@@ -3682,6 +3683,1261 @@
 				]
 			},
 		},
+		"Knight Patterns": {
+			overriddenVariables: {
+				drawOrder: ["drawGrids", "drawEntities", "drawButtons", "drawScrollbars"],
+				
+				inputButtons: {
+					startButton: {keyboard: ["Space", "KeyR"], gamepads: [[0],[0],[0],[0]], timer: 0, maxTimer: 0, disableHold: true, onclick: ["startShortcutPress"]},
+				},
+				
+				events: {
+					onload: [
+						"clearCanvas", "startEvent", "generateGrids", "setPieceGridToPiecePattern", "refreshMenuButtons",
+						"generateSpiralGrid", "generateSpiralTilePos", "setupDrawWindowValues"
+					],
+					
+					setupDrawWindowValues: [`<<
+						if (gameState.currentState == "draw"){
+							canvas.oncontextmenu = null;
+							document.getElementById("notesCanvasId").style["pointer-events"] = "none";
+							
+							shouldConfirmBeforeClosing = false;
+							
+							document.body.style.overflow = "auto";
+						}
+					>>`],
+					onNextFrame: [`<<
+						if (gameState.currentState == "draw"){
+							runEvent("placePieces");
+						} else{
+							runEvent("gridNextFrame");
+							draw();
+						}
+					>>`],
+					
+					
+					startEvents: {
+						startEvent: [`<<
+							let currentURL = new URLSearchParams(location.search);
+							let text = currentURL.get('args');
+							
+							if (text != null){
+								gameState.currentState = "draw";
+								
+								shouldClearCanvas = false;
+								
+								ctx.fillStyle = "#000000";
+								ctx.fillRect(0, 0, canvas.width, canvas.height);
+								
+								runEvent("loadPiecesFromText", {text: text});
+							}
+						>>`],
+						
+						loadPiecesFromText: [`<<{
+							pieces = [];
+							
+							let textArr = args.text.split(";");
+							
+							for (let i in textArr){
+								if (textArr[i][0] == "["){
+									let currentArr = textArr[i].split("]");
+									pieceOrder = parse(currentArr[0] + "]");
+									
+									let currentArr2 = currentArr[1].split(",");
+									pixelSize = Number(currentArr2[1] ?? 1);
+									turnsPerFrame  = Number(currentArr2[2] ?? 10000);
+								} else{
+									let currentArr = textArr[i].split(",");
+									
+									let arr = {color: "#"+currentArr[0], previousPos: -1, maxEnemies: Number(currentArr[2] ?? 0), maxAllies: Number(currentArr[3] ?? Infinity)};
+									
+									let attackPatternText = getTextWithoutLeadingZeros(getBinaryFromHexadecimal(currentArr[1])).slice(1);
+									
+									let patternSize = Math.floor(Math.sqrt(attackPatternText.length));
+									
+									arr.attackPattern = [];
+									
+									for (let j = 0; j < patternSize; j++){
+										arr.attackPattern.push(attackPatternText.slice(j * patternSize, (j * patternSize) + patternSize));
+									}
+									
+									pieces.push(arr);
+								}
+							}
+						}>>`],
+					},
+					
+					refreshMenuButtons: [`<<{
+						buttons.menu = [
+							{pos: {x: 0.35, y: 0.2, w: 0.2, h: 0.06}, text: "Start", textSize: 0.25,
+							subtext: "[shortcut: space]", subtextPos: {x: 0, y: 0.4}, onclick: ["startButtonClick"]},
+							
+							{...gamePresets.quitButton}
+						];
+						
+						/*top piece selection buttons*/
+						let currentMiddlePos = {x: -0.145, y: -0.15, w: 0.25, h: 0.15};
+						let currentLength = pieces.length + 1;
+						let currentGridSize = {w: Math.max(Math.ceil(Math.sqrt(currentLength)), 3), h: Math.max(Math.ceil(Math.sqrt(currentLength)), 3)};
+						for (let i = 0; i < pieces.length + 1; i++){
+							let currentPos = {
+								x: currentMiddlePos.x + ((i % currentGridSize.w) / currentGridSize.w) * currentMiddlePos.w - currentMiddlePos.w/2,
+								y: currentMiddlePos.y + (Math.floor(i / currentGridSize.h) / currentGridSize.h) * currentMiddlePos.h - currentMiddlePos.h/2,
+								w: currentMiddlePos.w / currentGridSize.w,
+								h: currentMiddlePos.h / currentGridSize.h - 0.015
+							};
+							if (i < pieces.length){
+								buttons.menu.push({
+									pos: currentPos, text: i, textSize: 0.4, downscaleTextLength: 2, color: pieces[i].color, isCentered: false,
+									onclick: ["<<selectedPieceNum = "+i+";>>", "setPieceGridToPiecePattern", "refreshMenuButtons"],
+								});
+								buttons.menu.push({
+									pos: {x: currentPos.x, y: currentPos.y + currentMiddlePos.h / currentGridSize.h - 0.015, w: currentPos.w, h: 0.015},
+									text: "delete", textSize: 0.15, color: pieces[i].color, isCentered: false,
+									onclick: ["<<runEvent('removePiece', {i:"+i+"})>>", "setPieceGridToPiecePattern", "refreshMenuButtons"],
+								});
+							} else{
+								buttons.menu.push({
+									pos: {x: currentPos.x, y: currentPos.y, w: currentPos.w, h: currentPos.h + 0.015},
+									text: "+", textSize: 1, isCentered: false, onclick: ["addPiece", "setPieceGridToPiecePattern", "refreshMenuButtons"],
+								});
+							}
+						}
+						
+						/*top grid buttons*/
+						currentMiddlePos = {x: 0.0875 - 0.025, y: -0.166- 0.05, w: 0.0325, h: 0.02};
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y + (currentMiddlePos.h+0.005)/2 + 0.025*0, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "+", textSize: 1, onclick: ["increaseGridSize"]
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y + (currentMiddlePos.h+0.005)/2 + 0.025*1, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "-", textSize: 1, onclick: ["decreaseGridSize"]
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y + (currentMiddlePos.h+0.005)/2 + 0.025*2, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "clear", textSize: 0.35, onclick: ["clearGrid"]
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y + (currentMiddlePos.h+0.005)/2 + 0.025*3, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "reset", textSize: 0.35, onclick: ["resetGrid"]
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y + (currentMiddlePos.h+0.005)/2 + 0.025*4, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "random", textSize: 0.3, onclick: ["randomizeGrid"]
+						});
+						
+						/*top color buttons*/
+						for (let i = 0; i < defaultColors.length + 1; i++){
+							for (let j = 0; j < (defaultColors[i]?.length ?? (customColors.length + 1)); j++){
+								let currentPos = {
+									x: -0.475 + j * 0.03,
+									y: -0.225 + i * 0.025,
+									w: 0.025,
+									h: 0.02
+								};
+								
+								if (i < defaultColors.length){
+									buttons.menu.push({
+										pos: currentPos, isCentered: false, color: defaultColors[i][j],
+										onclick: ["<<pieces[selectedPieceNum].color = '"+defaultColors[i][j]+"';>>", "refreshMenuButtons"],
+									});
+								} else{
+									if (j == 0){
+										buttons.menu.push({
+											pos: currentPos, text: "+", textSize: 1, isCentered: false,
+											onclick: ["<<let color = prompt('Input a color by its hex code (eg: #f5a9b8)'); if ((color ?? '')[0] == '#'){customColors.unshift(color)}>>",
+											"<<customColors = customColors.slice(0, 4);>>", "refreshMenuButtons"],
+										});
+									} else{
+										buttons.menu.push({
+											pos: currentPos, isCentered: false, color: customColors[j - 1],
+											onclick: ["<<pieces[selectedPieceNum].color = '"+customColors[j - 1]+"';>>", "refreshMenuButtons"],
+										});
+									}
+								}
+							}
+						}
+						
+						/*top max enemies allies buttons*/
+						currentMiddlePos = {x: 0.35, y: -0.225, w: 0.2, h: 0.1};
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h}, color: "#00000000",
+							text: "max enemies", textColor: pieces[selectedPieceNum].color, disableClick: true,
+						});
+						currentMiddlePos = {x: currentMiddlePos.x, y: currentMiddlePos.y + 0.03, w: 0.03, h: 0.03};
+						let currentText = (pieces[selectedPieceNum].maxEnemies == Infinity) ? "∞" : pieces[selectedPieceNum].maxEnemies;
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - 0.07, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "{{defaultValues.doubleLessThan}}", textSize: 0.4, textColor: pieces[selectedPieceNum].color,
+							onclick: ["<<runEvent('changeMaxAttackerValues', {type: 'enemies', changeType: 0})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - 0.035, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "<", textSize: 0.4, textColor: pieces[selectedPieceNum].color,
+							onclick: ["<<runEvent('changeMaxAttackerValues', {type: 'enemies', changeType: -1})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: currentText, textSize: 0.4, downscaleTextLength: 2, textColor: pieces[selectedPieceNum].color, disableClick: true,
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + 0.035, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: ">", textSize: 0.4, textColor: pieces[selectedPieceNum].color,
+							onclick: ["<<runEvent('changeMaxAttackerValues', {type: 'enemies', changeType: 1})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + 0.07, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "{{defaultValues.doubleMoreThan}}", textSize: 0.4, textColor: pieces[selectedPieceNum].color,
+							onclick: ["<<runEvent('changeMaxAttackerValues', {type: 'enemies', changeType: Infinity})>>", "refreshMenuButtons"],
+						});
+						currentMiddlePos = {x: currentMiddlePos.x, y: currentMiddlePos.y + 0.05, w: 0.2, h: 0.1};
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h}, color: "#00000000",
+							text: "max allies", textColor: pieces[selectedPieceNum].color, disableClick: true,
+						});
+						currentMiddlePos = {x: currentMiddlePos.x, y: currentMiddlePos.y + 0.03, w: 0.03, h: 0.03};
+						currentText = (pieces[selectedPieceNum].maxAllies == Infinity) ? "∞" : pieces[selectedPieceNum].maxAllies;
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - 0.07, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "{{defaultValues.doubleLessThan}}", textSize: 0.4, textColor: pieces[selectedPieceNum].color,
+							onclick: ["<<runEvent('changeMaxAttackerValues', {type: 'allies', changeType: 0})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - 0.035, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "<", textSize: 0.4, textColor: pieces[selectedPieceNum].color,
+							onclick: ["<<runEvent('changeMaxAttackerValues', {type: 'allies', changeType: -1})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: currentText, textSize: 0.4, downscaleTextLength: 2, textColor: pieces[selectedPieceNum].color, disableClick: true,
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + 0.035, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: ">", textSize: 0.4, textColor: pieces[selectedPieceNum].color,
+							onclick: ["<<runEvent('changeMaxAttackerValues', {type: 'allies', changeType: 1})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + 0.07, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "{{defaultValues.doubleMoreThan}}", textSize: 0.4, textColor: pieces[selectedPieceNum].color,
+							onclick: ["<<runEvent('changeMaxAttackerValues', {type: 'allies', changeType: Infinity})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y + 0.025, w: currentMiddlePos.w * 1.25, h: currentMiddlePos.h * 0.35},
+							text: "random", textSize: 0.25, textColor: pieces[selectedPieceNum].color,
+							onclick: ["randomizeMaxAttackers", "refreshMenuButtons"],
+						});
+						
+						/*middle row piece order buttons*/
+						currentMiddlePos = {x: 0, y: -0.1/2, w: 1, h: 0.1};
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y + currentMiddlePos.h/2 - currentMiddlePos.h * 0.05,
+							w: currentMiddlePos.w * 1.1, h: currentMiddlePos.h * 1.25},
+							text: "", textSize: 0.03, color: "#ffffff18", disableClick: true,
+						});
+						buttons.menu.push({
+							pos: {x: -0.45, y: currentMiddlePos.y - currentMiddlePos.h * 0.085,
+							w: 0.1, h: currentMiddlePos.h * 0.1},
+							text: "turn order:", textSize: 0.15, color: "#ffffff00", disableClick: true,
+						});
+						
+						buttons.menu.push({
+							pos: {x: -0.37, y: currentMiddlePos.y - currentMiddlePos.h * 0.085,
+							w: 0.05, h: 0.01},
+							text: "random", textSize: 0.2, onclick: ["randomizePieceOrder", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: -0.307, y: currentMiddlePos.y - currentMiddlePos.h * 0.085,
+							w: 0.05, h: 0.01},
+							text: "reset", textSize: 0.2, onclick: ["resetPieceOrder", "refreshMenuButtons"],
+						});
+						
+						currentLength = pieceOrder.length + 1;
+						for (let i = 0; i < pieceOrder.length + 1; i++){
+							let currentPos = {
+								x: currentMiddlePos.x + (i / (pieceOrder.length + 1)) * currentMiddlePos.w - currentMiddlePos.w/2,
+								y: currentMiddlePos.y,
+								w: (currentMiddlePos.w / (pieceOrder.length + 1)) * 0.95,
+								h: currentMiddlePos.h - 0.01
+							};
+							
+							currentPos.w = Math.min(currentPos.w, 0.3);
+							
+							if (i < pieceOrder.length){
+								buttons.menu.push({
+									pos: currentPos, text: "", textSize: 0.4, downscaleTextLength: 2, color: pieces[pieceOrder[i]].color, isCentered: false,
+									disableClick: true,
+								});
+								buttons.menu.push({
+									pos: {x: currentPos.x, y: currentPos.y + currentMiddlePos.h - 0.01, w: currentPos.w, h: 0.01},
+									text: "delete", textSize: 0.03, color: pieces[pieceOrder[i]].color, isCentered: false,
+									onclick: ["<<runEvent('removePieceOrderIndex', {i:"+i+"})>>", "refreshMenuButtons"],
+								});
+								
+								
+								let currentOuterPos = {
+									x: currentPos.x + 0.002,
+									y: currentPos.y + 0.005,
+									w: currentPos.w - 0.004,
+									h: currentPos.h - 0.03,
+								};
+								
+								buttons.menu.push({
+									pos: {x: currentOuterPos.x, y: currentOuterPos.y + currentOuterPos.h * 1.05, w: currentOuterPos.w/2, h: 0.02},
+									text: "<", textSize: 0.1, color: pieces[pieceOrder[i]].color, borderColor: "#000000", borderSize: 0.001, isCentered: false,
+									onclick: ["<<runEvent('movePieceOrderIndex', {i:"+i+", increment: -1})>>", "setPieceGridToPiecePattern", "refreshMenuButtons"],
+								});
+								buttons.menu.push({
+									pos: {x: currentOuterPos.x + currentOuterPos.w/2, y: currentOuterPos.y + currentOuterPos.h * 1.05, w: currentOuterPos.w/2, h: 0.02},
+									text: ">", textSize: 0.1, color: pieces[pieceOrder[i]].color, borderColor: "#000000", borderSize: 0.001, isCentered: false,
+									onclick: ["<<runEvent('movePieceOrderIndex', {i:"+i+", increment: 1})>>", "setPieceGridToPiecePattern", "refreshMenuButtons"],
+								});
+								
+								
+								currentGridSize = {w: Math.ceil(Math.sqrt(pieces.length)), h: Math.ceil(Math.sqrt(pieces.length))};
+								for (let j = 0; j < pieces.length; j++){
+									let currentInnerPos = {
+										x: currentOuterPos.x + ((j % currentGridSize.w) / currentGridSize.w) * currentOuterPos.w,
+										y: currentOuterPos.y + (Math.floor(j / currentGridSize.h) / currentGridSize.h) * currentOuterPos.h,
+										w: currentOuterPos.w / currentGridSize.w,
+										h: currentOuterPos.h / currentGridSize.h
+									};
+									currentInnerPos.x += currentInnerPos.w * 0.025;
+									currentInnerPos.y -= currentInnerPos.h * 0.025;
+									currentInnerPos.w *= 0.95;
+									currentInnerPos.h *= 0.95;
+									
+									buttons.menu.push({
+										pos: currentInnerPos, text: j, textSize: 0.2, downscaleTextLength: 2, color: pieces[j].color,
+										textColor: ((pieceOrder[i] == j) ? "#ffffff" : pieces[j].color), outlineSize: 0.00025, isCentered: false,
+										borderColor: ((pieceOrder[i] == j) ? "#ffffff" : "#000000"), borderSize: 0.001,
+										onclick: ["<<pieceOrder["+i+"] = "+j+";>>", "setPieceGridToPiecePattern", "refreshMenuButtons"],
+									});
+								}
+							} else{
+								buttons.menu.push({
+									pos: {x: currentPos.x, y: currentPos.y, w: currentPos.w, h: currentPos.h + 0.01},
+									text: "+", textSize: 0.5, isCentered: false, onclick: ["<<pieceOrder.push(pieceOrder[pieceOrder.length-1]);>>", "refreshMenuButtons"],
+								});
+							}
+						}
+						
+						
+						/*bottom templates*/
+						currentMiddlePos = {x: -0.175 - 0.01, y: 0.15, w: 0.625, h: 0.175};
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+							text: "", textSize: 0.03, color: "#ffffff18", disableClick: true,
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - currentMiddlePos.w/2, y: currentMiddlePos.y - currentMiddlePos.h/2 + 0.0065, w: 0.1, h: 0.01},
+							text: "templates:", textSize: 0.15, color: "#ffffff00", disableClick: true, isCentered: false,
+						});
+						
+						let pagePos = {x: 0.2075, w: 0.02, h: 0.0175};
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - currentMiddlePos.w/2 + pagePos.x - 0.075, y: currentMiddlePos.y - currentMiddlePos.h/2 + 0.0115, w: pagePos.w, h: pagePos.h},
+							text: "{{defaultValues.doubleLessThan}}", textSize: 0.5, onclick: ["<<runEvent('pageButtonClick', {increment: 0})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - currentMiddlePos.w/2 + pagePos.x - 0.05, y: currentMiddlePos.y - currentMiddlePos.h/2 + 0.0115, w: pagePos.w, h: pagePos.h},
+							text: "<", textSize: 0.5, onclick: ["<<runEvent('pageButtonClick', {increment: -1})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - currentMiddlePos.w/2 + pagePos.x, y: currentMiddlePos.y - currentMiddlePos.h/2 + 0.0115, w: pagePos.w * 3.5, h: pagePos.h},
+							text: "page: " + (templatePageNum + 1), textSize: 0.15, disableClick: true,
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - currentMiddlePos.w/2 + pagePos.x + 0.05, y: currentMiddlePos.y - currentMiddlePos.h/2 + 0.0115, w: pagePos.w, h: pagePos.h},
+							text: ">", textSize: 0.5, onclick: ["<<runEvent('pageButtonClick', {increment: 1})>>", "refreshMenuButtons"],
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - currentMiddlePos.w/2 + pagePos.x + 0.075, y: currentMiddlePos.y - currentMiddlePos.h/2 + 0.0115, w: pagePos.w, h: pagePos.h},
+							text: "{{defaultValues.doubleMoreThan}}", textSize: 0.5, onclick: ["<<runEvent('pageButtonClick', {increment: Infinity})>>", "refreshMenuButtons"],
+						});
+						
+						
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x - currentMiddlePos.w/2 + 0.385, y: currentMiddlePos.y - currentMiddlePos.h/2 + 0.0115, w: 0.115, h: pagePos.h},
+							text: "auto-start templates: " + (autoStartTemplates ? "on" : "off"), textSize: 0.07,
+							onclick: ["<<autoStartTemplates = !autoStartTemplates;>>", "refreshMenuButtons"],
+						});
+						
+						for (let i = 0; i < 12; i++){
+							let currentTemplateName = Object.keys(templates)[i + templatePageNum * 12];
+							
+							if (currentTemplateName != undefined){
+								let currentPos = {
+									x: (currentMiddlePos.x - currentMiddlePos.w * 0.375) + (i % 3) * 0.15,
+									y: (currentMiddlePos.y - currentMiddlePos.h * 0.25) + Math.floor(i / 3) * 0.035,
+									w: currentMiddlePos.w * 0.2,
+									h: currentMiddlePos.h * 0.15,
+								};
+								
+								let colorsArr = [];
+								
+								let textArr = templates[currentTemplateName].split(";");
+								
+								for (let i = 0; i < textArr.length; i++){
+									if (textArr[i][0] == "["){
+										break;
+									} else{
+										let currentArr = textArr[i].split(",");
+										
+										colorsArr.push("#" + currentArr[0]);
+									}
+								}
+								
+								let currentButton = {
+									pos: {x: currentPos.x, y: currentPos.y, w: currentPos.w, h: currentPos.h},
+									color: {
+										pos: {
+											start: {x: currentPos.x - currentPos.w/2, y: currentPos.y - currentPos.h/2},
+											end: {x: currentPos.x + currentPos.w/2, y: currentPos.y + currentPos.h/2}
+										},
+										colorStops: []
+									}, colorsArr: colorsArr,
+									text: currentTemplateName, textColor: "#ffffff", textSize: 0.1, outlineSize: 0.000625, downscaleTextLength: 17,
+									onclick: ["<<runEvent('loadTemplate', {name: '"+currentTemplateName+"'});>>"]
+								};
+								
+								for (let i = 0; i < colorsArr.length; i++){
+									let ratioNum = (i / (colorsArr.length - 1));
+									
+									if (isNaN(ratioNum)){ ratioNum = 0; }
+									
+									currentButton.color.colorStops.push(["" + ratioNum, colorsArr[i]]);
+								}
+								
+								buttons.menu.push(currentButton);
+							}
+						}
+						
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + currentMiddlePos.w/2 - 0.15/2, y: currentMiddlePos.y - currentMiddlePos.h/2 + 0.02/2, w: 0.15, h: 0.02},
+							text: "Load from URL", textSize: 0.075, onclick: ["loadURL"]
+						});
+						
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + currentMiddlePos.w/2 - 0.15/2, y: currentMiddlePos.y + currentMiddlePos.h/2 - 0.02/2 - 0.105, w: 0.15, h: 0.02},
+							text: "Random Template", textSize: 0.075, onclick: ["clickRandomTemplate"]
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + currentMiddlePos.w/2 - 0.15/2, y: currentMiddlePos.y + currentMiddlePos.h/2 - 0.02/2 - 0.075, w: 0.15, h: 0.02},
+							text: "Random Template & Start", textSize: 0.075, onclick: ["clickRandomTemplate", "startButtonClick"]
+						});
+						
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + currentMiddlePos.w/2 - 0.15/2, y: currentMiddlePos.y + currentMiddlePos.h/2 - 0.02/2 - 0.03, w: 0.15, h: 0.02},
+							text: "Randomize All", textSize: 0.075, onclick: ["randomizeTemplate"]
+						});
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x + currentMiddlePos.w/2 - 0.15/2, y: currentMiddlePos.y + currentMiddlePos.h/2 - 0.02/2, w: 0.15, h: 0.02},
+							text: "Randomize All & Start", textSize: 0.075, onclick: ["randomizeTemplate", "startButtonClick"],
+							subtext: "[shortcut: r]", subtextPos: {x: 0, y: 0.4}, subtextSize: 0.04
+						});
+						
+						
+						
+						/*bottom right setup buttons*/
+						currentMiddlePos = {x: 0.175, y: 0.0875, w: 0.05, h: 0.025};
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h}, color: "#00000000",
+							text: "zoom", textSize: 0.5, disableClick: true,
+						});
+						let borderSize = 0.0015;
+						let valuesArr = [1, 2, 4, 8, 16];
+						for (let i = 0; i < valuesArr.length; i++){
+							buttons.menu.push({
+								pos: {x: currentMiddlePos.x + 0.065 + i * 0.055, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+								text: valuesArr[i], textSize: 0.4, borderColor: "#000000", borderSize: ((pixelSize == valuesArr[i]) ? borderSize : 0),
+								onclick: ["<<pixelSize = "+valuesArr[i]+";>>", "refreshMenuButtons"],
+							});
+						}
+						currentMiddlePos = {x: 0.175, y: currentMiddlePos.y + 0.05, w: 0.05, h: 0.025};
+						buttons.menu.push({
+							pos: {x: currentMiddlePos.x, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h}, color: "#00000000",
+							text: "speed", textSize: 0.5, disableClick: true,
+						});
+						valuesArr = [1, 10, 100, 1000, 10000];
+						for (let i = 0; i < valuesArr.length; i++){
+							buttons.menu.push({
+								pos: {x: currentMiddlePos.x + 0.065 + i * 0.055, y: currentMiddlePos.y, w: currentMiddlePos.w, h: currentMiddlePos.h},
+								text: valuesArr[i], textSize: 0.4, borderColor: "#000000", borderSize: ((turnsPerFrame == valuesArr[i]) ? borderSize : 0), downscaleTextLength: 2,
+								onclick: ["<<turnsPerFrame = "+valuesArr[i]+";>>", "refreshMenuButtons"],
+							});
+						}
+						
+						
+						runEvent("refreshPieceGrid");
+					}>>`],
+					
+					menuEvents: {
+						menuPieceButtonEvents: {
+							addPiece: [`<<
+								let uniqueColor = getRandomElementOfArray(defaultColors.flat());
+								
+								let isUnique = false;
+								let triesNum = 0;
+								while (!isUnique && triesNum < 100){
+									isUnique = true;
+									for (let i in pieces){
+										if (pieces[i].color == uniqueColor){
+											isUnique = false;
+										}
+									}
+									
+									if (!isUnique){
+										uniqueColor = getRandomElementOfArray(defaultColors.flat());
+									}
+									
+									triesNum++;
+								}
+								
+								pieces.push(
+									{color: uniqueColor, attackPattern: ["01010","10001","00000","10001","01010"], previousPos: -1, maxEnemies: 0, maxAllies: Infinity}
+								);
+								
+								pieceOrder.push(pieces.length - 1);
+							>>`],
+							removePiece: [`<<
+								if (pieces.length > 1){
+									pieces.splice(args.i, 1);
+									
+									if (selectedPieceNum >= args.i){
+										selectedPieceNum--;
+										
+										if (selectedPieceNum < 0){
+											selectedPieceNum = 0;
+										}
+									}
+									
+									for (let j = 0; j < pieceOrder.length; j++){
+										if (pieceOrder[j] >= args.i){
+											if (pieceOrder[j] == args.i){
+												pieceOrder.splice(j, 1);
+												j--;
+											} else{
+												pieceOrder[j]--;
+											}
+										}
+									}
+									if (pieceOrder.length == 0){
+										pieceOrder = [0];
+									}
+								}
+							>>`],
+						},
+						menuPieceOrderEvents: {
+							removePieceOrderIndex: [`<<
+								if (pieceOrder.length > 1){
+									pieceOrder.splice(args.i, 1);
+								}
+							>>`],
+							movePieceOrderIndex: [`<<
+								let targetIndex = args.i + args.increment;
+								
+								if (pieceOrder[targetIndex] != undefined){
+									let currentValue = pieceOrder[args.i];
+									
+									pieceOrder[args.i] = pieceOrder[targetIndex];
+									pieceOrder[targetIndex] = currentValue;
+								}
+							>>`],
+						},
+						
+						menuAttackerEvents: {
+							changeMaxAttackerValues: [`<<
+								let currentValue = (args.type == "enemies") ? pieces[selectedPieceNum].maxEnemies : pieces[selectedPieceNum].maxAllies;
+								
+								if (args.changeType == 0 || args.changeType == Infinity){
+									currentValue = args.changeType;
+								} else{
+									if (currentValue == Infinity){
+										currentValue = 5;
+									}
+									
+									currentValue += args.changeType;
+								}
+								
+								if (args.type == "enemies"){
+									pieces[selectedPieceNum].maxEnemies = Math.max(currentValue, 0);
+								} else{
+									pieces[selectedPieceNum].maxAllies = Math.max(currentValue, 0);
+								}
+							>>`],
+							
+							randomizeMaxAttackers: [`<<
+								let maxEnemies = getRandomElementOfArrayWithWeights(
+									[{num: 0, weight: 5}, {num: 1, weight: 4}, {num: 2, weight: 3}, {num: 3, weight: 2}, {num: 4, weight: 1}, {num: Infinity, weight: 1}]
+								).num;
+								let maxAllies = getRandomElementOfArrayWithWeights(
+									[{num: 0, weight: 2}, {num: 1, weight: 2}, {num: 2, weight: 2}, {num: 3, weight: 2}, {num: 4, weight: 3}, {num: Infinity, weight: 5}]
+								).num;
+								
+								pieces[selectedPieceNum].maxEnemies = maxEnemies;
+								pieces[selectedPieceNum].maxAllies = maxAllies;
+							>>`],
+						},
+						
+						menuGridEvents: {
+							refreshPieceGrid: [`<<
+								mainGrid.data.w = 0.125 / mainGrid.grid.baseLayer[0].length;
+								mainGrid.data.h = 0.125 / mainGrid.grid.baseLayer.length;
+								
+								mainGrid.data.draw[0].borderSize = 0.005 / mainGrid.grid.baseLayer.length;
+								
+								layoutSymbols["o"].data.drawTile.color = pieces[selectedPieceNum]?.color ?? layoutSymbols["o"].data.drawTile.color;
+								
+								layoutSymbols["-"].data.drawTile.color = (layoutSymbols["o"].data.drawTile.color == "#cccccc") ? "#b0b0b0" : "#cccccc";
+								
+								pieces[selectedPieceNum].attackPattern = [];
+								for (let i = 0; i < mainGrid.grid.baseLayer.length; i++){
+									pieces[selectedPieceNum].attackPattern[i] = "";
+									for (let j = 0; j < mainGrid.grid.baseLayer[i].length; j++){
+										pieces[selectedPieceNum].attackPattern[i] += ((mainGrid.grid.baseLayer[i][j].type == "filled") ? "1" : "0");
+									}
+								}
+								
+								refreshGridDrawValues();
+							>>`],
+							setPieceGridToPiecePattern: [`<<
+								mainGrid.grid.baseLayer = [];
+								for (let i = 0; i < pieces[selectedPieceNum].attackPattern.length; i++){
+									mainGrid.grid.baseLayer[i] = [];
+									for (let j = 0; j < pieces[selectedPieceNum].attackPattern[i].length; j++){
+										mainGrid.grid.baseLayer[i][j] = {type: ((pieces[selectedPieceNum].attackPattern[i][j] == "1") ? "filled" : "empty")};
+									}
+								}
+								mainGrid.grid.baseLayer[Math.floor(mainGrid.grid.baseLayer.length / 2)][Math.floor(mainGrid.grid.baseLayer[0].length / 2)].type = "middle";
+								
+								refreshGridDrawValues();
+							>>`],
+							
+							increaseGridSize: [`<<
+								let currentArr = [];
+								for (let i = -1; i < mainGrid.grid.baseLayer.length + 1; i++){
+									currentArr.push([]);
+									for (let j = -1; j < mainGrid.grid.baseLayer[0].length + 1; j++){
+										currentArr[currentArr.length - 1].push(mainGrid.grid.baseLayer[i]?.[j] ?? {type: "empty"});
+									}
+								}
+								mainGrid.grid.baseLayer = currentArr;
+								
+								runEvent("refreshPieceGrid");
+							>>`],
+							decreaseGridSize: [`<<
+								if (mainGrid.grid.baseLayer.length > 1){
+									let currentArr = [];
+									for (let i = 1; i < mainGrid.grid.baseLayer.length - 1; i++){
+										currentArr.push([]);
+										for (let j = 1; j < mainGrid.grid.baseLayer[i].length - 1; j++){
+											currentArr[currentArr.length - 1].push(mainGrid.grid.baseLayer[i][j]);
+										}
+									}
+									mainGrid.grid.baseLayer = currentArr;
+									
+									runEvent("refreshPieceGrid");
+								}
+							>>`],
+							clearGrid: [`<<
+								for (let i in mainGrid.grid.baseLayer){
+									for (let j in mainGrid.grid.baseLayer[i]){
+										mainGrid.grid.baseLayer[i][j].type = "empty";
+									}
+								}
+								mainGrid.grid.baseLayer[Math.floor(mainGrid.grid.baseLayer.length/2)][Math.floor(mainGrid.grid.baseLayer[0].length/2)].type = "middle";
+								
+								runEvent("refreshPieceGrid");
+							>>`],
+							resetGrid: [`<<
+								mainGrid.grid.baseLayer = [];
+								setValuesOnGridFromLayout({gridName: "mainGrid", layerName: "baseLayer", layoutName: "knightLayout"});
+								
+								runEvent("refreshPieceGrid");
+							>>`],
+							randomizeGrid: [`<<
+								let size = getRandomNum({min: 0, max: 3}) * 2 + 5;
+								
+								let filledPercentage = Math.random();
+								
+								mainGrid.grid.baseLayer = [];
+								for (let i = 0; i < size; i++){
+									mainGrid.grid.baseLayer[i] = [];
+									for (let j = 0; j < size; j++){
+										mainGrid.grid.baseLayer[i][j] = {type: ((Math.random() < filledPercentage) ? "filled" : "empty")};
+									}
+								}
+								
+								mainGrid.grid.baseLayer[Math.floor(mainGrid.grid.baseLayer.length/2)][Math.floor(mainGrid.grid.baseLayer[0].length/2)].type = "middle";
+								
+								runEvent("refreshPieceGrid");
+							>>`],
+						},
+						
+						gridNextFrame: [`<<{
+							if (isMouseDown && !isNotesClickable && clickedScrollbar.xy == "" && clickedButton.i == "" && !closestButton.isHover){
+								let clickedTilePos = getVertexPositionInGrid(scaledMousePos, mainGrid, "baseLayer");
+								
+								if ((mainGrid.grid.baseLayer[clickedTilePos.y]?.[clickedTilePos.x]?.type ?? "middle") != "middle"){
+									if (clickedTileType == ""){
+										clickedTileType = mainGrid.grid.baseLayer[clickedTilePos.y][clickedTilePos.x].type;
+									}
+									
+									mainGrid.grid.baseLayer[clickedTilePos.y][clickedTilePos.x].type = (clickedTileType == "filled") ? "empty" : "filled";
+								}
+							} else{
+								clickedTileType = "";
+							}
+							
+							runEvent("refreshPieceGrid");
+						}>>`],
+						
+						menuPieceOrderNextFrame: {
+							randomizePieceOrder: [`<<
+								let minLength = getRandomNum({min: pieces.length, max: Math.max(pieces.length * 3, 24)});
+								
+								pieceOrder = [];
+								for (let i = 0; i < minLength; i++){
+									pieceOrder.push(Number(getRandomElementNameOfObject(pieces)));
+								}
+								
+								let existsArr = [];
+								
+								for (let i = 0; i < pieceOrder.length; i++){
+									existsArr[pieceOrder[i]] = true;
+								}
+								
+								for (let i = 0; i < pieces.length; i++){
+									if (!existsArr[i]){
+										insertIntoArrayRandomly(pieceOrder, i);
+									}
+								}
+							>>`],
+							resetPieceOrder: [`<<
+								pieceOrder = [];
+								
+								for (let i = 0; i < pieces.length; i++){
+									pieceOrder.push(i);
+								}
+							>>`],
+						},
+						
+						templateEvents: {
+							loadTemplate: [`<<
+								selectedPieceNum = 0;
+								
+								runEvent("loadPiecesFromText", {text: templates[args.name]});
+								
+								runEvent("setPieceGridToPiecePattern");
+								runEvent("refreshPieceGrid");
+								runEvent("refreshMenuButtons");
+								
+								if (autoStartTemplates){
+									runEvent("startButtonClick");
+								}
+							>>`],
+							
+							pageButtonClick: [`<<
+								if (args.increment == 0){
+									templatePageNum = 0;
+								} else if (args.increment < 0){
+									templatePageNum += args.increment;
+									templatePageNum = Math.max(templatePageNum, 0);
+								} else{
+									let maxPageNum = Math.ceil(objectLength(templates) / 12) - 1;
+									
+									if (args.increment == Infinity){
+										templatePageNum = maxPageNum;
+									} else{
+										templatePageNum += args.increment;
+										templatePageNum = Math.min(templatePageNum, maxPageNum);
+									}
+								}
+							>>`],
+							
+							clickRandomTemplate: [`<<
+								selectedPieceNum = 0;
+								
+								runEvent("loadPiecesFromText", {text: getRandomElementOfObject(templates)});
+								
+								runEvent("setPieceGridToPiecePattern");
+								runEvent("refreshPieceGrid");
+								runEvent("refreshMenuButtons");
+							>>`],
+							
+							randomizeTemplate: [`<<
+								let piecesNum = getRandomNum({min: 2, max: 5});
+								
+								pieces = [];
+								pieceOrder = [];
+								for (let i = 0; i < piecesNum; i++){
+									runEvent("addPiece");
+									
+									selectedPieceNum = i;
+									
+									runEvent("randomizeGrid");
+									
+									runEvent("randomizeMaxAttackers");
+								}
+								
+								selectedPieceNum = 0;
+								runEvent("setPieceGridToPiecePattern");
+								
+								runEvent("randomizePieceOrder");
+								
+								runEvent("refreshMenuButtons");
+							>>`],
+							
+							loadURL: [`<<
+								selectedPieceNum = 0;
+								
+								let currentURL = prompt("Input url:");
+								
+								if (currentURL != null){
+									if (currentURL.includes(";")){
+										currentURL = currentURL.split("args=");
+										currentURL = currentURL[currentURL.length - 1];
+										
+										runEvent("loadPiecesFromText", {text: currentURL});
+										
+										for (let i in pieces){
+											if (!defaultColors.flat().includes(pieces[i].color) && !customColors.includes(pieces[i].color)){
+												customColors.unshift(pieces[i].color);
+											}
+										}
+										customColors = customColors.slice(0, 4);
+										
+										runEvent("setPieceGridToPiecePattern");
+										runEvent("refreshPieceGrid");
+										runEvent("refreshMenuButtons");
+									}
+								}
+							>>`],
+						},
+						
+						startButtonEvents: {
+							startButtonClick: [`<<
+								let urlText = "";
+								
+								for (let i in pieces){
+									let attackText = "";
+									
+									for (let j in pieces[i].attackPattern){
+										attackText += pieces[i].attackPattern[j];
+									}
+									
+									let attackId = getHexadecimalFromBinary("1" + attackText);
+									
+									urlText += pieces[i].color.slice(1) + "," + attackId;
+									
+									if ((pieces[i].maxEnemies ?? 0) != 0 || (pieces[i].maxAllies ?? Infinity) != Infinity){
+										urlText += "," + pieces[i].maxEnemies + "," + pieces[i].maxAllies;
+									}
+									
+									urlText += ";";
+								}
+								
+								urlText += stringify(pieceOrder) + "," + pixelSize + "," + turnsPerFrame;
+								
+								window.open(window.location.href + (window.location.search == "" ? "?game=Knight Patterns" : "") + "&args=" + urlText);
+							>>`],
+							
+							startShortcutPress: [`<<
+								if (gameState.currentState == "menu"){
+									if (inputs["KeyR"]){
+										runEvent("randomizeTemplate")
+									}
+									
+									runEvent("startButtonClick");
+									
+									inputs["Space"] = false;
+									inputs["KeyR"] = false;
+								} else{
+									window.close();
+								}
+							>>`],
+						},
+					},
+					
+					drawEvents: {
+						generateSpiralGrid: [`<<
+							spiralGrid = [];
+							
+							let size = Math.round(Math.max(canvas.width, canvas.height) / pixelSize);
+							
+							for (let i = 0; i < size; i++){
+								spiralGrid[i] = [];
+								for (let j = 0; j < size; j++){
+									spiralGrid[i][j] = {pieceNum: -1, attackers: []};
+									
+									for (let k = 0; k < pieces.length; k++){
+										spiralGrid[i][j].attackers[k] = 0;
+									}
+								}
+							}
+						>>`],
+						
+						generateSpiralTilePos: [`<<
+							let middlePos = {x: Math.round(spiralGrid[0].length / 2), y: Math.round(spiralGrid.length / 2)};
+							
+							let currentMovementNum = 0;
+							let currentDirection = 3;
+							let currentPos = {...middlePos};
+							
+							spiralTilePos = [{x: currentPos.x, y: currentPos.y}];
+							
+							while (spiralTilePos.length < (spiralGrid[0].length * spiralGrid.length)){
+								if (currentDirection == 1 || currentDirection == 3){
+									currentMovementNum += 1;
+								}
+								
+								for (let i = 0; i < currentMovementNum; i++){
+									if (spiralTilePos.length < (spiralGrid[0].length * spiralGrid.length)){
+										currentPos.x += directions[currentDirection].x;
+										currentPos.y += directions[currentDirection].y;
+										
+										spiralTilePos.push({x: currentPos.x, y: currentPos.y});
+									}
+								}
+								
+								currentDirection++;
+								if (currentDirection > 3){ currentDirection = 0; }
+							}
+							
+							let canvasCenterPos = {x: Math.round(canvas.width / 2), y: Math.round(canvas.height / 2)};
+							
+							spiralCenterOffset = {
+								x: canvasCenterPos.x - middlePos.x,
+								y: canvasCenterPos.y - middlePos.y
+							};
+						>>`],
+						
+						placePieces: [`<<
+							let foundLegalPlacement = false;
+							
+							if (!isDrawingFinished){
+								for (let turnNum = 0; turnNum < turnsPerFrame * 2; turnNum += pieceOrder.length){
+									for (let pieceNum of pieceOrder){
+										for (let i = pieces[pieceNum].previousPos + 1; i < spiralTilePos.length; i++){
+											let currentTile = spiralGrid[spiralTilePos[i].y]?.[spiralTilePos[i].x];
+											
+											if (currentTile != undefined){
+												if (currentTile.pieceNum == -1){
+													let alliesNum = currentTile.attackers[pieceNum];
+													let enemiesNum = 0;
+													for (let j in currentTile.attackers){
+														if (j != pieceNum){
+															enemiesNum += currentTile.attackers[j];
+														}
+													}
+													
+													let areEnemiesCorrect = enemiesNum <= (pieces[pieceNum].maxEnemies ?? 0);
+													let areAlliesCorrect = alliesNum <= (pieces[pieceNum].maxAllies ?? Infinity);
+													
+													/*if ((pieces[pieceNum].minEnemies ?? 0) > 0){ //minEnemies rarely works because of the previousPos not resetting to 0 each turn
+														if ((pieces[pieceNum].minEnemies ?? 0) > i){ areEnemiesCorrect = false; }
+														
+														areEnemiesCorrect = areEnemiesCorrect && (enemiesNum >= (pieces[pieceNum].minEnemies ?? 1));
+													}*/
+													
+													if (areEnemiesCorrect && areAlliesCorrect){
+														spiralGrid[spiralTilePos[i].y][spiralTilePos[i].x].pieceNum = pieceNum;
+														
+														foundLegalPlacement = true;
+														
+														let middlePos = {x: spiralTilePos[0].x, y: spiralTilePos[0].y};
+														let testPos = {
+															x: spiralTilePos[i].x + spiralCenterOffset.x,
+															y: spiralTilePos[i].y + spiralCenterOffset.y,
+														};
+														let drawPos = {
+															x: (spiralTilePos[i].x - middlePos.x) * pixelSize + middlePos.x + spiralCenterOffset.x,
+															y: (spiralTilePos[i].y - middlePos.y) * pixelSize + middlePos.y + spiralCenterOffset.y,
+														};
+														ctx.fillStyle = pieces[pieceNum].color;
+														ctx.fillRect(drawPos.x, drawPos.y, pixelSize, pixelSize);
+														
+														/*Attack tiles*/
+														let patternArr = pieces[pieceNum].attackPattern;
+														
+														for (let k = 0; k < patternArr.length; k++){
+															for (let l = 0; l < patternArr[k].length; l++){
+																if (patternArr[k][l] == "1"){
+																	let currentPos = {
+																		x: (l - Math.floor(patternArr[k].length/2)) + spiralTilePos[i].x,
+																		y: (k - Math.floor(patternArr.length/2)) + spiralTilePos[i].y,
+																	};
+																	
+																	if (spiralGrid[currentPos.y]?.[currentPos.x] != undefined){
+																		spiralGrid[currentPos.y][currentPos.x].attackers[pieceNum]++;
+																	}
+																}
+															}
+														}
+														
+														break;
+													}
+												}
+												
+												pieces[pieceNum].previousPos = i;
+											}
+										}
+									}
+								}
+							}
+							
+							if (!foundLegalPlacement){
+								isDrawingFinished = true;
+							}
+						>>`],
+					},
+				},
+				
+				gridNames: ["mainGrid"],
+				
+				buttons: {
+					menu: [
+						{...gamePresets.quitButton}
+					],
+				},
+			},
+			createdVariables: {
+				spiralGrid: [],
+				spiralTilePos: [],
+				
+				spiralCenterOffset: {x: 0, y: 0},
+				pixelSize: 1,
+				turnsPerFrame: 10000,
+				isDrawingFinished: false,
+				
+				pieceOrder: [0, 1],
+				
+				selectedPieceNum: 0,
+				clickedTileType: "",
+				
+				defaultColors: [
+					["#ff8848", "#4888ff", colors.enby[0], colors.enby[2], colors.enby[3]],
+					[colors.lesbian[0], colors.lesbian[1], colors.lesbian[3], colors.lesbian[4], colors.pride[0]],
+					[colors.pride[1], colors.pride[2], colors.pride[3], colors.pride[4], colors.pride[5]],
+					[colors.pan[0], colors.pan[1], colors.pan[2], colors.trans[0], colors.trans[1]],
+					["#ffffff", "#cccccc", "#999999", "#666666", "#333333"],
+				],
+				customColors: [],
+				
+				templatePageNum: 0,
+				autoStartTemplates: false,
+				
+				templates: {
+					//awesome ones
+					"triangle forest": "9b59d0,2a8822a,0,0;2d2d2d,2a8822a,3,2;[0,1],1,10000",
+					"strongly mountain shape": "333333,3150151,Infinity,3;ffffff,2a8822a,0,0;[0,1],1,10000",
+					"tower in the noise": "ff218c,2a8822a,2;ffd800,282808000000000020282,2;[0,1],1,10000",
+					"complex and simple": "333333,3150151,2,3;ffffff,2a8822a,0,0;[0,1],1,10000",
+					"red blue quadrants": "4888ff,2000000000640;e50000,38f080a294a5965604a99,3,4;333333,3fffffeffffff,1,4;[1,2,0,0,1,2,0,1,0,2,0,1,2,0,0,2,1],1,10000",
+					"the pyramid": "999999,3fecfee,1,0;ef7627,200000000000000000701f07f1ff7ff,1,Infinity;[0,1],1,10000",
+					
+					//city grid
+					"city blocks": "666666,3ffffffffffffffefffffffffffffff,0,0;cccccc,2000000000000,3,0;[1,1,1,1,1,1,1,0],4,10000",
+					"city grid": "2d2d2d,3ffffffffffffffefffffffffffffff,0,0;cccccc,2000000000000,2,0;[1,1,1,1,1,1,1,0],1,10000",
+					"city grid with parks": "2d2d2d,3ffffffffffffffefffffffffffffff,0,0;cccccc,2000000000000,2,0;028121,3fffffffffeffffffffff;[1,1,1,1,1,1,1,0,2],2,10000",
+					
+					//zoomed in pictures
+					"triangles over lines": "cccccc,228;333333,228;d162a4,228;ffffff,228;666666,228;[0,1,2,3,4],8,10000",
+					"pillow-material-like texture": "ff8848,2904a83573c79d582a412,1,3;4888ff,30ad0a86f642f,0,1;ffffff,2204000200000010280408002108405,1,1;[0,1,2],2,10000",
+					"random nice pattern": "ffee00,2fbe5ef,1,4;ff8b00,3edc2f7,1,1;004cff,3ffefff,0,0;5bcefa,27c002410109384443320,0,3;[1,1,3,1,3,2,2,1,2,0,1,1,0,3,1,2,3,0,1,0,1],2,10000",
+					
+					//infinite triangles
+					"green and yellow triangles": "028121,205022e;ffd800,2e88140,5,2;[0,1],1,10000",
+					"blurry triangles": "028121,2aaaaaa,Infinity,4;cccccc,2000000;[0,1],1,10000",
+					"simplest triangles": "028121,2050140,Infinity,1;cccccc,2000000;[0,1],1,10000",
+					"simpler breakout": "5bcefa,2a8822a,0,4;ffffff,2a8822a,1,3;[0,1],1,10000",
+					
+					//worlds
+					"green universe": "2d2d2d,3a6da0bf044c102160b73,0,4;f5a9b8,200400602c244820dc859,3,4;028121,34d922c4b94aeb20c8936,1,0;[0,1,2],1,10000",
+					"tore apart world": "5bcefa,3904d93,2,4;004cff,3feefff,1,Infinity;999999,2600ec8564401;333333,289e209,3,1;ff218c,2000000,2,3;[0,1,2,3,4],1,10000",
+					"grainy universe": "e50000,237a625,2,2;9b59d0,23ad2221170a9,2,3;cccccc,2c9b2d2501140,3,4;ff218c,2fd5ae83a45c54acee9dbf735be7c87,1,3;[0,0,0,1,3,2,1,3,1,2,3],1,10000",
+					"wavy lands": "fff433,2a024002014a014080002,1,2;ffffff,3fffdfffffefffffdffff,1,4;d52d00,3fbeebb,1,Infinity;333333,3baeffb,2,4;[0,3,0,2,1,0],1,10000",
+					"vaguely patterned universe": "5bcefa,2852104;ffffff,354b1008102f600282340,0,2;4888ff,3fdffb7fe7ffdbfe7ffe6fcffffffff,0,4;e50000,34201c8,1,4;[0,0,3,0,3,1,3,3,3,1,1,0,0,0,2,1,3,0,3,0,2],1,10000",
+					"cyan yellow universe": "333333,3ffff7ffff6fdfff57f7e,1,2;5bcefa,2600562080caa9c31922c,0,4;ffd800,26b3f79206dbce22c8124335416706e;[0,1,2],1,10000",
+					"wild world": "ef7627,31012100c8045,0,2;d162a4,2428200000042;ffffff,200c00d002a0080040110,3,Infinity;333333,3ff7fffdfdaffffffffff,2,Infinity;[0,1,2,2,3,3],1,10000",
+					"shaded wild world": "ef7627,31012100c8045,0,2;d162a4,2428200000042;ffffff,200c00d002a0080040110,3,Infinity;333333,3ff7fffdfdaffffffffff,2,Infinity;[0,1,3,3,3,2],1,10000",
+					"parted world": "2d2d2d,2ebfd7eddff7b,2,4;d52d00,3b0864a641612,3,3;666666,29e01221108189029507c,0,3;21b1ff,2002000101040,2,Infinity;ffffff,200602a002000000400081b11040000,1,Infinity;[1,0,1,0,0,4,0,1,4,1,2,2,3,3,4,0],1,10000",
+					"red gray world": "f5a9b8,2af5775112424241c4100,2,3;e50000,33043c1,0,4;999999,35d634b,1,Infinity;d52d00,336fffdbd7efba7ffdbee;[0,1,3,2,2,2,2,3,1,1,2,3],1,10000",
+					"two worlds": "d52d00,21945280905b0;028121,206f000009c60;770088,264ca981b8626,1,3;[0,1,2],1,10000",
+					"three worlds": "21b1ff,3a9100810a4469e00fc23a583b5f677;2d2d2d,200040000000000000008,0,4;5bcefa,2bec112ad0448;ff218c,2218802242cc0,Infinity,4;ffd800,2120a640044142e184011,1,Infinity;[4,0,2,3,2,2,4,0,2,1,1,3,4,3,4,4,1,3,0],1,10000",
+					"bee colored world": "fff433,3756ea6eecf7f,1,4;333333,24600ca,0,4;ffd800,3b12fcae2229c2bc67150,1,2;2d2d2d,3ffefff,0,1;ff8b00,3f5ef7f,0,4;[1,3,4,2,2,1,3,3,0,1,2,2],1,10000",
+					"glitchy world": "5bcefa,35601bd465e9437597fde,1,3;333333,2c830d585763e2e146e76;e50000,3efe3ff,4,Infinity;ff8b00,2010400,0,1;[3,3,3,0,3,1,2,3],1,10000",
+					
+					//kinda mirrored kinda mountains
+					"two-sided pattern": "9b59d0,2a8822a,0,0;2d2d2d,2a8822a,4,2;[0,1],1,10000",
+					"two-sided pattern more detailed": "9b59d0,2a8822a,0,0;2d2d2d,2a8822a,2,2;[0,1],1,10000",
+					"vaguely mountain shape": "9b59d0,2426c84;770088,273e318;[0,1],1,10000",
+					
+					//quadrants
+					"wavy quadrants": "21b1ff,2426c84;004cff,231e39c;[0,1],1,10000",
+					"wilder quadrants": "ff218c,2426c84;ffd800,231e39c;21b1ff,231e39c;[0,1,2],1,10000",
+					"evil quadrants": "2d2d2d,220242a99c0aa64a1c830,2,0;e50000,325821a,2,0;[0,1],1,10000",
+					"random quadrants": "ff8848,23b872a,2,4;4888ff,22618b4,2,1;[0,1],1,10000",
+					
+					//random small patterns
+					"wild center": "fff433,2a8822a;ffffff,2a8822a;9b59d0,2a8822a;2d2d2d,2a8822a;[0,1,2,3,0,3],1,10000",
+					"patterns galore": "fff433,2a8822a;ffffff,2a8822a;9b59d0,2a8822a;2d2d2d,2a8822a;[3,0,0,0,1,1,1,2,2,2],1,10000",
+					"top right hill": "fff433,2a8822a;ffffff,2a8822a;9b59d0,2a8822a;2d2d2d,2a8822a;[3,0,0,0,1,1,1,3,3,2,2,2],1,10000",
+					
+					//mazes
+					"spiral squares maze": "ff218c,2a8822a;ffd800,28a08000020a2;[0,1],1,10000",
+					"square maze": "ff8800,2a8822a,2,2;0088ff,2a8822a,2,2;[0,1],1,10000",
+					"maze center": "333333,3576dd5;028121,2a8822a;[0,0,1],1,10000",
+					"big maze center": "028121,3576dd5;333333,2a8822a;[0,0,0,1,0,1,1,1,0,1,0,0,1],1,10000",
+					"spaceship maze": "ff218c,2a8822a;ffd800,282808000000000020282;[0,1],1,10000",
+					"unexplainable maze": "ff218c,2a8822a;ffd800,282808000000000020282;[1,0,1],1,10000",
+					"maze with outlines": "ff8b00,2e30a04,1,Infinity;5bcefa,3fffffffffef7dfffffff;9b59d0,2800442;999999,3fedeb9ffe3fff7abefe6fdfff5f6ff,2,Infinity;[0,1,2,3],1,10000",
+					"random smooth maze": "ff8848,37ea9cb451ade928a77accbe1d25f75;4888ff,2a8822a,0,2;[0,1],1,10000",
+					"broken maze": "2d2d2d,2180414010004;d162a4,3bbfcf7b9a4e366ce8395,3,Infinity;[0,1,0,0,0,0,0,1,0,0],1,10000",
+					
+					//many symmetric sides
+					"12 sides": "9b59d0,2e8c62e,0,4;[0],1,10000",
+					"knight octogons": "770088,2a8822a,Infinity,1;2d2d2d,2a8822a,0,1;[0,1],2,10000",
+					
+					//clean shapes, outlines
+					"squigly triangles": "5bcefa,3ff7eff7ffeffdffffbfb,2,Infinity;028121,2fffffeffffff,2,Infinity;[1,0,1,1,0,0,1,0],1,10000",
+					"random wavy pattern": "9b59d0,21263320080804809100040a0080008;f5a9b8,380fd09b0006c1901c248;[0,1],1,10000",
+					"random wavy pattern weirder": "9b59d0,21263320080804809100040a0080008,1,12;f5a9b8,380fd09b0006c1901c248,1,15;[0,1],1,10000",
+					
+					//basic
+					"repeating triangles": "ff218c,2a8822a,2;ffd800,28a08000020a2;21b1ff,2200008200008;[0,1,2],1,10000",
+					"increasing triangles": "e50000,3e3c78e1e3c78;5bcefa,2a8822a;[0,1],1,10000",
+					"increasing claw marks": "4888ff,200000000000000040404;5bcefa,2a8822a;[0,1],1,10000",
+					
+					//kinda hard to look at
+					"witness lines": "9b59d0,2e8c62e,0,3;[0],4,10000",
+					"arrows in the gaps": "4888ff,2a8822a;21b1ff,2a8822a,1,0;5bcefa,2200008200008;[0,1,2,1],1,10000",
+					"patterns breaking out": "ff8848,2a8822a,0,0;4888ff,2a8822a,0,0;5bcefa,2a8822a,0,0;ef7627,2a8822a,0,0;ffffff,2a8822a,1,3;[0,1,2,3,4],1,10000",
+					"wavy-triangle corner": "ffffff,2008080,3,0;ff8848,3022005210a090023120028d0098801,1,Infinity;ffd800,2158454,0,4;[2,1,2,0,2],1,10000",
+					"tiny patterns": "028121,2050140,Infinity,0;ffffff,2a8822a,0,0;[0,1],1,10000",
+					"triangle rays": "028121,2050140,Infinity,1;ffffff,2a8822a,0,0;[0,1],1,10000",
+					
+					//waves
+					"squares waves": "5bcefa,2a8822a;21b1ff,2a8822a;004cff,2a8822a,1,0;333333,2a8822a;[3,0,0,0,1,1,1,2,2,2],1,10000",
+					"straight waves": "ffd800,204010040000004010040;770088,2a8822a;[0,1],1,10000",
+					"wavy waves": "ff218c,2414504;028121,2a8aa2a;[0,1],1,10000",
+					"spaceship waves": "ff218c,300401004000040100401;ffd800,2a8822a;[0,1],1,10000",
+					"polygonal waves": "ff218c,2a8822a,1;ffd800,282808000000000020282,1;[0,1],1,10000",
+					"unique waves": "2d2d2d,2ffc73e,0,3;ff218c,2040000204000810000420380588248,0,4;[0,1],1,10000",
+					
+					//vaguely 3d
+					"vaguely 3D effect": "ff8848,2182830000000;4888ff,2a8822a;[0,1],1,10000",
+					"harsh pattern": "ff8848,20e0682c0e00000000000;4888ff,2a8822a;[0,1],1,10000",
+					
+					//basic knights
+					"two knights": "ff218c,2a8822a;ffd800,2a8822a;[0,1],1,10000",
+					"modified three knights": "ff218c,2a8822a;ffd800,2a8822a;21b1ff,2a8822a;[0,1,2,2],1,10000",
+					"modified four knights": "ff218c,2a8822a;ffd800,2a8822a;21b1ff,2a8822a;5bcefa,2a8822a;[0,0,1,2,3,0,3],1,10000",
+					
+					"very modified three knights": "ff218c,2a8822a;ffd800,2a8822a;21b1ff,2a8822a;[0,1,0,1,0,1,2,2,2],1,10000",
+					
+					"knight-knight-threeleaper": "ff218c,2a8822a;ffd800,2a8822a;21b1ff,2200008200008;[0,1,2],1,10000",
+					/*
+						modified four knights:
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[2,2,1,0,3,2,3],1,10000
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[3,3,3,0,1,0,1,1,3,1,0,1,1,3,2,1,0,2,0],1,10000
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[0,1,0,0,2,2,2,0,0,0,3,1,1,2,2,2,0,1,3,2,2],1,10000
+						
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[2,0,3,0,3,0,0,1,2,1,2,2,0,0,1,2,2,1,0,2,0,3,1,1],1,10000
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[0,2,0,2,2,3,0,1,1,0,0],1,10000
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[0,0,2,0,3,3,0,1,1,1,0,1,0,2,3,0,2,1,1,1,0,1],1,10000
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[0,1,2,3,2,3,2],1,10000
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[0,1,3,2,2,2,0,3,2,3,3],1,10000
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[0,1,0,1,1,0,2,3,2,1,0,2,1,0],1,10000
+						ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[1,1,0,2,2,0,0,2,2,2,1,1,3,0,1,3,1],1,10000
+						(not as good) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[3,3,3,2,1,2,1,1,0,0,2],1,10000
+						(not good) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[2,3,3,1,1,3,1,0,1],1,10000
+						(nou) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[0,1,0,3,1,0,0,2,2,3,2,1,3,3],1,10000
+						(up only) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;[1,1,3,3,2,2,0,0,1,2,1,0],1,10000
+						
+						five knights:
+						
+						(promising) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[4,1,4,0,1,2,1,2,1,0,3,4,4,3],1,10000
+						(it's something) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[0,1,2,3,4,3],1,10000
+						(bottom right) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[2,2,1,3,0,4,0,2,2,3,0,2],1,10000
+						(top left) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[4,4,4,1,1,0,3,4,0,2,4,4,4,0],1,10000
+						(crazy color switches) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[0,3,3,2,4,0,4,2,0,2,1,1,4,0,2,1,4,0,4,0],1,10000
+						(technically top right) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[4,4,1,4,1,0,3,4,2],1,10000
+						(technically top right 2) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[3,4,0,3,1,4,0,0,4,0,3,1,1,3,4,1,3,4,0,4,0,4,2],1,10000
+						(two squares in corners) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[0,0,1,4,4,3,4,1,3,1,2,4,2,1,4,4,1,3,2,4],1,10000
+						(smol) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[2,1,2,4,1,3,1,2,2,0,4,2,4],1,10000
+						(four corners) ff8848,2a8822a;4888ff,2a8822a;028121,2a8822a;770088,2a8822a;9b59d0,2a8822a;[3,3,0,4,1,1,2,2,4,1,4,0,4,4,2,4,1,3,0,0],1,10000
+					*/
+				},
+				
+				pieces: [
+					{color: "#ff8848", attackPattern: ["01010","10001","00000","10001","01010"], previousPos: -1, maxEnemies: 0, maxAllies: Infinity},
+					{color: "#4888ff", attackPattern: ["01010","10001","00000","10001","01010"], previousPos: -1, maxEnemies: 0, maxAllies: Infinity},
+				],
+				
+				
+				layoutSymbols: {
+					"-": {baseLayer: {type: "empty"}, data: {drawTile: {color: "#cccccc"}}},
+					"o": {baseLayer: {type: "filled"}, data: {drawTile: {color: "#ff8848"}}},
+					"x": {baseLayer: {type: "middle"}, data: {drawTile: {color: "#000000"}}},
+				},
+				
+				knightLayout: {
+					symbols: "layoutSymbols",
+					arr: [
+						"-o-o-",
+						"o---o",
+						"--x--",
+						"o---o",
+						"-o-o-",
+					]
+				},
+				
+				mainGrid: {
+					grid: {},
+					data: {
+						x: 0.0875, y: -0.166  - 0.05, w: 0.02, h: 0.02, gaps: {left: 0, right: 0, up: 0, down: 0}, isCentered: false,
+						gridShape: "rect",
+						gridSize: {w: 0, h: 0}, layers: ["baseLayer"], gameState: "menu",
+						isFastClick: true,
+						isDragClick: true,
+						hasHitboxes: true,
+						
+						onload: [
+							{f: "setValuesOnGridFromLayout", args: {layoutName: "knightLayout"}},
+							{f: "refreshGridSize"},
+						],
+						
+						draw: [
+							{f: "fillGridShape", args: {id: "drawTile", color: "#444444", borderColor: "#000000", borderSize: 0.001}},
+							{f: "fillGridSprite", args: {id: "drawSprite", spriteSize: {w: 0.9, h: 0.85}}},
+						],
+						
+						tilesData: {symbols: "layoutSymbols", valueName: "type"},
+						
+						gridDrawData: [],
+						gridDrawValues: {},
+					}
+				},
+			},
+			modifiedVariables: {
+				camera: {zoom: {level: 1, min: 0.005}, areDimentionsEqual: true, minWidthToHeightRatio: 2, ...gamePresets["lockedCamera"]},
+				
+				gameState: {currentState: "menu", states: ["menu", "draw"]},
+			},
+			data: {
+				description: "Make unpredictable patterns using custom chess pieces!\nInspired by Numberphile's \"Red & Black Knights\" video",
+				releaseDate: "Mid 2026",
+				tags: ["patterns", "tool", "pretty"],
+				/*videos: [
+					{name: "Showcase/Walkthrough Video"},
+					{name: '\\"How It Was Made\\" Video'},
+				]*/
+			},
+		},
+		
 		
 		"Game Selection": {
 			overriddenVariables: {
