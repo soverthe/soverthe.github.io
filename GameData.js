@@ -3703,6 +3703,7 @@
 							document.getElementById("notesCanvasId").style["pointer-events"] = "none";
 							
 							shouldConfirmBeforeClosing = false;
+							window.onbeforeunload = null;
 							
 							document.body.style.overflow = "auto";
 						}
