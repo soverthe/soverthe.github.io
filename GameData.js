@@ -5588,7 +5588,7 @@
 									}
 									
 									let boostArgs = {
-										isOpponentPentapetalae: opponentMoves.includes("Anti-Pentapetalae"),
+										isOpponentPentapetalae: !opponentMoves.includes("Anti-Pentapetalae"),
 										opponentName: plantsData[fightData[opponentPlantValues].name].name,
 										opponentLevel: fightData[opponentPlantValues].level,
 										plantDistance: getVertexDistance(fightData.tilePos, fightData.attackingTilePos),
