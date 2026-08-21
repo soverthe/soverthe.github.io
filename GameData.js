@@ -31,6 +31,12 @@
 					undo: {keyboard: ["KeyZ"], requiredKeyboard: ["Control"], timer: 0, maxTimer: 4, initialTimer: 40, disableHold: false, onclick: ["undoArrayUndo"], condition: "gameState.currentState == 'art'"},
 					redo: {keyboard: ["KeyY"], requiredKeyboard: ["Control"], timer: 0, maxTimer: 4, initialTimer: 40, disableHold: false, onclick: ["undoArrayRedo"], condition: "gameState.currentState == 'art'"},
 					deleteSelected: {keyboard: ["Delete", "Backspace"], timer: 0, maxTimer: 0, disableHold: true, onclick: ["deleteSelectedVertices"], condition: "gameState.currentState == 'art'"},
+					
+					createVertexSelect: {keyboard: ["KeyQ"], timer: 0, maxTimer: 0, disableHold: true, onclick: ["<<drawTool.currentState = 'createVertex';>>"], condition: "gameState.currentState == 'art'"},
+					selectAndMoveSelect: {keyboard: ["KeyW"], timer: 0, maxTimer: 0, disableHold: true, onclick: ["<<drawTool.currentState = 'selectAndMove';>>"], condition: "gameState.currentState == 'art'"},
+					changeVertexSelect: {keyboard: ["KeyE"], timer: 0, maxTimer: 0, disableHold: true, onclick: ["<<drawTool.currentState = 'changeVertex';>>"], condition: "gameState.currentState == 'art'"},
+					scaleSelect: {keyboard: ["KeyA"], timer: 0, maxTimer: 0, disableHold: true, onclick: ["<<drawTool.currentState = 'scale';>>"], condition: "gameState.currentState == 'art'"},
+					rotateSelect: {keyboard: ["KeyS"], timer: 0, maxTimer: 0, disableHold: true, onclick: ["<<drawTool.currentState = 'rotate';>>"], condition: "gameState.currentState == 'art'"},
 				},
 				
 				events: {
@@ -4932,6 +4938,883 @@
 				description: "Make unpredictable patterns using custom chess pieces!\nInspired by Numberphile's \"Red & Black Knights\" video",
 				releaseDate: "Mid 2026",
 				tags: ["patterns", "tool", "pretty"],
+				/*videos: [
+					{name: "Showcase/Walkthrough Video"},
+					{name: '\\"How It Was Made\\" Video'},
+				]*/
+			},
+		},
+		
+		"Plant Catcher": {
+			overriddenVariables: {
+				drawOrder: ["drawGrids", "drawEntities", "drawButtons", "drawScrollbars"],
+				
+				inputButtons: {
+					run: {keyboard: ["ShiftLeft"], gamepads: [[2],[2],[2],[2]], timer: 0, maxTimer: 0},
+				},
+				
+				events: {
+					onload: ["generateMainLayout", "generatePlantAttacks", "generateGrids", "generateEarthEntity", "refreshPlantEntities"],
+					onNextFrame: ["moveEntities", "refreshHudButtons", "draw"],
+					
+					//refreshScrollbars: [{f: "setScrollbarsToGrids", args: {state: "graph", margin: {left: 0.25, right: 0.25, up: 0.25, down: 0.25}}}],
+					
+					mapGenerationEvents: {
+						generateMainLayout: [`<<{
+							mainLayout.arr = [];
+							
+							for (let i = 0; i < 12; i++){
+								mainLayout.arr[i] = "";
+								for (let j = 0; j < 22; j++){
+									mainLayout.arr[i] += (plantOccurencesGrid[i]?.[j] != null) ? "o" : "-";
+									
+									if (plantOccurencesGrid[i]?.[j] != null){
+										for (let k in plantOccurencesGrid[i][j]){
+											plantOccurencesGrid[i][j][k].level = 0;
+											
+											if (!developmentMode){
+												hiddenPlants[plantOccurencesGrid[i][j][k].name] = true;
+											}
+										}
+									}
+								}
+							}
+						}>>`],
+						generateEarthEntity: [`<<{
+							let earthArr = structuredClone(earthEntity);
+							
+							earthArr.color = {};
+							earthArr.fillOutline = {};
+							earthArr.lineWidth = 0.0001;
+							earthArr.isClickable = false;
+							earthArr.isFill = false;
+							earthArr.pos.arr = {};
+							earthArr.gameState = "game";
+							
+							for (let i in earthEntity.pos.arr){
+								for (let j in earthEntity.pos.arr[i]){
+									let currentObject = Object.assign({}, earthEntity.pos.arr[i][j]);
+									
+									if (objectLength(currentObject) > 0){
+										earthArr.pos.arr[i + "" + j] = currentObject;
+										
+										earthArr.color[i + "" + j] = "#000000";
+										earthArr.fillOutline[i + "" + j] = "#000000";
+									}
+								}
+							}
+							
+							earthArr.boxPos = {x: -22, y: -12, w: 22, h: 22.4};
+							
+							entities.push(earthArr);
+						}>>`],
+						
+						refreshPlantEntities: [`<<{
+							let previousEntities = structuredClone(entities);
+							plantEntities = [];
+							
+							for (let i = 0; i < mainGrid.grid.mainLayer.length; i++){
+								for (let j = 0; j < mainGrid.grid.mainLayer[i].length; j++){
+									if (mainGrid.grid.mainLayer[i][j].type == "land"){
+										let plantWeights = [];
+										
+										for (let k = 0; k < plantOccurencesGrid[i][j].length; k++){
+											if (k == 0 || hasStarterPlant){
+												plantWeights.push({value: plantOccurencesGrid[i][j][k].name, weight: 2**(plantOccurencesGrid[i][j].length - k), index: k});
+											}
+										}
+										
+										let currentPlant = getRandomElementOfArrayWithWeights(plantWeights);
+										
+										let currentLevel = getRandomNum({min: 1 + (currentPlant.index*5), max: 6 + (currentPlant.index*22)});
+										
+										plantEntities.push({name: currentPlant.value, pos: {x: j, y: i}, index: currentPlant.index, level: currentLevel});
+									}
+								}
+							}
+							
+							entities = [entities[0], entities[1]];
+							
+							for (let i in plantEntities){
+								let pos = getGridTilePos(plantEntities[i].pos);
+								
+								let currentArr = plantEntities[i];
+								
+								if (plantEntities[i].pos.x == args.savePlantPos?.x && plantEntities[i].pos.y == args.savePlantPos?.y){
+									/*currentArr = previousPlantEntities[i]; log(previousPlantEntities[i]);
+									
+									pos = getGridTilePos(currentArr.pos);*/
+									
+									entities.push(previousEntities[Number(i) + 2]);
+								} else{
+									let currentPos = getGridTilePos(plantEntities[i].pos);
+									
+									let attemptsNum = 0;
+									let isOnLand = false;
+									while (!isOnLand && attemptsNum < 1){
+										let currentRange = (attemptsNum < 3) ? {min: 0.2, max: 0.9} : {min: 0, max: 1};
+										
+										currentPos = {
+											x: pos.x + getRandomNumWithDecimals(currentRange) * pos.w,
+											y: pos.y + getRandomNumWithDecimals(currentRange) * pos.h
+										};
+										
+										if (savedPolygons.Earth != undefined){
+											for (let j in entities[1].pos.arr){
+												if (!j.includes("Antarctica")){
+													if (isVertexInPolygon(getScaledPosition(currentPos), savedPolygons.Earth[j])){
+														isOnLand = true;
+													}
+												}
+											}
+										} else{
+											isOnLand = true;
+										}
+										attemptsNum++;
+									}
+									pos = currentPos;
+									
+									
+									let plantTileIndex = currentArr.index;
+									let rarityColor = rarityColors[plantTileIndex];
+									
+									let typeColor = plantTypes[plantsData[currentArr.name].type].color;
+									
+									let currentEntity = {
+										pos: {x: pos.x, y: pos.y, w: 0.4, shape: "circle"}, hitboxShape: "circle",
+										color: rarityColor, drawLayer: 1, gameState: "game",
+										plantPos: currentArr.pos, plantName: currentArr.name, plantLevel: currentArr.level, rarityColor: rarityColor,
+									};
+									
+									if (true){
+										let currentSprite = (hiddenPlants[currentArr.name]) ? {...(gameSprites[currentArr.name] ?? gameSprites[defaultPlantName]), color: "#000000"} : (gameSprites[currentArr.name] ?? gameSprites[defaultPlantName]);
+										
+										currentEntity = {
+											...currentEntity,
+											...(currentSprite),
+											boxPos: {x: currentEntity.pos.x, y: currentEntity.pos.y, w: currentEntity.pos.w, h: currentEntity.pos.w},
+											shadowColor: "#00000066",
+											shadowPos: {x: 0.002, y: 0.002},
+										};
+									}
+									
+									entities.push(currentEntity);
+								}
+							}
+							
+							runEvent("refreshHudButtons");
+						}>>`],
+					},
+					
+					generatePlantAttacks: [`<<{
+						for (let i in plantsData){
+							plantsData[i].attackTypes = [];
+							
+							for (let j in plantAttackTypes){
+								if (j != "Basic"){
+									let hasAttack = true;
+									
+									let isPentapetalae = plantTypes[plantsData[i].type].isPentapetalae ?? plantsData[i].isPentapetalae;
+									
+									if (isPentapetalae != (plantAttackTypes[j].isPentapetalae ?? isPentapetalae)){
+										hasAttack = false;
+									}
+									if (plantsData[i].type != (plantAttackTypes[j].type ?? plantsData[i].type)){
+										hasAttack = false;
+									}
+									if (plantAttackTypes[j].words != undefined){
+										let hasWords = false;
+										
+										for (let k in plantAttackTypes[j].words){
+											if (plantsData[i].name.toLowerCase().includes(plantAttackTypes[j].words[k])){
+												hasWords = true;
+											}
+										}
+										if (!hasWords){ hasAttack = false; }
+									}
+									if (plantsData[i].name.length > (plantAttackTypes[j].maxLetters ?? Infinity)){
+										hasAttack = false;
+									}
+									if (plantsData[i].name.split(" ").length < (plantAttackTypes[j].minWords ?? 0)){
+										hasAttack = false;
+									}
+									
+									if (hasAttack){
+										plantsData[i].attackTypes.push(j);
+									}
+								}
+							}
+							
+							if (plantsData[i].attackTypes.length < 2){
+								plantsData[i].attackTypes.push("Basic");
+							}
+						}
+					}>>`],
+					
+					refreshHudButtons: [`<<{
+						let hudButtons = [];
+						
+						let pos = getVertexPositionInGrid(entities[0].pos);
+						
+						let arr = plantOccurencesGrid[pos.y]?.[pos.x];
+						
+						for (let i in entities){
+							if (entities[i].plantPos != undefined){
+								entities[i].isVisible = false;
+							}
+						}
+						
+						let text = "";
+						
+						if (arr != null && fightData.tilePos.x == -1){
+							for (let i in arr){
+								if (i > 0){
+									text += "\\n";
+								}
+								
+								if (hiddenPlants[arr[i].name]){
+									text += "???";
+								} else{
+									text += plantsData[arr[i].name].name/*+": "+arr[i].amount*/+" (lv "+arr[i].level+")";
+								}
+								
+								text += (gameSprites[arr[i].name] != undefined) ? " !" : "";
+							}
+							
+							hudButtons.push({
+								text: text, pos: {x: 0.1, y: 0.1, w: 0.15, h: 0.15}, textSize: 0.065, marginY: 0.15, isAbsolutePositioned: true,
+								color: "#222222", textColor: "#ffffff", drawLayer: 5, disableClick: true
+							});
+						}
+						
+						let currentEnemyPos = {x: 0, y: 0};
+						let rarityColor = "#ffffff";
+						
+						if (fightData.tilePos.x == -1){
+							for (let i in entities){
+								if (entities[i].plantPos?.x == pos.x && entities[i].plantPos?.y == pos.y){
+									currentEnemyPos = entities[i].boxPos ?? entities[i].pos;
+									entities[i].isVisible = true;
+									rarityColor = entities[i].rarityColor;
+								}
+							}
+						} else{
+							for (let i in entities){
+								if (entities[i].plantPos?.x == fightData.tilePos.x && entities[i].plantPos?.y == fightData.tilePos.y){
+									currentEnemyPos = entities[i].boxPos ?? entities[i].pos;
+									entities[i].isVisible = true;
+								}
+							}
+						}
+						
+						/*Fight buttons*/
+						
+						let currentText = (hasStarterPlant) ? "Fight" : "Choose";
+						
+						if (fightData.attackingTilePos?.x != -1){
+							currentText = "Flee";
+						}
+						
+						if (fightData.tilePos?.x == -1 || fightData.attackingTilePos?.x != -1){
+							if ((arr != null || fightData.tilePos?.x != -1) && !fightData.isFightOver){
+								hudButtons.push({
+									text: currentText, pos: {x: currentEnemyPos.x, y: currentEnemyPos.y + 0.175*1.75, w: 0.4, h: 0.175}, textSize: 0.3,
+									color: "#222222", textColor: rarityColor, downscaleTextLength: 5, drawLayer: 2, onclick: ["startFight"]
+								});
+							}
+						} else{
+							hudButtons.push({
+								text: "Cancel Selection", pos: {x: 0.5, y: 0.9, w: 0.15, h: 0.05}, textSize: 0.3, isAbsolutePositioned: true,
+								color: "#222222", textColor: "#ffffff", downscaleTextLength: 5, drawLayer: 4,
+								onclick: ["<<fightData.attackingTilePos.x = 0;>>", "startFight"],
+							});
+						}
+						
+						/*Plant selection against enemy plant*/
+						if (fightData.tilePos.x != -1 && fightData.attackingTilePos.x == -1){
+							for (let i in plantEntities){
+								let gridPos = plantEntities[i].pos;
+								let pos = getGridTilePos(gridPos);
+								
+								let currentPos = {
+									x: pos.x + 0.2 * pos.w,
+									y: pos.y + 0.5 * pos.h
+								};
+								
+								let currentArr = plantOccurencesGrid[gridPos.y][gridPos.x];
+								
+								for (let j in currentArr){
+									let currentLevel = currentArr[j].level;
+									
+									if (currentLevel > 0 || developmentMode){
+										let currentSprite = (hiddenPlants[currentArr[j].name]) ? gameSprites.questionMark : (gameSprites[currentArr[j].name] ?? gameSprites[defaultPlantName]);
+										
+										hudButtons.push({
+											text: "🕴\\n", subtext: currentLevel, subtextPos: {x: 0, y: 0.25},
+											sprites: [{...(currentSprite), shadowColor: ["#ffffff", "#000000"], shadowPos: [{x: -0.003, y: -0.003}, {x: 0.003, y: 0.003}]}],
+											pos: {x: currentPos.x, y: currentPos.y, w: 0.5, h: 1.5}, textSize: 1, subtextSize: 1,
+											color: "#222222", textColor: rarityColors[j], downscaleSubtextLength: 1, drawLayer: 3,
+											borderColor: rarityColors[j], borderSize: 0.01,
+											onclick: ["<<runEvent('selectAttackerPlant', {pos: {x: "+gridPos.x+", y: "+gridPos.y+"}, i: "+j+"});>>"],
+										});
+									}
+									
+									currentPos.x += 0.3 * pos.w;
+								}
+							}
+						} else{
+							/*Fight Hud*/
+							if (fightData.plantValues != undefined){
+								let enemyArr = fightData.plantValues;
+								let enemyName = plantsData[enemyArr.name].name;
+								let allyArr = fightData.attackingPlantValues;
+								let allyName = plantsData[allyArr.name].name;
+								
+								hudButtons.push({
+									text: "Enemy Plant: "+enemyName+" (lv "+enemyArr.level+")\\n"+ "Health: "+getNumWithTruncatedDecimals(enemyArr.health*100, 2),
+									pos: {x: 0.8, y: 0.3, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
+									color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3, disableClick: true
+								});
+								
+								hudButtons.push({
+									text: "Ally Plant: "+allyName+" (lv "+allyArr.level+")\\n"+ "Health: "+getNumWithTruncatedDecimals(allyArr.health*100, 2),
+									pos: {x: 0.2, y: 0.3, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
+									color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3, disableClick: true
+								});
+								
+								
+								let fightSides = [{attacks: plantsData[allyArr.name].attackTypes}, {attacks: plantsData[enemyArr.name].attackTypes}];
+								for (let j = 0; j < fightSides.length; j++){
+									let currentAttacks = fightSides[j].attacks;
+									
+									for (let i = 0; i < currentAttacks.length; i++){
+										let attackName = currentAttacks[i];
+										
+										let isAttack = plantAttackTypes[attackName].isAttack;
+										let currentName = attackName + ((isAttack) ? " attack" : " boost");
+										
+										hudButtons.push({
+											text: currentName, pos: {x: 0.2 + (j*0.6) + (Math.max(i-3, 0)*0.175*(j > 0 ? -1 : 1)), y: 0.5 + Math.min(i, 3)*0.15, w: 0.15, h: 0.1}, textSize: 0.3, isAbsolutePositioned: true,
+											color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3,
+											isLocked: fightData.isFightOver || j > 0,
+											onclick: ["<<runEvent('attackPlant', {attackName: '"+attackName+"'})>>"],
+										});
+									}
+								}
+								
+								
+								hudButtons.push({
+									text: fightData.attackLogText ?? "",
+									pos: {x: 0.5, y: 0.1, w: 0.8, h: 0.2}, textSize: 0.08, isAbsolutePositioned: true,
+									color: "#ffffff88", textColor: "#000000", downscaleTextLength: 20, drawLayer: 3, disableClick: true
+								});
+								
+								if (fightData.isFightOver){
+									let currentSubtext = (fightData.levelGain != undefined) ? enemyName+" gained "+fightData.levelGain+" level"+((fightData.levelGain>1)?"s":"")+"!" : "loss :(";
+									hudButtons.push({
+										text: "Finish Fight",
+										pos: {x: 0.5, y: 0.75, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
+										subtext: currentSubtext,
+										subtextPos: {x: 0, y: 0.33}, subtextSize: 0.05,
+										color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, downscaleSubtextLength: 30, drawLayer: 3, onclick: ["finishFight"]
+									});
+									
+								}
+							}
+						}
+						
+						
+						buttons.game = [
+							...hudButtons,
+							
+							{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+								color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
+								
+							{text: "Citation", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+								color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
+							
+							
+							{...gamePresets.quitButton, drawLayer: 10}
+						];
+					}>>`],
+					
+					toggleCitation: [`<<{
+						gameState.currentState = (gameState.currentState != "citation") ? "citation" : "game";
+					}>>`],
+					togglePlantsInfo: [`<<{
+						gameState.currentState = (gameState.currentState != "plantsInfo") ? "plantsInfo" : "game";
+						
+						runEvent("refreshPlantsInfo");
+					}>>`],
+					refreshPlantsInfo: [`<<{
+						if (gameState.currentState == "plantsInfo"){
+							let buttonsArr = [];
+							
+							let alphabeticalPlantNames = [];
+							let scientificNames = {};
+							
+							for (let i in plantsData){
+								alphabeticalPlantNames.push(plantsData[i].name);
+								scientificNames[plantsData[i].name] = i;
+							}
+							alphabeticalPlantNames.sort();
+							
+							for (let i = 0; i < alphabeticalPlantNames.length; i++){
+								let currentPlant = scientificNames[alphabeticalPlantNames[i]];
+								
+								let currentColor = "#ffffff";/*plantTypes[plantsData[currentPlant].type].color;*/
+								
+								if (plantInfoSelectedAttack != ""){
+									currentColor = (plantsData[currentPlant].attackTypes.includes(plantInfoSelectedAttack)) ? "#ffffff" : colors.grayedOut;
+								}
+								if (plantInfoSelectedPlant != ""){
+									currentColor = (plantInfoSelectedPlant == currentPlant) ? "#ffffff" : colors.grayedOut;
+								}
+								
+								let isHidden = (hiddenPlants[currentPlant]);
+								
+								let currentText = (isHidden) ? "???" : plantsData[currentPlant].name.replaceAll(" ", "\\n");
+								
+								buttonsArr.push({
+									text: currentText, pos: {x: 0.225 + 0.05*(i%14), y: 0.24 + 0.06*Math.floor(i/14), w: 0.05, h: 0.06},
+									textSize: 0.14, marginY: 0.075, downscaleTextLength: 11, isAbsolutePositioned: true, color: currentColor, borderSize: 0.0005,
+									isLocked: isHidden,
+									onclick: ["<<plantInfoSelectedPlant = (plantInfoSelectedPlant != '"+currentPlant+"') ? '"+currentPlant+"' : ''; plantInfoSelectedAttack='';>>", "refreshPlantsInfo"],
+								});
+							}
+							
+							let indexNum = 0;
+							let currentSpan = 0;
+							for (let i in plantAttackTypes){
+								let currentPlant = scientificNames[alphabeticalPlantNames[i]];
+								
+								let currentColor = "#ffffff";
+								
+								if (plantInfoSelectedPlant != ""){
+									currentColor = (plantsData[plantInfoSelectedPlant].attackTypes.includes(i)) ? "#ffffff" : colors.grayedOut;
+								}
+								if (plantInfoSelectedAttack != ""){
+									currentColor = (plantInfoSelectedAttack == i) ? "#ffffff" : colors.grayedOut;
+								}
+								
+								buttonsArr.push({
+									text: i, pos: {x: 0.1, y: 0.05 + 0.04*indexNum + 0.02*currentSpan, w: 0.1, h: 0.04},
+									textSize: 0.14, marginY: 0.075, downscaleTextLength: 11, isAbsolutePositioned: true, color: currentColor, borderSize: 0.001,
+									onclick: ["<<plantInfoSelectedAttack = (plantInfoSelectedAttack != '"+i+"') ? '"+i+"' : ''; plantInfoSelectedPlant='';>>", "refreshPlantsInfo"],
+								});
+								indexNum++;
+								if (indexNum >= 7){
+									currentSpan = 1;
+								}
+							}
+							
+							let descriptionText = "";
+							
+							if (plantInfoSelectedAttack != ""){
+								if (plantAttackTypes[plantInfoSelectedAttack]?.text != undefined){
+									descriptionText += plantInfoSelectedAttack + " boost: " + plantAttackTypes[plantInfoSelectedAttack].text;
+								} else{
+									descriptionText += plantInfoSelectedAttack + " attack type advantages:\\n";
+									
+									let currentTypeIndex = plantTypeAdvantages.typesIndex.indexOf(plantInfoSelectedAttack);
+									
+									for (let i in plantTypeAdvantages.values[currentTypeIndex]){
+										descriptionText += (plantTypeAdvantages.values[currentTypeIndex][i]*100) + "% " + plantTypeAdvantages.typesIndex[i];
+										
+										if (i != plantTypeAdvantages.values[currentTypeIndex].length - 1){
+											descriptionText += ", ";
+										}
+									}
+								}
+							} else if (plantInfoSelectedPlant != ""){
+								descriptionText += plantsData[plantInfoSelectedPlant].name + " (" + plantInfoSelectedPlant + ")";
+							}
+							
+							buttonsArr.push({
+								text: descriptionText, pos: {x: 0.55, y: 0.1, w: 0.6, h: 0.15},
+								textSize: 0.1375, marginY: 0.125, downscaleTextLength: 11, isAbsolutePositioned: true,
+								disableClick: true,
+							});
+							
+							buttons.plantsInfo = [
+								...buttonsArr,
+								
+								{text: "Back", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 2, onclick: ["togglePlantsInfo"]},
+									
+								{text: "Citation", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
+								
+								{...gamePresets.quitButton}
+							];
+						}
+					}>>`],
+					
+					fightEvents: {
+						startFight: [`<<{
+							let pos = getVertexPositionInGrid(entities[0].pos);
+							
+							let arr = plantOccurencesGrid[pos.y]?.[pos.x];
+							
+							
+							if (hasStarterPlant){
+								
+								if (fightData.attackingTilePos?.x != -1){
+									let savePlantPos = fightData.tilePos;
+									
+									fightData = {tilePos: {x: -1, y: -1}, attackingTilePos: {x: -1, y: -1}, attackingPlantNum: 0};
+									
+									runEvent("refreshPlantEntities", {savePlantPos: savePlantPos});
+								} else{
+									let currentEnemyValues = {name: "", level: 1};
+									
+									for (let i in entities){
+										if (entities[i].plantPos?.x == pos.x && entities[i].plantPos?.y == pos.y){
+											currentEnemyValues = {name: entities[i].plantName, level: entities[i].plantLevel, health: 1};
+											
+											hiddenPlants[currentEnemyValues.name] = false;
+										}
+									}
+									
+									fightData = {tilePos: {x: pos.x, y: pos.y}, attackingTilePos: {x: -1, y: -1}, attackingPlantNum: 0, plantValues: currentEnemyValues};
+								}
+							} else{
+								arr[0].level = 5;
+								hiddenPlants[arr[0].name] = false;
+								
+								hasStarterPlant = true;
+								
+								runEvent("refreshPlantEntities");
+							}
+						}>>`],
+						
+						selectAttackerPlant: [`<<{
+							fightData.attackingTilePos = args.pos;
+							fightData.attackingPlantNum = args.i;
+							
+							let currentPlant = plantOccurencesGrid[args.pos.y][args.pos.x][args.i];
+							
+							fightData.attackingPlantValues = {name: currentPlant.name, level: currentPlant.level, health: 1};
+							
+							runEvent("refreshHudButtons");
+						}>>`],
+						
+						attackPlant: [`<<
+							let attackName = args.attackName;
+							let isEnemyAttack = args.isEnemyAttack;
+							
+							let attackArr = plantAttackTypes[attackName];
+							
+							let isFightOver = false;
+							
+							let attackLogText = (isEnemyAttack) ? fightData.attackLogText + "\\n" : "";
+							
+							let currentPlantValues = (isEnemyAttack) ? "plantValues" : "attackingPlantValues";
+							let opponentPlantValues = (isEnemyAttack) ? "attackingPlantValues" : "plantValues";
+							
+							let currentPlantName = fightData[currentPlantValues].name;
+							let opponentPlantName = fightData[opponentPlantValues].name;
+							
+							let currentPlantType = plantsData[currentPlantName].type;
+							let opponentPlantType = plantsData[opponentPlantName].type;
+							let currentPlantTypeIndex = plantTypeAdvantages.typesIndex.indexOf(currentPlantType);
+							let opponentPlantTypeIndex = plantTypeAdvantages.typesIndex.indexOf(opponentPlantType);
+							let typeAdvantageMultiplier = plantTypeAdvantages.values[currentPlantTypeIndex][opponentPlantTypeIndex];
+							
+							if (attackArr.isAttack){ /*Plant attack*/
+								let boostMultiplier = fightData[currentPlantValues].boostMultiplier ?? 1;
+								let levelBuff = fightData[currentPlantValues].level;
+								let opponentLevelDebuff = (1/fightData[opponentPlantValues].level);
+								
+								let distanceMultiplier = 1;
+								let distanceNum = getVertexDistance(fightData.tilePos, fightData.attackingTilePos);
+								distanceMultiplier = Math.min(2 / (distanceNum**2 + 1), 1);
+								if (isEnemyAttack){ distanceMultiplier = 1/distanceMultiplier; }
+								
+								let currentAttackAmount = 0.125 * levelBuff * opponentLevelDebuff * distanceMultiplier * boostMultiplier * typeAdvantageMultiplier;
+								fightData[opponentPlantValues].health -= currentAttackAmount;
+								
+								attackLogText += plantsData[currentPlantName].name + " attacked for "+getNumWithTruncatedDecimals(currentAttackAmount*100, 2)+" damage (multipliers: ";
+								attackLogText += getNumWithTruncatedDecimals(boostMultiplier*100, 0) + "% boost, ";
+								attackLogText += getNumWithTruncatedDecimals(levelBuff * opponentLevelDebuff*100, 0) + "% level, ";
+								attackLogText += getNumWithTruncatedDecimals(typeAdvantageMultiplier*100, 0) + "% type, ";
+								attackLogText += getNumWithTruncatedDecimals(distanceMultiplier*100, 0) + "% distance)";
+								
+								if (fightData[opponentPlantValues].health <= 0){
+									if (!isEnemyAttack){
+										let tileArr = plantOccurencesGrid[fightData.tilePos.y][fightData.tilePos.x];
+										let enemyPlantNum = 0;
+										for (let i = 0; i < tileArr.length; i++){
+											if (tileArr[i].name == fightData.plantValues.name){
+												enemyPlantNum = i;
+											}
+										}
+										
+										let levelGain = Math.max(Math.round((fightData.plantValues.level-tileArr[enemyPlantNum].level)/2), 1);
+										tileArr[enemyPlantNum].level += levelGain;
+										
+										fightData.levelGain = levelGain;
+									}
+									
+									isFightOver = true;
+								}
+							} else{ /*Plant boost*/
+								fightData[currentPlantValues].boostMultiplier ??= 1;
+								
+								if (plantAttackTypes[attackName].value == "lowerOpponentBoosts"){
+									fightData[opponentPlantValues].boostMultiplier ??= 1;
+									fightData[opponentPlantValues].boostMultiplier *= (2/3);
+									
+									attackLogText += plantsData[currentPlantName].name + " used "+attackName+" boost, lowering their opponent's boost by 66% to ";
+									attackLogText += getNumWithTruncatedDecimals(fightData[opponentPlantValues].boostMultiplier * 100, 0) + "%";
+								} else{
+									if (plantAttackTypes[attackName].value == "randomBoost"){
+										while (plantAttackTypes[attackName].value == "randomBoost" || plantAttackTypes[attackName].isAttack){
+											attackName = getRandomElementNameOfObject(plantAttackTypes);
+										}
+									}
+									
+									let opponentMoves = plantsData[fightData[opponentPlantValues].name].attackTypes;
+									let plantsAmount = 0;
+									
+									for (let i in plantOccurencesGrid){
+										for (let j in plantOccurencesGrid[i]){
+											for (let k in plantOccurencesGrid[i][j]){
+												if (plantOccurencesGrid[i][j][k].level > 0){
+													plantsAmount++;
+												}
+											}
+										}
+									}
+									
+									let boostArgs = {
+										isOpponentPentapetalae: opponentMoves.includes("Anti-Pentapetalae"),
+										opponentName: plantsData[fightData[opponentPlantValues].name].name,
+										opponentLevel: fightData[opponentPlantValues].level,
+										plantDistance: getVertexDistance(fightData.tilePos, fightData.attackingTilePos),
+										isOpponentAnimalistic: opponentMoves.includes("Animalistic"),
+										typeAdvantageAmount: typeAdvantageMultiplier,
+										boostAmount: (fightData[currentPlantValues].boostMultiplier ?? 1),
+										opponentBoostAmount: (fightData[opponentPlantValues].boostMultiplier ?? 1),
+										plantsAmount: ((isEnemyAttack) ? 1 : plantsAmount),
+									};
+									
+									let currentMultiplier = 1.5;
+									
+									if (plantAttackTypes[attackName].value != undefined){
+										currentMultiplier = runEval({text: "Math.max("+plantAttackTypes[attackName].value+", 1)", ...boostArgs});
+									}
+									
+									fightData[currentPlantValues].boostMultiplier *= currentMultiplier;
+									
+									attackLogText += plantsData[currentPlantName].name + " used "+attackName+" boost, raising their boost by ";
+									attackLogText += getNumWithTruncatedDecimals(currentMultiplier * 100, 0) + "% to ";
+									attackLogText += getNumWithTruncatedDecimals(fightData[currentPlantValues].boostMultiplier * 100, 0) + "%";
+								}
+							}
+							
+							fightData.attackLogText = attackLogText;
+							
+							if (isFightOver){
+								fightData.isFightOver = true;
+							} else{
+								if (!isEnemyAttack){
+									runEvent("attackPlant", {isEnemyAttack: true, attackName: getRandomElementOfArray(plantsData[fightData.plantValues.name].attackTypes)});
+								}
+							}
+						>>`],
+						finishFight: [`<<{
+							fightData = {tilePos: {x: -1, y: -1}, attackingTilePos: {x: -1, y: -1}, attackingPlantNum: 0};
+							runEvent("refreshPlantEntities");
+						}>>`],
+					},
+				},
+				
+				gridNames: ["mainGrid"],
+				
+				buttons: {
+					game: [
+						{...gamePresets.quitButton}
+					],
+					citation: [
+						{...gamePresets.quitButton},
+						{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+								color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
+						{text: "Back", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+								color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
+						
+						{text: "Map of most commonly observed plants is from Pl@ntNet, citation:\n\nAFFOUARD A, JOLY A, LOMBARDO J, CHAMP J, GOEAU H, CHOUET M, GRESSE H, BOTELLA C,\nBONNET P (2023). Pl@ntNet automatically identified occurrences. Version 1.8. Pl@ntNet.\nOccurrence dataset https://doi.org/10.15468/mma2ec accessed via GBIF.org on 2026-08-21.",
+						pos: {x: 0.5, y: 0.5, w: 0.75, h: 0.75}, textSize: 0.28, downscaleTextLength: 6, isAbsolutePositioned: true,
+								drawLayer: 10, onclick: ["<<window.open('https://doi.org/10.15468/mma2ec')>>"]},
+					],
+				},
+				entities: [
+					{
+						pos: {x: 0, y: 0.2, w: 0.09, shape: "circle"}, hitboxShape: "circle", isPlayer: true, isStoppedByWalls: true,
+						speed: 0.01625, runMultiplier: 3, color: "#ffffff", drawLayer: 1, gameState: "game", shouldFocusCamera: true,
+					},
+				],
+			},
+			createdVariables: {
+				developmentMode: false,
+				
+				plantEntities: [],
+				
+				fightData: {tilePos: {x: -1, y: -1}, attackingTilePos: {x: -1, y: -1}, attackingPlantNum: 0},
+				hasStarterPlant: false,
+				
+				defaultPlantName: "questionMark",
+				rarityColors: colors.pan,//["#ff88ff", "#ffff88", "#88ffff"],
+				
+				plantOccurencesGrid: [[null,null,null,null,[{name:"Eriophorum scheuchzeri",amount:1}],null,null,null,[{name:"Empetrum nigrum",amount:3},{name:"Rhododendron lapponicum",amount:3},{name:"Diapensia lapponica",amount:3}],null,null,[{name:"Cornus suecica",amount:1745},{name:"Empetrum nigrum",amount:594},{name:"Rubus chamaemorus",amount:317}],[{name:"Cornus suecica",amount:76},{name:"Empetrum nigrum",amount:52},{name:"Rubus chamaemorus",amount:10}],[{name:"Saxifraga oppositifolia",amount:1},{name:"Silene acaulis",amount:1},{name:"Eriophorum scheuchzeri",amount:1}],[{name:"Vaccinium vitis-idaea",amount:4},{name:"Empetrum nigrum",amount:3},{name:"Caltha palustris",amount:3}],null,[{name:"Tephroseris palustris",amount:3}],null,[{name:"Dryas octopetala",amount:1}]],[null,null,[{name:"Achillea millefolium",amount:1},{name:"Parnassia palustris",amount:1},{name:"Rubus arcticus",amount:1}],[{name:"Cornus canadensis",amount:268},{name:"Oplopanax horridus",amount:186},{name:"Rosa rugosa",amount:92}],[{name:"Cornus canadensis",amount:417},{name:"Actaea rubra",amount:167},{name:"Tanacetum vulgare",amount:155}],[{name:"Cornus canadensis",amount:44},{name:"Aralia nudicaulis",amount:13},{name:"Apocynum androsaemifolium",amount:12}],[{name:"Vaccinium uliginosum",amount:3},{name:"Cornus canadensis",amount:2},{name:"Rubus chamaemorus",amount:2}],[{name:"Cornus canadensis",amount:8},{name:"Empetrum nigrum",amount:6},{name:"Alnus alnobetula",amount:3}],[{name:"Bartsia alpina",amount:3},{name:"Angelica archangelica",amount:3},{name:"Oxyria digyna",amount:2}],[{name:"Empetrum nigrum",amount:467},{name:"Gunnera tinctoria",amount:413},{name:"Bartsia alpina",amount:315}],[{name:"Alliaria petiolata",amount:28218},{name:"Glechoma hederacea",amount:17986},{name:"Fagus sylvatica",amount:15392}],[{name:"Alliaria petiolata",amount:15344},{name:"Chelidonium majus",amount:12587},{name:"Prunus padus",amount:10378}],[{name:"Glechoma hederacea",amount:1444},{name:"Aegopodium podagraria",amount:1229},{name:"Filipendula ulmaria",amount:1170}],[{name:"Glechoma hederacea",amount:280},{name:"Leonurus cardiaca",amount:260},{name:"Acer negundo",amount:205}],[{name:"Leonurus cardiaca",amount:133},{name:"Glechoma hederacea",amount:125},{name:"Berteroa incana",amount:82}],[{name:"Filipendula ulmaria",amount:66},{name:"Glechoma hederacea",amount:61},{name:"Galium verum",amount:51}],[{name:"Prunus padus",amount:9},{name:"Parnassia palustris",amount:7},{name:"Vaccinium vitis-idaea",amount:7}],[{name:"Rubus arcticus",amount:6},{name:"Tanacetum vulgare",amount:4},{name:"Cornus suecica",amount:4}],[{name:"Fritillaria camschatcensis",amount:6},{name:"Silene vulgaris",amount:6},{name:"Rubus arcticus",amount:4}]],[null,null,null,[{name:"Gaultheria shallon",amount:4242},{name:"Prunus laurocerasus",amount:2654},{name:"Rubus spectabilis",amount:1771}],[{name:"Ribes aureum",amount:849},{name:"Asclepias speciosa",amount:793},{name:"Rhamnus cathartica",amount:567}],[{name:"Rhamnus cathartica",amount:9840},{name:"Leonurus cardiaca",amount:6910},{name:"Glechoma hederacea",amount:6889}],[{name:"Alliaria petiolata",amount:13564},{name:"Rhamnus cathartica",amount:10450},{name:"Rubus phoenicolasius",amount:7006}],[{name:"Cornus canadensis",amount:897},{name:"Rosa rugosa",amount:389},{name:"Clintonia borealis",amount:291}],[{name:"Hedychium gardnerianum",amount:905},{name:"Pittosporum undulatum",amount:329},{name:"Gunnera tinctoria",amount:208}],[{name:"Pittosporum tobira",amount:1929},{name:"Eriobotrya japonica",amount:1648},{name:"Pistacia lentiscus",amount:1539}],[{name:"Alliaria petiolata",amount:112417},{name:"Fagus sylvatica",amount:97596},{name:"Pittosporum tobira",amount:80406}],[{name:"Alliaria petiolata",amount:33539},{name:"Glechoma hederacea",amount:32250},{name:"Fagus sylvatica",amount:30443}],[{name:"Elaeagnus angustifolia",amount:914},{name:"Chelidonium majus",amount:865},{name:"Cotinus coggygria",amount:841}],[{name:"Sambucus ebulus",amount:40},{name:"Hyoscyamus niger",amount:40},{name:"Elaeagnus angustifolia",amount:39}],[{name:"Alliaria petiolata",amount:221},{name:"Glechoma hederacea",amount:130},{name:"Acer negundo",amount:128}],[{name:"Glechoma hederacea",amount:78},{name:"Alliaria petiolata",amount:53},{name:"Caltha palustris",amount:28}],[{name:"Prunus padus",amount:18},{name:"Broussonetia papyrifera",amount:15},{name:"Calypso bulbosa",amount:14}],[{name:"Glechoma hederacea",amount:56},{name:"Kerria japonica",amount:49},{name:"Dasiphora fruticosa",amount:36}],[{name:"Houttuynia cordata",amount:42},{name:"Rosa rugosa",amount:36},{name:"Trifolium repens",amount:22}]],[null,null,null,[{name:"Malosma laurina",amount:830},{name:"Ricinus communis",amount:794},{name:"Marrubium vulgare",amount:631}],[{name:"Callicarpa americana",amount:1817},{name:"Calyptocarpus vialis",amount:1213},{name:"Parthenocissus quinquefolia",amount:1177}],[{name:"Callicarpa americana",amount:6747},{name:"Parthenocissus quinquefolia",amount:5870},{name:"Vitis rotundifolia",amount:3895}],[{name:"Callicarpa americana",amount:474},{name:"Vitis rotundifolia",amount:366},{name:"Parthenocissus quinquefolia",amount:337}],null,[{name:"Hedychium gardnerianum",amount:17},{name:"Pittosporum undulatum",amount:9},{name:"Parentucellia viscosa",amount:5}],[{name:"Ricinus communis",amount:1419},{name:"Euphorbia balsamifera",amount:853},{name:"Kleinia neriifolia",amount:757}],[{name:"Pistacia lentiscus",amount:1918},{name:"Ricinus communis",amount:1509},{name:"Ceratonia siliqua",amount:1463}],[{name:"Ceratonia siliqua",amount:1615},{name:"Pistacia lentiscus",amount:1191},{name:"Olea europaea",amount:632}],[{name:"Nerium oleander",amount:856},{name:"Olea europaea",amount:819},{name:"Ceratonia siliqua",amount:779}],[{name:"Calotropis procera",amount:130},{name:"Ficus carica",amount:91},{name:"Nerium oleander",amount:76}],[{name:"Ricinus communis",amount:266},{name:"Parthenium hysterophorus",amount:251},{name:"Cynodon dactylon",amount:207}],[{name:"Parthenium hysterophorus",amount:399},{name:"Psidium guajava",amount:226},{name:"Urena lobata",amount:206}],[{name:"Zephyranthes candida",amount:9},{name:"Broussonetia papyrifera",amount:8},{name:"Nerium oleander",amount:7}],[{name:"Duranta erecta",amount:125},{name:"Broussonetia papyrifera",amount:122},{name:"Sphagneticola trilobata",amount:113}],[{name:"Houttuynia cordata",amount:285},{name:"Iris japonica",amount:213},{name:"Lamium amplexicaule",amount:161}]],[[{name:"Morinda citrifolia",amount:204},{name:"Artocarpus altilis",amount:117},{name:"Sphagneticola trilobata",amount:90}],[{name:"Morinda citrifolia",amount:341},{name:"Carissa macrocarpa",amount:175},{name:"Artocarpus altilis",amount:131}],null,[{name:"Coccoloba uvifera",amount:7},{name:"Russelia equisetiformis",amount:6},{name:"Tecoma stans",amount:4}],[{name:"Duranta erecta",amount:940},{name:"Ricinus communis",amount:766},{name:"Thunbergia alata",amount:452}],[{name:"Coccoloba uvifera",amount:366},{name:"Morinda citrifolia",amount:351},{name:"Duranta erecta",amount:228}],[{name:"Coccoloba uvifera",amount:1925},{name:"Morinda citrifolia",amount:1335},{name:"Thespesia populnea",amount:1252}],null,[{name:"Calotropis procera",amount:35},{name:"Grevillea robusta",amount:11},{name:"Psidium guajava",amount:9}],[{name:"Calotropis procera",amount:135},{name:"Anacardium occidentale",amount:45},{name:"Mangifera indica",amount:41}],[{name:"Azadirachta indica",amount:109},{name:"Mangifera indica",amount:55},{name:"Vitellaria paradoxa",amount:55}],[{name:"Azadirachta indica",amount:49},{name:"Calotropis procera",amount:24},{name:"Mangifera indica",amount:14}],[{name:"Nicotiana glauca",amount:65},{name:"Calotropis procera",amount:47},{name:"Tagetes minuta",amount:28}],[{name:"Calotropis procera",amount:27},{name:"Ricinus communis",amount:11},{name:"Tagetes minuta",amount:9}],[{name:"Sphagneticola trilobata",amount:379},{name:"Parthenium hysterophorus",amount:160},{name:"Acalypha wilkesiana",amount:155}],[{name:"Sphagneticola trilobata",amount:825},{name:"Parthenium hysterophorus",amount:687},{name:"Psidium guajava",amount:354}],[{name:"Asystasia gangetica",amount:130},{name:"Clitoria ternatea",amount:115},{name:"Mimosa pudica",amount:93}],[{name:"Sphagneticola trilobata",amount:219},{name:"Mimosa pudica",amount:122},{name:"Codiaeum variegatum",amount:120}],[{name:"Mimosa pudica",amount:22},{name:"Sphagneticola trilobata",amount:16},{name:"Axonopus compressus",amount:6}],[{name:"Sphagneticola trilobata",amount:8},{name:"Morinda citrifolia",amount:7},{name:"Barringtonia asiatica",amount:7}],[{name:"Crinum asiaticum",amount:1}]],[null,null,null,null,[{name:"Cucumis dipsaceus",amount:11},{name:"Cordia lutea",amount:8},{name:"Conocarpus erectus",amount:6}],[{name:"Thunbergia alata",amount:762},{name:"Duranta erecta",amount:357},{name:"Coffea arabica",amount:212}],[{name:"Mimosa pudica",amount:20},{name:"Caladium bicolor",amount:18},{name:"Turnera subulata",amount:15}],[{name:"Anacardium occidentale",amount:73},{name:"Pilea microphylla",amount:58},{name:"Mimosa pudica",amount:55}],[{name:"Anacardium occidentale",amount:44},{name:"Pilea microphylla",amount:44},{name:"Turnera subulata",amount:37}],[{name:"Heliotropium indicum",amount:4},{name:"Thunbergia erecta",amount:4},{name:"Chromolaena odorata",amount:3}],[{name:"Heliotropium indicum",amount:115},{name:"Laportea aestuans",amount:87},{name:"Euphorbia heterophylla",amount:64}],[{name:"Tithonia diversifolia",amount:50},{name:"Chromolaena odorata",amount:26},{name:"Mimosa pudica",amount:22}],[{name:"Psidium guajava",amount:111},{name:"Grevillea robusta",amount:102},{name:"Duranta erecta",amount:94}],[{name:"Artocarpus altilis",amount:56},{name:"Terminalia catappa",amount:25},{name:"Chrysobalanus icaco",amount:18}],[{name:"Artocarpus altilis",amount:24},{name:"Barringtonia asiatica",amount:20},{name:"Guettarda speciosa",amount:18}],[{name:"Barringtonia asiatica",amount:100},{name:"Mimosa pudica",amount:38},{name:"Calotropis gigantea",amount:25}],[{name:"Sphagneticola trilobata",amount:343},{name:"Dillenia suffruticosa",amount:312},{name:"Mimosa pudica",amount:267}],[{name:"Mimosa pudica",amount:66},{name:"Codiaeum variegatum",amount:45},{name:"Clitoria ternatea",amount:38}],[{name:"Codiaeum variegatum",amount:28},{name:"Mimosa pudica",amount:27},{name:"Axonopus compressus",amount:19}],[{name:"Codiaeum variegatum",amount:3},{name:"Dendrobium macrophyllum",amount:2},{name:"Melochia corchorifolia",amount:2}],[{name:"Tristellateia australasiae",amount:1},{name:"Sphagneticola trilobata",amount:1},{name:"Ricinus communis",amount:1}],[{name:"Ricinus communis",amount:1},{name:"Premna serratifolia",amount:1}]],[[{name:"Artocarpus altilis",amount:1},{name:"Morinda citrifolia",amount:1},{name:"Hibiscus × rosa-sinensis",amount:1}],[{name:"Morinda citrifolia",amount:117},{name:"Gardenia taitensis",amount:105},{name:"Artocarpus altilis",amount:58}],[{name:"Morinda citrifolia",amount:14},{name:"Gardenia taitensis",amount:4},{name:"Artocarpus altilis",amount:4}],null,null,[{name:"Nicandra physalodes",amount:65},{name:"Plantago major",amount:65},{name:"Plumbago auriculata",amount:53}],[{name:"Lobularia maritima",amount:35},{name:"Heliotropium indicum",amount:35},{name:"Nicotiana glauca",amount:34}],[{name:"Psidium guajava",amount:342},{name:"Anacardium occidentale",amount:239},{name:"Pilea microphylla",amount:192}],[{name:"Anacardium occidentale",amount:152},{name:"Centratherum punctatum",amount:139},{name:"Pilea microphylla",amount:117}],null,null,[{name:"Mangifera indica",amount:15},{name:"Colophospermum mopane",amount:11},{name:"Duranta erecta",amount:11}],[{name:"Psidium guajava",amount:75},{name:"Mangifera indica",amount:55},{name:"Duranta erecta",amount:37}],[{name:"Duranta erecta",amount:22},{name:"Barringtonia asiatica",amount:22},{name:"Cajanus cajan",amount:21}],[{name:"Ipomoea pes-caprae",amount:3},{name:"Hibiscus × rosa-sinensis",amount:2},{name:"Mimosa pudica",amount:1}],null,[{name:"Axonopus compressus",amount:111},{name:"Manihot esculenta",amount:88},{name:"Mimosa pudica",amount:81}],[{name:"Mimosa pudica",amount:226},{name:"Codiaeum variegatum",amount:169},{name:"Calotropis gigantea",amount:168}],[{name:"Morinda citrifolia",amount:30},{name:"Calotropis procera",amount:28},{name:"Cassia fistula",amount:11}],[{name:"Codiaeum variegatum",amount:54},{name:"Ardisia elliptica",amount:38},{name:"Xanthostemon chrysanthus",amount:37}],[{name:"Carica papaya",amount:4},{name:"Morinda citrifolia",amount:4},{name:"Pandanus belepensis",amount:4}],[{name:"Morinda citrifolia",amount:9},{name:"Alpinia purpurata",amount:8},{name:"Barringtonia asiatica",amount:8}]],[[{name:"Morinda citrifolia",amount:8},{name:"Alpinia purpurata",amount:5},{name:"Gardenia taitensis",amount:2}],[{name:"Morinda citrifolia",amount:1},{name:"Manihot esculenta",amount:1}],null,[{name:"Leucaena leucocephala",amount:4},{name:"Psidium guajava",amount:3},{name:"Dodonaea viscosa",amount:1}],null,[{name:"Solanum marginatum",amount:1}],[{name:"Passiflora caerulea",amount:835},{name:"Melissa officinalis",amount:552},{name:"Ricinus communis",amount:552}],[{name:"Psidium guajava",amount:1850},{name:"Sphagneticola trilobata",amount:1390},{name:"Eriobotrya japonica",amount:1385}],null,null,null,[{name:"Carissa macrocarpa",amount:105},{name:"Leucospermum cordifolium",amount:78},{name:"Polygala myrtifolia",amount:74}],[{name:"Tagetes minuta",amount:157},{name:"Solanum mauritianum",amount:123},{name:"Solanum pseudocapsicum",amount:109}],[{name:"Hedychium gardnerianum",amount:1182},{name:"Solanum mauritianum",amount:966},{name:"Coccoloba uvifera",amount:867}],null,null,null,[{name:"Arctotheca calendula",amount:149},{name:"Zantedeschia aethiopica",amount:71},{name:"Chamelaucium uncinatum",amount:54}],[{name:"Arctotheca calendula",amount:104},{name:"Prunus persica",amount:74},{name:"Enchylaena tomentosa",amount:52}],[{name:"Pittosporum undulatum",amount:704},{name:"Rhaphiolepis indica",amount:616},{name:"Solanum mauritianum",amount:467}],[{name:"Passiflora edulis",amount:45},{name:"Rivina humilis",amount:44},{name:"Morinda citrifolia",amount:42}],[{name:"Urena lobata",amount:2},{name:"Passiflora foetida",amount:1},{name:"Ipomoea pes-caprae",amount:1}]],[null,null,null,null,null,null,[{name:"Rhaphithamnus spinosus",amount:357},{name:"Berberis darwinii",amount:329},{name:"Gevuina avellana",amount:275}],[{name:"Acacia longifolia",amount:112},{name:"Marrubium vulgare",amount:83},{name:"Grevillea robusta",amount:66}],null,null,null,null,null,null,null,null,null,[{name:"Billardiera heterophylla",amount:9},{name:"Banksia praemorsa",amount:5},{name:"Agonis flexuosa",amount:4}],[{name:"Pittosporum undulatum",amount:907},{name:"Arctotheca calendula",amount:615},{name:"Coprosma repens",amount:341}],[{name:"Pittosporum undulatum",amount:92},{name:"Fatsia japonica",amount:76},{name:"Lamium galeobdolon",amount:73}],[{name:"Eriobotrya japonica",amount:240},{name:"Fatsia japonica",amount:239},{name:"Pittosporum crassifolium",amount:210}]],[null,null,null,null,null,null,[{name:"Gaultheria mucronata",amount:33},{name:"Embothrium coccineum",amount:32},{name:"Chiliotrichum diffusum",amount:29}],[{name:"Chiliotrichum diffusum",amount:1}]]],
+				
+				plantsData: {"Euphorbia heterophylla":{name:"Mexican fireplant",type:"rosids"},"Gunnera tinctoria":{name:"Giant rhubarb",type:"neutral",isPentapetalae:false},"Aegopodium podagraria":{name:"Ground elder",type:"asterids"},"Angelica archangelica":{name:"Garden angelica",type:"asterids"},"Aralia nudicaulis":{name:"Wild sarsaparilla",type:"asterids"},"Fatsia japonica":{name:"Japanese fatsia",type:"asterids"},"Oplopanax horridus":{name:"Devil's club",type:"asterids"},"Billardiera heterophylla":{name:"Bluebell Creeper",type:"asterids"},"Pittosporum crassifolium":{name:"Karo",type:"asterids"},"Pittosporum tobira":{name:"Australian laurel",type:"asterids"},"Pittosporum undulatum":{name:"Australian cheesewood",type:"asterids"},"Tanacetum vulgare":{name:"Common tansy",type:"asterids"},"Achillea millefolium":{name:"Common yarrow",type:"asterids"},"Chiliotrichum diffusum":{name:"Fachine",type:"asterids"},"Chromolaena odorata":{name:"Siam weed",type:"asterids"},"Calyptocarpus vialis":{name:"Creeping Cinderella weed",type:"asterids"},"Parthenium hysterophorus":{name:"Santa Maria feverfew",type:"asterids"},"Sphagneticola trilobata":{name:"Bay Biscayne Creeping Oxeye",type:"asterids"},"Tithonia diversifolia":{name:"Mexican Sunflower",type:"asterids"},"Tagetes minuta":{name:"Muster John Henry",type:"asterids"},"Kleinia neriifolia":{name:"Canary Islands Candle Plant",type:"asterids"},"Tephroseris palustris":{name:"Marsh fleabane",type:"asterids"},"Arctotheca calendula":{name:"Cape marigold",type:"asterids"},"Centratherum punctatum":{name:"Larkdaisy",type:"asterids"},"Sambucus ebulus":{name:"Dwarf elder",type:"asterids"},"Cornus canadensis":{name:"Bunchberry dogwood",type:"asterids"},"Cornus suecica":{name:"Dwarf cornel",type:"asterids"},"Diapensia lapponica":{name:"Pincushion Plant",type:"asterids"},"Empetrum nigrum":{name:"Black crowberry",type:"asterids"},"Rhododendron lapponicum":{name:"Lapland rosebay",type:"asterids"},"Gaultheria mucronata":{name:"Prickly Heath",type:"asterids"},"Gaultheria shallon":{name:"Salal",type:"asterids"},"Vaccinium uliginosum":{name:"Bog bilberry",type:"asterids"},"Vaccinium vitis-idaea":{name:"Cowberry",type:"asterids"},"Barringtonia asiatica":{name:"Fish poison tree",type:"asterids"},"Ardisia elliptica":{name:"Shoebutton",type:"asterids"},"Vitellaria paradoxa":{name:"Shea Butter Tree",type:"asterids"},"Cordia lutea":{name:"Yellow cordia",type:"asterids"},"Heliotropium indicum":{name:"Indian heliotrope",type:"asterids"},"Apocynum androsaemifolium":{name:"Spreading dogbane",type:"asterids"},"Nerium oleander":{name:"Oleander",type:"asterids"},"Asclepias speciosa":{name:"Showy milkweed",type:"asterids"},"Calotropis gigantea":{name:"Giant Milkweed",type:"asterids"},"Calotropis procera":{name:"Sodom apple",type:"asterids"},"Carissa macrocarpa":{name:"Natal Plum",type:"asterids"},"Guettarda speciosa":{name:"Beach Gardenia",type:"asterids"},"Coffea arabica":{name:"Arabian coffee",type:"asterids"},"Gardenia taitensis":{name:"Tahitian Gardenia",type:"asterids"},"Coprosma repens":{name:"New Zealand mirrorbush",type:"asterids"},"Morinda citrifolia":{name:"Indian mulberry",type:"asterids"},"Galium verum":{name:"Lady's bedstraw",type:"asterids"},"Asystasia gangetica":{name:"Chinese violet",type:"asterids"},"Thunbergia alata":{name:"Blackeyed Susan Vine",type:"asterids"},"Thunbergia erecta":{name:"Bush Clockvine",type:"asterids"},"Tecoma stans":{name:"Yellow bells",type:"asterids"},"Callicarpa americana":{name:"American beautyberry",type:"asterids"},"Lamium amplexicaule":{name:"Henbit deadnettle",type:"asterids"},"Lamium galeobdolon":{name:"Yellow archangel",type:"asterids"},"Leonurus cardiaca":{name:"Common Motherwort",type:"asterids"},"Marrubium vulgare":{name:"White horehound",type:"asterids"},"Glechoma hederacea":{name:"Ground ivy",type:"asterids"},"Melissa officinalis":{name:"Lemon Balm",type:"asterids"},"Premna serratifolia":{name:"Bastard guelder",type:"asterids"},"Olea europaea":{name:"Olive",type:"asterids"},"Bartsia alpina":{name:"Alpine Bartsia",type:"asterids"},"Russelia equisetiformis":{name:"Firecracker Plant",type:"asterids"},"Plantago major":{name:"Common plantain",type:"asterids"},"Duranta erecta":{name:"Golden dewdrops",type:"asterids"},"Rhaphithamnus spinosus":{name:"Prickly myrtle",type:"asterids"},"Ipomoea pes-caprae":{name:"Beach Morning Glory",type:"asterids"},"Nicotiana glauca":{name:"Tree tobacco",type:"asterids"},"Hyoscyamus niger":{name:"Black henbane",type:"asterids"},"Nicandra physalodes":{name:"Apple of Peru",type:"asterids"},"Solanum marginatum":{name:"Purple African nightshade",type:"asterids"},"Solanum mauritianum":{name:"Mullein Nightshade",type:"asterids"},"Solanum pseudocapsicum":{name:"Jerusalem cherry",type:"asterids"},"Silene vulgaris":{name:"Bladder campion",type:"Caryophyllales"},"Silene acaulis":{name:"Moss campion",type:"Caryophyllales"},"Enchylaena tomentosa":{name:"Ruby Saltbush",type:"Caryophyllales"},"Rivina humilis":{name:"Rougeplant",type:"Caryophyllales"},"Plumbago auriculata":{name:"Cape leadwort",type:"Caryophyllales"},"Coccoloba uvifera":{name:"Seagrape",type:"Caryophyllales"},"Oxyria digyna":{name:"Mountain sorrel",type:"Caryophyllales"},"Dillenia suffruticosa":{name:"Shrubby dillenia",type:"neutral",isPentapetalae:true},"Parnassia palustris":{name:"Grass of Parnassus",type:"rosids"},"Cucumis dipsaceus":{name:"Hedgehog gourd",type:"rosids"},"Cassia fistula":{name:"Golden shower",type:"rosids"},"Acacia longifolia":{name:"Sydney golden wattle",type:"rosids"},"Leucaena leucocephala":{name:"Jumbie bean",type:"rosids"},"Mimosa pudica":{name:"Touch-me-not",type:"rosids"},"Ceratonia siliqua":{name:"Carob tree",type:"rosids"},"Colophospermum mopane":{name:"Mopane",type:"rosids"},"Trifolium repens":{name:"White clover",type:"rosids"},"Cajanus cajan":{name:"Pigeon pea",type:"rosids"},"Clitoria ternatea":{name:"Butterfly pea",type:"rosids"},"Polygala myrtifolia":{name:"Myrtle leaf milkwort",type:"rosids"},"Alnus alnobetula":{name:"Green alder",type:"rosids"},"Fagus sylvatica":{name:"Beech",type:"rosids"},"Chrysobalanus icaco":{name:"Coco plum",type:"rosids"},"Acalypha wilkesiana":{name:"Copper leaf",type:"rosids"},"Ricinus communis":{name:"Castor oil plant",type:"rosids"},"Codiaeum variegatum":{name:"Variegated Croton",type:"rosids"},"Manihot esculenta":{name:"Cassava",type:"rosids"},"Euphorbia balsamifera":{name:"Balsam spurge",type:"rosids"},"Tristellateia australasiae":{name:"Maiden's Jealousy",type:"rosids"},"Passiflora caerulea":{name:"Common Passion Flower",type:"rosids"},"Passiflora edulis":{name:"Purple granadilla",type:"rosids"},"Passiflora foetida":{name:"Fetid passionflower",type:"rosids"},"Turnera subulata":{name:"White Alder",type:"rosids"},"Elaeagnus angustifolia":{name:"Russian olive",type:"rosids"},"Artocarpus altilis":{name:"Breadfruit",type:"rosids"},"Broussonetia papyrifera":{name:"Paper Mulberry",type:"rosids"},"Ficus carica":{name:"Edible Fig",type:"rosids"},"Rhamnus cathartica":{name:"Common buckthorn",type:"rosids"},"Prunus laurocerasus":{name:"Cherry laurel",type:"rosids"},"Prunus padus":{name:"Bird cherry",type:"rosids"},"Prunus persica":{name:"Peach",type:"rosids"},"Kerria japonica":{name:"Japanese rose",type:"rosids"},"Eriobotrya japonica":{name:"Loquat",type:"rosids"},"Rhaphiolepis indica":{name:"Indian hawthorn",type:"rosids"},"Dryas octopetala":{name:"Mountain Avens",type:"rosids"},"Dasiphora fruticosa":{name:"Shrubby cinquefoil",type:"rosids"},"Filipendula ulmaria":{name:"Meadowsweet",type:"rosids"},"Rosa rugosa":{name:"Rugosa rose",type:"rosids"},"Rubus arcticus":{name:"Arctic raspberry",type:"rosids"},"Rubus chamaemorus":{name:"Cloudberry",type:"rosids"},"Rubus phoenicolasius":{name:"Wine raspberry",type:"rosids"},"Rubus spectabilis":{name:"Salmonberry",type:"rosids"},"Laportea aestuans":{name:"West Indian woodnettle",type:"rosids"},"Pilea microphylla":{name:"Artillery plant",type:"rosids"},"Berteroa incana":{name:"Hoary alyssum",type:"rosids"},"Lobularia maritima":{name:"Sweet alyssum",type:"rosids"},"Alliaria petiolata":{name:"Garlic Mustard",type:"rosids"},"Carica papaya":{name:"Papaya",type:"rosids"},"Melochia corchorifolia":{name:"Chocolateweed",type:"rosids"},"Thespesia populnea":{name:"Portia tree",type:"rosids"},"Urena lobata":{name:"Caesarweed",type:"rosids"},"Conocarpus erectus":{name:"Button mangrove",type:"rosids"},"Terminalia catappa":{name:"Tropical almond",type:"rosids"},"Chamelaucium uncinatum":{name:"Geraldton wax",type:"rosids"},"Agonis flexuosa":{name:"Western Australian peppermint",type:"rosids"},"Psidium guajava":{name:"Guava",type:"rosids"},"Xanthostemon chrysanthus":{name:"Golden Penda",type:"rosids"},"Anacardium occidentale":{name:"Cashew",type:"rosids"},"Cotinus coggygria":{name:"Smoketree",type:"rosids"},"Malosma laurina":{name:"Laurel sumac",type:"rosids"},"Mangifera indica":{name:"Mango",type:"rosids"},"Pistacia lentiscus":{name:"Mastic tree",type:"rosids"},"Azadirachta indica":{name:"Neem",type:"rosids"},"Dodonaea viscosa":{name:"Florida hopbush",type:"rosids"},"Acer negundo":{name:"Boxelder",type:"rosids"},"Parthenocissus quinquefolia":{name:"Virginia creeper",type:"rosids"},"Vitis rotundifolia":{name:"Muscadine grape",type:"rosids"},"Ribes aureum":{name:"Golden currant",type:"neutral",isPentapetalae:true},"Saxifraga oppositifolia":{name:"Purple mountain saxifrage",type:"neutral",isPentapetalae:true},"Caladium bicolor":{name:"Heart of Jesus",type:"Liliopsida"},"Zantedeschia aethiopica":{name:"Calla lily",type:"Liliopsida"},"Crinum asiaticum":{name:"Poisonbulb",type:"Liliopsida"},"Zephyranthes candida":{name:"Autumn zephyrlily",type:"Liliopsida"},"Iris japonica":{name:"Butterfly flower",type:"Liliopsida"},"Calypso bulbosa":{name:"Fairy slipper",type:"Liliopsida"},"Dendrobium macrophyllum":{name:"Large-Leaved Dendrobium",type:"Liliopsida"},"Eriophorum scheuchzeri":{name:"White Cottongrass",type:"Liliopsida"},"Cynodon dactylon":{name:"Bermuda grass",type:"Liliopsida"},"Axonopus compressus":{name:"Carpet grass",type:"Liliopsida"},"Alpinia purpurata":{name:"Red Ginger",type:"Liliopsida"},"Hedychium gardnerianum":{name:"Kahili ginger",type:"Liliopsida"},"Clintonia borealis":{name:"Corn lily",type:"Liliopsida"},"Fritillaria camschatcensis":{name:"Kamchatka fritillary",type:"Liliopsida"},"Pandanus belepensis":{name:"Pandanus belepensis",type:"Liliopsida"},"Houttuynia cordata":{name:"Chameleon plant",type:"neutral",isPentapetalae:false},"Banksia praemorsa":{name:"Cut leaf banksia",type:"Proteaceae"},"Embothrium coccineum":{name:"Chilean firebush",type:"Proteaceae"},"Gevuina avellana":{name:"Chilean Hazel",type:"Proteaceae"},"Grevillea robusta":{name:"Silk oak",type:"Proteaceae"},"Leucospermum cordifolium":{name:"Pincushion",type:"Proteaceae"},"Berberis darwinii":{name:"Darwin's barberry",type:"Ranunculales"},"Chelidonium majus":{name:"Greater celandine",type:"Ranunculales"},"Caltha palustris":{name:"Marsh marigold",type:"Ranunculales"},"Actaea rubra":{name:"Red baneberry",type:"Ranunculales"},"Parentucellia viscosa":{name:"Yellow bartsia",type:"asterids"},"Hibiscus × rosa-sinensis":{name:"Chinese Hibiscus",type:"rosids"}},
+				
+				hiddenPlants: {},
+				
+				plantTypes: {
+					"rosids": {color: "#ff0000", isPentapetalae: true},
+					"asterids": {color: "#00ff00", isPentapetalae: true},
+					"Caryophyllales": {color: "#0000ff", isPentapetalae: true},
+					
+					"Liliopsida": {color: "#ffff00", isPentapetalae: false},
+					"Proteaceae": {color: "#ff00ff", isPentapetalae: false},
+					"Ranunculales": {color: "#00ffff", isPentapetalae: false},
+					
+					"neutral": {color: "#ffffff"},
+				},
+				plantTypeAdvantages: {
+					typesIndex: ["rosids", "asterids", "Caryophyllales", "Liliopsida", "Proteaceae", "Ranunculales", "neutral"],
+					values: [
+						[1, 2, 0.5, 0.5, 0.25, 0.5, 2],
+						[0.5, 1, 1, 1, 0.25, 1, 1],
+						[2, 2, 1, 1, 0.25, 1, 0.5],
+						[2, 2, 1, 1, 0.25, 0.5, 0.5],
+						[1, 1, 1, 1, 1, 1, 0.5],
+						[2, 2, 1, 2, 0.25, 1, 0.5],
+						[0.5, 0.5, 2, 2, 2, 2, 1],
+					],
+					
+					/*
+					att/def			"rosids"	"asterids"	"Caryophyllales"	"Liliopsida"	"Proteaceae"	"Ranunculales"	"neutral"
+					"rosids"			.			2				0.5				 0.5			 0.25			  0.5			2			= 5.75
+					"asterids"			0.5			.				-				 -				 0.25			  -				-			= 4.75
+					"Caryophyllales"	2			2				.				 -				 0.25			  -				0.5			= 6.75
+					"Liliopsida"		2			2				-				 .				 0.25			  0.5			0.5			= 6.25
+					"Proteaceae"		-			-				-				 -				 .				  -				0.5			= 5.5
+					"Ranunculales"		2			2				-				 2				 0.25			  .   			0.5			= 7.75
+					"neutral"			0.5			0.5				2				 2				 2				  2				. 			= 9
+					
+								=		8			9.5				6.5				 7.5			 3.25			  6				5*/
+				},
+				
+				plantInfoSelectedPlant: "",
+				plantInfoSelectedAttack: "",
+				plantAttackTypes: {
+					"rosids": {type: "rosids", isAttack: true},
+					"asterids": {type: "asterids", isAttack: true},
+					"Caryophyllales": {type: "Caryophyllales", isAttack: true},
+					"Liliopsida": {type: "Liliopsida", isAttack: true},
+					"Proteaceae": {type: "Proteaceae", isAttack: true},
+					"Ranunculales": {type: "Ranunculales", isAttack: true},
+					"neutral": {type: "neutral", isAttack: true},
+					
+					"Anti-Pentapetalae": {value: "args.isOpponentPentapetalae + 1", isPentapetalae: false,
+					text: "x2 boost against Pentapetalae plants\nRequirements to use: can only be used by non-pentapetalae plants"},
+					
+					"Short-Named": {value: "args.opponentName.length / 10", maxLetters: 5,
+					text: "More boost the longer the opponent's name is\nRequirements to use: only 5 or fewer letters in plant's name"},
+					"Long-Named": {value: "15 / args.opponentName.length", minWords: 3,
+					text: "More boost the shorter the opponent's name is\nRequirements to use: at least 3 words in plant's name"},
+					
+					"High Level": {value: "(args.opponentLevel / 25) + 1", words: ["giant", "large"],
+					text: "More boost the higher the opponent's level is\nRequirements to use: \"giant\" or \"large\" in plant's name"},
+					"Low Level": {value: "29 / (args.opponentLevel + 4)", words: ["bush", "shrub", "weed", "grass", "flower", "rose"],
+					text: "More boost the lower the opponent's level is\nRequirements to use: plant's name refers to small size"},
+					
+					"Dashing": {value: "getCharacterOccurrenceInString(args.opponentName, ' ') + 1", words: ["-"],
+					text: "More boost the more spaces there are in the opponent's name\nRequirements to use: \"-\" in plant's name"},
+					
+					"Locational": {value: "2 - args.plantDistance*(1/3)", words: ["alpine", "america", "peru", "arabia", "arctic", "australia", "biscayne", "bermuda", "canary", "cape", "chile", "chinese", "florida", "parnassus", "india", "japan", "jerusalem", "kamchatka", "mexican", "zealand", "africa", "russian", "siam", "sodom", "sydney", "tahitian", "virginia"],
+					text: "More boost the closer the attack is coming from\nRequirements to use: geographical location in plant's name"},
+					
+					"Animalistic": {value: "args.isOpponentAnimalistic + 1", words: ["bird", "crow", "hen", "butterfly", "chameleon", "buck", "cow", "fish", "hedgehog", "lark", "flea", "pigeon", "salmon", "dog", "hound", "ant"],
+					text: "x2 boost against plants that also have the Animalistic attack\nRequirements to use: name of an animal in plant's name"},
+					
+					"Negative": {value: "args.typeAdvantageAmount", words: ["bastard", "creep", "devil", "dead", "jealousy", "poison", "prick", "bane", "fever", "not"],
+					text: "Multiplies boost by the type advantage amount\nRequirements to use: negative word in plant's name"},
+					
+					"Berry Good": {value: "1 + (args.boostAmount / 3)", words: ["berry"],
+					text: "Multiplies boost by 100% + third of the current boost amount\nRequirements to use: \"berry\" in plant's name"},
+					"Possessive": {value: "args.opponentBoostAmount + 0.5", words: ["'s"],
+					text: "Multiplies boost by 50% + the opponent's boost amount\nRequirements to use: \"'s\" in plant's name"},
+					"Tree-Named": {value: "lowerOpponentBoosts", words: ["tree"],
+					text: "Lowers opponent's boost by 33%\nRequirements to use: \"tree\" in plant's name"},
+					"Planty": {value: "1 + (args.plantsAmount / 25)", words: ["plant"],
+					text: "Multiplies boost by 100% + (4% * amount of plants you have)\nRequirements to use: \"plant\" in plant's name"},
+					
+					"Colorful": {value: "Math.random() * 3", words: ["black", "blue", "gold", "violet", "green", "purple", "red", "white", "yellow"],
+					text: "Multiplies boost by a random amount (at least 100%)\nRequirements to use: name of a basic color in plant's name"},
+					
+					"Variable": {value: "randomBoost", words: ["bi", "pan"],
+					text: "Uses an other random boost instead\nRequirements to use: \"bi\" or \"pan\" in plant's name"},
+					
+					"Basic": {value: "1.5",
+					text: "Multiplies boost by 150%\nRequirements to use: plant doesn't have any other boosts"},
+				},
+				
+				
+				layoutSymbols: {
+					"-": {mainLayer: {type: "empty"}, data: {drawTile: {color: "#646464"}}},
+					"o": {mainLayer: {type: "land"}, data: {drawTile: {color: "#5ca257"}}},
+				},
+				
+				mainLayout: {
+					symbols: "layoutSymbols",
+					arr: [],
+				},
+				
+				mainGrid: {
+					grid: {},
+					data: {
+						x: 0, y: 0, w: 2, h: 2, gaps: {left: 0, right: 0, up: 0, down: 0}, isCentered: true,
+						gridShape: "rect",
+						gridSize: {w: 0, h: 0}, layers: ["mainLayer"], gameState: "game",
+						isFastClick: false,
+						hasHitboxes: true,
+						
+						onload: [
+							{f: "setValuesOnGridFromLayout", args: {layoutName: "mainLayout"}},
+							{f: "refreshGridSize"},
+						],
+						
+						draw: [
+							{f: "fillGridShape", args: {id: "drawTile", color: "#444444", borderColor: "#000000", borderSize: 0.001}},
+							{f: "fillGridSprite", args: {id: "drawSprite", spriteSize: {w: 0.9, h: 0.85}}},
+						],
+						
+						tilesData: {symbols: "layoutSymbols", valueName: "type"},
+						
+						gridDrawData: [],
+						gridDrawValues: {},
+					}
+				},
+				
+				currentDialogue: {text: ""},
+			},
+			modifiedVariables: {
+				camera: {zoom: {level: 0.1}, y: 0, areDimentionsEqual: true, minWidthToHeightRatio: 2, ...gamePresets["zoomCamera"]},
+				
+				gameState: {currentState: "game", states: ["game", "plantsInfo", "citation"]},
+				
+				colors: {
+					grayedOut: "#aaaaaa",
+				},
+			},
+			data: {
+				description: "Collect and fight plants around the globe!\n(currently still in development)",
+				releaseDate: "Late 2026",
+				tags: ["creature collector", "plants", "geography"],
 				/*videos: [
 					{name: "Showcase/Walkthrough Video"},
 					{name: '\\"How It Was Made\\" Video'},
