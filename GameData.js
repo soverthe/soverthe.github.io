@@ -5494,7 +5494,7 @@
 								}
 							} else{
 								hudButtons.push({
-									text: "Cancel Selection", pos: {x: 0.5, y: 0.9, w: 0.2, h: 0.075}, textSize: 0.3, isAbsolutePositioned: true,
+									text: "Cancel Selection", pos: {x: 0.5, y: 0.9 - (touchScreenButtons*0.1), w: 0.2, h: 0.075}, textSize: 0.3, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", downscaleTextLength: 5, drawLayer: 4,
 									onclick: ["<<fightData.attackingTilePos.x = 0;>>", "startFight"],
 								});
