@@ -6021,7 +6021,7 @@
 						x: 0, y: 0, w: 2, h: 2, gaps: {left: 0, right: 0, up: 0, down: 0}, isCentered: true,
 						gridShape: "rect",
 						gridSize: {w: 0, h: 0}, layers: ["mainLayer"], gameState: "game",
-						isFastClick: false,
+						isFastClick: false, isClickable: false,
 						hasHitboxes: true,
 						
 						onload: [

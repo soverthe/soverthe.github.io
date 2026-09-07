@@ -2546,7 +2546,7 @@
 		for (let gridName of gridNames){
 			let grid = window[gridName];
 			
-			if (grid.data.gameState == gameState.currentState || grid.data.gameState == undefined){
+			if (grid.data.isClickable != false && (grid.data.gameState == gameState.currentState || grid.data.gameState == undefined)){
 				for (let layerName in grid.grid){
 					let pos = getVertexPositionInGrid((args.currentMousePos ?? scaledMousePos), grid, layerName);
 					
@@ -3469,7 +3469,7 @@
 	
 	function getTouchScreenMovementAxes(axes, entity){
 		if (entity.isTouchScreenControlled){
-			if (isMouseDown){
+			if (wasEmptyMouseDown){
 				axes = getVertexToVertexDirection(entity.pos, scaledMousePos);
 			}
 		}
