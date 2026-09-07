@@ -778,7 +778,7 @@
 								layerButtons.push({
 									pos: {x: leftPos + 0.01, y: y, w: 0.01, h: 0.3/i.max}, isAbsolutePositioned: true,
 									text: "↓", isLocked: (i.num == 0),
-									textSize: 1, id: "layerButton",
+									textSize: 1, id: "layerButton", type: "moveDown", layerNum: i.num,
 									onclick: [\`<<{
 										let num = \`+i.num+\`;
 										let arr = {};
@@ -802,7 +802,7 @@
 								layerButtons.push({
 									pos: {x: leftPos, y: y, w: 0.01, h: 0.3/i.max}, isAbsolutePositioned: true,
 									text: "↑", isLocked: (i.num == i.trueMax - 1),
-									textSize: 1, id: "layerButton",
+									textSize: 1, id: "layerButton", type: "moveUp", layerNum: i.num,
 									onclick: [\`<<{
 										let num = \`+i.num+\`;
 										let arr = {};
@@ -827,7 +827,7 @@
 								layerButtons.push({
 									pos: {x: leftPos + 0.06, y: y, w: 0.01, h: 0.3/i.max}, isAbsolutePositioned: true,
 									text: (entities[1].isVisible[layerName] != false) ? "@" : "-", title: (entities[1].isVisible[layerName] != false) ? "Hide" : "Show",
-									textSize: 1, id: "layerButton",
+									textSize: 1, id: "layerButton", type: "hide", layerNum: i.num, isInHideState: (entities[1].isVisible[layerName] != false),
 									onclick: [\`<<{
 										let num = \`+i.num+\`;
 										let layerNames = Object.keys(entities[1].pos.arr);
@@ -851,7 +851,7 @@
 								});
 								layerButtons.push({
 									pos: {x: leftPos + 0.07, y: y, w: 0.01, h: 0.3/i.max}, isAbsolutePositioned: true,
-									text: "🖋", title: "Rename", textSize: 1, id: "layerButton",
+									text: "🖋", title: "Rename", textSize: 1, id: "layerButton", type: "rename", layerNum: i.num,
 									onclick: [\`<<{
 										let newName = prompt("New Layer Name:");
 										
@@ -880,7 +880,7 @@
 								});
 								layerButtons.push({
 									pos: {x: leftPos + 0.08, y: y, w: 0.01, h: 0.3/i.max}, isAbsolutePositioned: true,
-									text: "c", title: "Clone", textSize: 1, id: "layerButton",
+									text: "c", title: "Clone", textSize: 1, id: "layerButton", type: "clone", layerNum: i.num,
 									onclick: [\`<<{
 										let layerNum = \`+i.num+\`;
 										let layerNames = Object.keys(entities[1].pos.arr);
@@ -925,7 +925,8 @@
 								});
 								layerButtons.push({
 									pos: {x: leftPos + 0.09, y: y, w: 0.01, h: 0.3/i.max}, isAbsolutePositioned: true,
-									text: "x", title: "Delete", textSize: 1, id: "layerButton", isLocked: (objectLength(entities[1].pos.arr) < 2),
+									text: "x", title: "Delete", textSize: 1, id: "layerButton", type: "delete", layerNum: i.num,
+									isLocked: (objectLength(entities[1].pos.arr) < 2),
 									onclick: [\`<<{
 										let num = \`+i.num+\`;
 										let layerNames = Object.keys(entities[1].pos.arr);
@@ -1037,6 +1038,127 @@
 									}
 								}
 							}>>`],
+							duplicateSelectedVertices: [`<<{
+								let currentSelectedArtVertices = [];
+								
+								for (let i in selectedArtVertices){
+									if (entities[1].pos.arr[selectedArtVertices[i].layer]?.[selectedArtVertices[i].num] != undefined){
+										let currentIndex = entities[1].pos.arr[selectedArtVertices[i].layer].length;
+										
+										entities[1].pos.arr[selectedArtVertices[i].layer][currentIndex] = structuredClone(entities[1].pos.arr[selectedArtVertices[i].layer][selectedArtVertices[i].num]);
+										
+										currentSelectedArtVertices.push({num: currentIndex, layer: selectedArtVertices[i].layer});
+									}
+								}
+								
+								if (currentSelectedArtVertices.length > 0){
+									selectedArtVertices = currentSelectedArtVertices;
+								}
+							}>>`],
+							cloneSelectedLayers: [`<<{
+								let selectedLayers = [];
+								
+								for (let i in selectedArtVertices){
+									if (entities[1].pos.arr[selectedArtVertices[i].layer]?.[selectedArtVertices[i].num] != undefined){
+										if (!selectedLayers.includes(selectedArtVertices[i].layer)){
+											selectedLayers.push(selectedArtVertices[i].layer);
+										}
+									}
+								}
+								
+								
+								let currentSelectedArtVertices = [];
+								
+								for (let i in selectedLayers){
+									let currentNum = Object.keys(entities[1].pos.arr).indexOf(selectedLayers[i]);
+									
+									for (let j in buttons.art){
+										if (buttons.art[j].type == "clone" && buttons.art[j].layerNum == currentNum){
+											runEvent(buttons.art[j].onclick);
+											
+											let layersArr = Object.keys(entities[1].pos.arr);
+											
+											for (let k = 0; k < entities[1].pos.arr[layersArr[layersArr.length - 1]].length; k++){
+												currentSelectedArtVertices.push({num: k, layer: layersArr[layersArr.length - 1]});
+											}
+										}
+									}
+								}
+								
+								if (currentSelectedArtVertices.length > 0){
+									selectedArtVertices = currentSelectedArtVertices;
+								}
+							}>>`],
+							selectAllVerticesOfSelectedLayers: [`<<{
+								let selectedLayers = [];
+								
+								for (let i in selectedArtVertices){
+									if (entities[1].pos.arr[selectedArtVertices[i].layer]?.[selectedArtVertices[i].num] != undefined){
+										if (!selectedLayers.includes(selectedArtVertices[i].layer)){
+											selectedLayers.push(selectedArtVertices[i].layer);
+										}
+									}
+								}
+								
+								
+								let currentSelectedArtVertices = [];
+								
+								for (let i in selectedLayers){
+									for (let k = 0; k < entities[1].pos.arr[selectedLayers[i]].length; k++){
+										currentSelectedArtVertices.push({num: k, layer: selectedLayers[i]});
+									}
+								}
+								
+								if (currentSelectedArtVertices.length > 0){
+									selectedArtVertices = currentSelectedArtVertices;
+								}
+							}>>`],
+							moveSelectedLayersUp: [`<<{
+								let selectedLayers = [];
+								
+								for (let i in selectedArtVertices){
+									if (entities[1].pos.arr[selectedArtVertices[i].layer]?.[selectedArtVertices[i].num] != undefined){
+										if (!selectedLayers.includes(selectedArtVertices[i].layer)){
+											selectedLayers.unshift(selectedArtVertices[i].layer);
+										}
+									}
+								}
+								
+								for (let i = 0; i < selectedLayers.length; i++){
+									let currentNum = Object.keys(entities[1].pos.arr).indexOf(selectedLayers[i]);
+									
+									for (let j in buttons.art){
+										if (buttons.art[j].type == "moveUp" && buttons.art[j].layerNum == currentNum){
+											if (Object.keys(entities[1].pos.arr).length - currentNum > 1 + i){
+												runEvent(buttons.art[j].onclick);
+											}
+										}
+									}
+								}
+							}>>`],
+							moveSelectedLayersDown: [`<<{
+								let selectedLayers = [];
+								
+								for (let i in selectedArtVertices){
+									if (entities[1].pos.arr[selectedArtVertices[i].layer]?.[selectedArtVertices[i].num] != undefined){
+										if (!selectedLayers.includes(selectedArtVertices[i].layer)){
+											selectedLayers.push(selectedArtVertices[i].layer);
+										}
+									}
+								}
+								
+								for (let i = 0; i < selectedLayers.length; i++){
+									let currentNum = Object.keys(entities[1].pos.arr).indexOf(selectedLayers[i]);
+									
+									for (let j in buttons.art){
+										if (buttons.art[j].type == "moveDown" && buttons.art[j].layerNum == currentNum){
+											if (currentNum > i){
+												runEvent(buttons.art[j].onclick);
+											}
+										}
+									}
+								}
+							}>>`],
 							
 							drawSelectionBox: [`<<
 								if (gameState.currentState == "art"){
@@ -1107,6 +1229,11 @@
 										clickedPolygonVertex = {i: "art", layer: selectedArtVertices[0].layer, j: selectedArtVertices[0].num, type: "front"};
 									}
 									disablePolygonEditMovement = false;
+									
+									let isControlDown = (inputs.ControlLeft || inputs.ControlRight);
+									if (clickedPolygonVertex.i == "art" && ((selectedArtVertices[0]?.layer == clickedPolygonVertex.layer) || !isControlDown)){
+										runEvent("selectClickedVertex");
+									}
 								} break;
 								case "changeVertex": {
 									if (clickedPolygonVertex.i == "art"){
@@ -1261,7 +1388,7 @@
 										y: (scaledMousePos.y - entities[1].boxPos.y) / (entities[1].boxPos.h ?? 1),
 									};
 									
-									if (isMouseDown && clickedButton.i == ""){
+									if (isMouseDown && clickedButton.i == "" && clickedScrollbar.xy == ""){
 										if (multipleMovePos == undefined){
 											multipleMovePos = {mousePos: scaledMousePos, startingPos: []};
 											
@@ -1320,7 +1447,7 @@
 										y: (scaledMousePos.y - entities[1].boxPos.y) / (entities[1].boxPos.h ?? 1),
 									};
 									
-									if (isMouseDown && clickedButton.i == ""){
+									if (isMouseDown && clickedButton.i == "" && clickedScrollbar.xy == ""){
 										if (multipleMovePos == undefined){
 											multipleMovePos = {mousePos: scaledMousePos, startingPos: []};
 											
@@ -1363,31 +1490,42 @@
 						}>>`],
 						
 						generateArtButtons: [`<<{
-						let instantButtons = [{name: "deleteSelected", eventName: "deleteSelectedVertices"}, {name: "moveSelectedToEdge", eventName: "moveSelectedToEdge"}];
-						
-						for (let i = 0; i < drawTool.states.length; i++){
-							let name = drawTool.states[i];
+							let instantButtons = [
+								[{name: "moveSelectedToEdge", eventName: "moveSelectedToEdge"}, {name: "duplicateSelected", eventName: "duplicateSelectedVertices"}],
+								
+								[{name: "deleteSelected", eventName: "deleteSelectedVertices"}, {name: "selectEntireLayer", eventName: "selectAllVerticesOfSelectedLayers"}],
+								
+								[
+									{name: "moveSelectedLayersUp", eventName: "moveSelectedLayersUp"},
+									{name: "moveSelectedLayersDown", eventName: "moveSelectedLayersDown"},
+									{name: "cloneSelectedLayers", eventName: "cloneSelectedLayers"}
+								],
+								
+							];
 							
+							for (let i = 0; i < drawTool.states.length; i++){
+								let name = drawTool.states[i];
+								
+								
+								buttons.art.push({
+									pos: {x: 0.035 + (i%3)*0.04, y: 0.175 + Math.floor(i/3)*0.095, w: 0.035, h: 0.07},
+									text: "🕴", textSize: 1.1, isAbsolutePositioned: true, title: name, id: name, id2: "toolButtons",
+									sprites: [(drawToolSprites[name] ?? "emptyBox")],
+									onclick: [{f: "runEval", extraArgs: {text: "drawTool.currentState = '"+name+"';"}}]
+								});
+							}
 							
-							buttons.art.push({
-								pos: {x: 0.035 + (i%3)*0.04, y: 0.175 + Math.floor(i/3)*0.095, w: 0.035, h: 0.07},
-								text: "🕴", textSize: 1.1, isAbsolutePositioned: true, title: name, id: name, id2: "toolButtons",
-								sprites: [(drawToolSprites[name] ?? "emptyBox")],
-								onclick: [{f: "runEval", extraArgs: {text: "drawTool.currentState = '"+name+"';"}}]
-							});
-						}
-						
-						for (let i = 0; i < instantButtons.length; i++){
-							let name = instantButtons[i];
-							
-							buttons.art.push({
-								pos: {x: 0.035 + i*0.04, y: 0.175 + 2*0.095, w: 0.035, h: 0.07},
-								text: "🕴", textSize: 1.1, isAbsolutePositioned: true, title: instantButtons[i].name,
-								sprites: [(drawToolSprites[instantButtons[i].name] ?? "emptyBox")],
-								onclick: [instantButtons[i].eventName],
-							});
-						}
-					}>>`],
+							for (let i = 0; i < instantButtons.length; i++){
+								for (let j = 0; j < instantButtons[i].length; j++){
+									buttons.art.push({
+										pos: {x: 0.035 + j*0.04, y: 0.175 + 2*0.095 + i*0.095, w: 0.035, h: 0.07},
+										text: "🕴", textSize: 1.1, isAbsolutePositioned: true, title: instantButtons[i][j].name,
+										sprites: [(drawToolSprites[instantButtons[i][j].name] ?? "emptyBox")],
+										onclick: [instantButtons[i][j].eventName],
+									});
+								}
+							}
+						}>>`],
 					},
 				},
 				
@@ -1584,7 +1722,9 @@
 				
 				drawToolSprites: {
 					createVertex: "cursorWithPlusSymbol", selectAndMove: "selectionSymbol", scale: "scalingSymbol", rotate: "rotationSymbol", changeVertex: "vertexTypesSymbol",
-					deleteSelected: "deleteSelectedSymbol", moveSelectedToEdge: "moveSelectedToEdgeSymbol"
+					selectEntireLayer: "selectEntireLayerSymbol", duplicateSelected: "duplicateSelectedSymbol",
+					deleteSelected: "deleteSelectedSymbol", moveSelectedToEdge: "moveSelectedToEdgeSymbol",
+					moveSelectedLayersUp: "upSymbol", moveSelectedLayersDown: "downSymbol", cloneSelectedLayers: "copySymbol"
 				},
 				
 				multipleSelectPos: {start: undefined, rect: undefined},
@@ -4955,9 +5095,26 @@
 				
 				events: {
 					onload: ["generateMainLayout", "generatePlantAttacks", "generateGrids", "generateEarthEntity", "refreshPlantEntities"],
-					onNextFrame: ["moveEntities", "refreshHudButtons", "draw"],
+					onNextFrame: ["moveEntities", "teleportPlayer", "refreshHudButtons", "draw"],
 					
 					//refreshScrollbars: [{f: "setScrollbarsToGrids", args: {state: "graph", margin: {left: 0.25, right: 0.25, up: 0.25, down: 0.25}}}],
+					
+					teleportPlayer: [`<<{
+						if (entities[0].pos.x < -21.955){
+							entities[0].pos.x = 21.955;
+						}
+						if (entities[0].pos.x > 21.955){
+							entities[0].pos.x = -21.955;
+						}
+						if (entities[0].pos.y < -11.955){
+							entities[0].pos.y = -11.955 + 2;
+							entities[0].pos.x *= -1;
+						}
+						if (entities[0].pos.y > 10.2955){
+							entities[0].pos.y = 10.2955 - 2;
+							entities[0].pos.x *= -1;
+						}
+					}>>`],
 					
 					mapGenerationEvents: {
 						generateMainLayout: [`<<{
@@ -4993,7 +5150,15 @@
 							
 							for (let i in earthEntity.pos.arr){
 								for (let j in earthEntity.pos.arr[i]){
-									let currentObject = Object.assign({}, earthEntity.pos.arr[i][j]);
+									let currentArr = earthEntity.pos.arr[i][j];
+									
+									if (i == "South Africa"){
+										currentArr = structuredClone(currentArr);
+										currentArr.splice(87, 24);
+									}
+									
+									let currentObject = Object.assign({}, currentArr);
+									
 									
 									if (objectLength(currentObject) > 0){
 										earthArr.pos.arr[i + "" + j] = currentObject;
@@ -5036,7 +5201,8 @@
 							entities = [entities[0], entities[1]];
 							
 							for (let i in plantEntities){
-								let pos = getGridTilePos(plantEntities[i].pos);
+								let tilePos = getGridTilePos(plantEntities[i].pos);
+								let pos = {...tilePos};
 								
 								let currentArr = plantEntities[i];
 								
@@ -5044,61 +5210,71 @@
 									/*currentArr = previousPlantEntities[i]; log(previousPlantEntities[i]);
 									
 									pos = getGridTilePos(currentArr.pos);*/
+									let savedEntityNums = [];
 									
-									entities.push(previousEntities[Number(i) + 2]);
-								} else{
-									let currentPos = getGridTilePos(plantEntities[i].pos);
-									
-									let attemptsNum = 0;
-									let isOnLand = false;
-									while (!isOnLand && attemptsNum < 1){
-										let currentRange = (attemptsNum < 3) ? {min: 0.2, max: 0.9} : {min: 0, max: 1};
-										
-										currentPos = {
-											x: pos.x + getRandomNumWithDecimals(currentRange) * pos.w,
-											y: pos.y + getRandomNumWithDecimals(currentRange) * pos.h
-										};
-										
-										if (savedPolygons.Earth != undefined){
-											for (let j in entities[1].pos.arr){
-												if (!j.includes("Antarctica")){
-													if (isVertexInPolygon(getScaledPosition(currentPos), savedPolygons.Earth[j])){
-														isOnLand = true;
-													}
-												}
-											}
-										} else{
-											isOnLand = true;
+									for (let j = 2; j < previousEntities.length; j++){
+										if (previousEntities[j].plantPos?.x == plantEntities[i].pos.x && previousEntities[j].plantPos?.y == plantEntities[i].pos.y){
+											savedEntityNums.push(j);
 										}
-										attemptsNum++;
 									}
-									pos = currentPos;
 									
+									for (let j in savedEntityNums){
+										entities.push(previousEntities[savedEntityNums[j]]);
+									}
+								} else{
+									let currentPos = {...tilePos};
+									
+									let currentRange = {min: 0.2, max: 0.9};
+									
+									pos = {
+										x: pos.x + getRandomNumWithDecimals(currentRange) * pos.w,
+										y: pos.y + getRandomNumWithDecimals(currentRange) * pos.h
+									};
 									
 									let plantTileIndex = currentArr.index;
 									let rarityColor = rarityColors[plantTileIndex];
 									
-									let typeColor = plantTypes[plantsData[currentArr.name].type].color;
+									/*let typeColor = plantTypes[plantsData[currentArr.name].type].color;*/
 									
-									let currentEntity = {
-										pos: {x: pos.x, y: pos.y, w: 0.4, shape: "circle"}, hitboxShape: "circle",
-										color: rarityColor, drawLayer: 1, gameState: "game",
-										plantPos: currentArr.pos, plantName: currentArr.name, plantLevel: currentArr.level, rarityColor: rarityColor,
-									};
+									let tilePlants = [...plantOccurencesGrid[currentArr.pos.y][currentArr.pos.x], currentArr];
 									
-									if (true){
-										let currentSprite = (hiddenPlants[currentArr.name]) ? {...(gameSprites[currentArr.name] ?? gameSprites[defaultPlantName]), color: "#000000"} : (gameSprites[currentArr.name] ?? gameSprites[defaultPlantName]);
+									for (let j = 0; j < tilePlants.length; j++){
+										let currentName = tilePlants[j].name;
+										let isAlly = (j != tilePlants.length - 1);
 										
-										currentEntity = {
-											...currentEntity,
-											...(currentSprite),
-											boxPos: {x: currentEntity.pos.x, y: currentEntity.pos.y, w: currentEntity.pos.w, h: currentEntity.pos.w},
-											shadowColor: "#00000066",
-											shadowPos: {x: 0.002, y: 0.002},
-										};
+										if (tilePlants[j].level > 0 || developmentMode){
+											let currentEntity = {
+												pos: {x: pos.x, y: pos.y, w: 0.4, shape: "circle"}, hitboxShape: "circle",
+												color: rarityColor, drawLayer: 1-isAlly, gameState: "game",
+												plantPos: currentArr.pos, plantName: currentName, plantLevel: tilePlants[j].level, rarityColor: rarityColor, isAlly: isAlly
+											};
+											
+											if (isAlly){
+												currentEntity.pos.x = tilePos.x + tilePos.w/4 * (j+1);
+												currentEntity.pos.y = tilePos.y + tilePos.h/2;
+												
+												currentEntity.plantNum = j;
+											} else{
+												for (let k = 0; k < tilePlants.length - 1; k++){
+													if (tilePlants[k].name == currentName){
+														currentEntity.plantNum = k;
+													}
+												}
+											}
+											
+											let currentSprite = (hiddenPlants[currentName]) ? {...(gameSprites[currentName] ?? gameSprites[defaultPlantName]), color: "#000000"} : (gameSprites[currentName] ?? gameSprites[defaultPlantName]);
+											
+											currentEntity = {
+												...currentEntity,
+												...(currentSprite),
+												boxPos: {x: currentEntity.pos.x, y: currentEntity.pos.y, w: currentEntity.pos.w, h: currentEntity.pos.w},
+												shadowColor: "#00000066",
+												shadowPos: {x: 0.002, y: 0.002},
+											};
+											
+											entities.push(currentEntity);
+										}
 									}
-									
-									entities.push(currentEntity);
 								}
 							}
 							
@@ -5151,304 +5327,368 @@
 						}
 					}>>`],
 					
-					refreshHudButtons: [`<<{
-						let hudButtons = [];
-						
-						let pos = getVertexPositionInGrid(entities[0].pos);
-						
-						let arr = plantOccurencesGrid[pos.y]?.[pos.x];
-						
-						for (let i in entities){
-							if (entities[i].plantPos != undefined){
-								entities[i].isVisible = false;
-							}
-						}
-						
-						let text = "";
-						
-						if (arr != null && fightData.tilePos.x == -1){
-							for (let i in arr){
-								if (i > 0){
-									text += "\\n";
+					hudEvents: {
+						refreshHudButtons: [`<<{
+							let hudButtons = [];
+							
+							let pos = getVertexPositionInGrid(entities[0].pos);
+							
+							let arr = plantOccurencesGrid[pos.y]?.[pos.x];
+							
+							for (let i in entities){
+								if (entities[i].plantPos != undefined){
+									entities[i].isVisible = false;
 								}
-								
-								if (hiddenPlants[arr[i].name]){
-									text += "???";
-								} else{
-									text += plantsData[arr[i].name].name/*+": "+arr[i].amount*/+" (lv "+arr[i].level+")";
-								}
-								
-								text += (gameSprites[arr[i].name] != undefined) ? " !" : "";
 							}
 							
-							hudButtons.push({
-								text: text, pos: {x: 0.1, y: 0.1, w: 0.15, h: 0.15}, textSize: 0.065, marginY: 0.15, isAbsolutePositioned: true,
-								color: "#222222", textColor: "#ffffff", drawLayer: 5, disableClick: true
-							});
-						}
-						
-						let currentEnemyPos = {x: 0, y: 0};
-						let rarityColor = "#ffffff";
-						
-						if (fightData.tilePos.x == -1){
-							for (let i in entities){
-								if (entities[i].plantPos?.x == pos.x && entities[i].plantPos?.y == pos.y){
-									currentEnemyPos = entities[i].boxPos ?? entities[i].pos;
-									entities[i].isVisible = true;
-									rarityColor = entities[i].rarityColor;
-								}
-							}
-						} else{
-							for (let i in entities){
-								if (entities[i].plantPos?.x == fightData.tilePos.x && entities[i].plantPos?.y == fightData.tilePos.y){
-									currentEnemyPos = entities[i].boxPos ?? entities[i].pos;
-									entities[i].isVisible = true;
-								}
-							}
-						}
-						
-						/*Fight buttons*/
-						
-						let currentText = (hasStarterPlant) ? "Fight" : "Choose";
-						
-						if (fightData.attackingTilePos?.x != -1){
-							currentText = "Flee";
-						}
-						
-						if (fightData.tilePos?.x == -1 || fightData.attackingTilePos?.x != -1){
-							if ((arr != null || fightData.tilePos?.x != -1) && !fightData.isFightOver){
-								hudButtons.push({
-									text: currentText, pos: {x: currentEnemyPos.x, y: currentEnemyPos.y + 0.175*1.75, w: 0.4, h: 0.175}, textSize: 0.3,
-									color: "#222222", textColor: rarityColor, downscaleTextLength: 5, drawLayer: 2, onclick: ["startFight"]
-								});
-							}
-						} else{
-							hudButtons.push({
-								text: "Cancel Selection", pos: {x: 0.5, y: 0.9, w: 0.15, h: 0.05}, textSize: 0.3, isAbsolutePositioned: true,
-								color: "#222222", textColor: "#ffffff", downscaleTextLength: 5, drawLayer: 4,
-								onclick: ["<<fightData.attackingTilePos.x = 0;>>", "startFight"],
-							});
-						}
-						
-						/*Plant selection against enemy plant*/
-						if (fightData.tilePos.x != -1 && fightData.attackingTilePos.x == -1){
-							for (let i in plantEntities){
-								let gridPos = plantEntities[i].pos;
-								let pos = getGridTilePos(gridPos);
-								
-								let currentPos = {
-									x: pos.x + 0.2 * pos.w,
-									y: pos.y + 0.5 * pos.h
-								};
-								
-								let currentArr = plantOccurencesGrid[gridPos.y][gridPos.x];
-								
-								for (let j in currentArr){
-									let currentLevel = currentArr[j].level;
-									
-									if (currentLevel > 0 || developmentMode){
-										let currentSprite = (hiddenPlants[currentArr[j].name]) ? gameSprites.questionMark : (gameSprites[currentArr[j].name] ?? gameSprites[defaultPlantName]);
-										
-										hudButtons.push({
-											text: "🕴\\n", subtext: currentLevel, subtextPos: {x: 0, y: 0.25},
-											sprites: [{...(currentSprite), shadowColor: ["#ffffff", "#000000"], shadowPos: [{x: -0.003, y: -0.003}, {x: 0.003, y: 0.003}]}],
-											pos: {x: currentPos.x, y: currentPos.y, w: 0.5, h: 1.5}, textSize: 1, subtextSize: 1,
-											color: "#222222", textColor: rarityColors[j], downscaleSubtextLength: 1, drawLayer: 3,
-											borderColor: rarityColors[j], borderSize: 0.01,
-											onclick: ["<<runEvent('selectAttackerPlant', {pos: {x: "+gridPos.x+", y: "+gridPos.y+"}, i: "+j+"});>>"],
-										});
+							let text = "";
+							
+							if (arr != null && fightData.tilePos.x == -1){
+								for (let i in arr){
+									if (i > 0){
+										text += "\\n";
 									}
 									
-									currentPos.x += 0.3 * pos.w;
-								}
-							}
-						} else{
-							/*Fight Hud*/
-							if (fightData.plantValues != undefined){
-								let enemyArr = fightData.plantValues;
-								let enemyName = plantsData[enemyArr.name].name;
-								let allyArr = fightData.attackingPlantValues;
-								let allyName = plantsData[allyArr.name].name;
-								
-								hudButtons.push({
-									text: "Enemy Plant: "+enemyName+" (lv "+enemyArr.level+")\\n"+ "Health: "+getNumWithTruncatedDecimals(enemyArr.health*100, 2),
-									pos: {x: 0.8, y: 0.3, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
-									color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3, disableClick: true
-								});
-								
-								hudButtons.push({
-									text: "Ally Plant: "+allyName+" (lv "+allyArr.level+")\\n"+ "Health: "+getNumWithTruncatedDecimals(allyArr.health*100, 2),
-									pos: {x: 0.2, y: 0.3, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
-									color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3, disableClick: true
-								});
-								
-								
-								let fightSides = [{attacks: plantsData[allyArr.name].attackTypes}, {attacks: plantsData[enemyArr.name].attackTypes}];
-								for (let j = 0; j < fightSides.length; j++){
-									let currentAttacks = fightSides[j].attacks;
-									
-									for (let i = 0; i < currentAttacks.length; i++){
-										let attackName = currentAttacks[i];
-										
-										let isAttack = plantAttackTypes[attackName].isAttack;
-										let currentName = attackName + ((isAttack) ? " attack" : " boost");
-										
-										hudButtons.push({
-											text: currentName, pos: {x: 0.2 + (j*0.6) + (Math.max(i-3, 0)*0.175*(j > 0 ? -1 : 1)), y: 0.5 + Math.min(i, 3)*0.15, w: 0.15, h: 0.1}, textSize: 0.3, isAbsolutePositioned: true,
-											color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3,
-											isLocked: fightData.isFightOver || j > 0,
-											onclick: ["<<runEvent('attackPlant', {attackName: '"+attackName+"'})>>"],
-										});
+									if (hiddenPlants[arr[i].name]){
+										text += "???";
+									} else{
+										text += plantsData[arr[i].name].name/*+": "+arr[i].amount*/+" (lv "+arr[i].level+")";
 									}
+									
+									text += (gameSprites[arr[i].name] != undefined) ? " !" : "";
 								}
-								
 								
 								hudButtons.push({
-									text: fightData.attackLogText ?? "",
-									pos: {x: 0.5, y: 0.1, w: 0.8, h: 0.2}, textSize: 0.08, isAbsolutePositioned: true,
-									color: "#ffffff88", textColor: "#000000", downscaleTextLength: 20, drawLayer: 3, disableClick: true
-								});
-								
-								if (fightData.isFightOver){
-									let currentSubtext = (fightData.levelGain != undefined) ? enemyName+" gained "+fightData.levelGain+" level"+((fightData.levelGain>1)?"s":"")+"!" : "loss :(";
-									hudButtons.push({
-										text: "Finish Fight",
-										pos: {x: 0.5, y: 0.75, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
-										subtext: currentSubtext,
-										subtextPos: {x: 0, y: 0.33}, subtextSize: 0.05,
-										color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, downscaleSubtextLength: 30, drawLayer: 3, onclick: ["finishFight"]
-									});
-									
-								}
-							}
-						}
-						
-						
-						buttons.game = [
-							...hudButtons,
-							
-							{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
-								color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
-								
-							{text: "Citation", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
-								color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
-							
-							
-							{...gamePresets.quitButton, drawLayer: 10}
-						];
-					}>>`],
-					
-					toggleCitation: [`<<{
-						gameState.currentState = (gameState.currentState != "citation") ? "citation" : "game";
-					}>>`],
-					togglePlantsInfo: [`<<{
-						gameState.currentState = (gameState.currentState != "plantsInfo") ? "plantsInfo" : "game";
-						
-						runEvent("refreshPlantsInfo");
-					}>>`],
-					refreshPlantsInfo: [`<<{
-						if (gameState.currentState == "plantsInfo"){
-							let buttonsArr = [];
-							
-							let alphabeticalPlantNames = [];
-							let scientificNames = {};
-							
-							for (let i in plantsData){
-								alphabeticalPlantNames.push(plantsData[i].name);
-								scientificNames[plantsData[i].name] = i;
-							}
-							alphabeticalPlantNames.sort();
-							
-							for (let i = 0; i < alphabeticalPlantNames.length; i++){
-								let currentPlant = scientificNames[alphabeticalPlantNames[i]];
-								
-								let currentColor = "#ffffff";/*plantTypes[plantsData[currentPlant].type].color;*/
-								
-								if (plantInfoSelectedAttack != ""){
-									currentColor = (plantsData[currentPlant].attackTypes.includes(plantInfoSelectedAttack)) ? "#ffffff" : colors.grayedOut;
-								}
-								if (plantInfoSelectedPlant != ""){
-									currentColor = (plantInfoSelectedPlant == currentPlant) ? "#ffffff" : colors.grayedOut;
-								}
-								
-								let isHidden = (hiddenPlants[currentPlant]);
-								
-								let currentText = (isHidden) ? "???" : plantsData[currentPlant].name.replaceAll(" ", "\\n");
-								
-								buttonsArr.push({
-									text: currentText, pos: {x: 0.225 + 0.05*(i%14), y: 0.24 + 0.06*Math.floor(i/14), w: 0.05, h: 0.06},
-									textSize: 0.14, marginY: 0.075, downscaleTextLength: 11, isAbsolutePositioned: true, color: currentColor, borderSize: 0.0005,
-									isLocked: isHidden,
-									onclick: ["<<plantInfoSelectedPlant = (plantInfoSelectedPlant != '"+currentPlant+"') ? '"+currentPlant+"' : ''; plantInfoSelectedAttack='';>>", "refreshPlantsInfo"],
+									text: text, pos: {x: 0.1, y: 0.1, w: 0.15, h: 0.15}, textSize: 0.065, marginY: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, disableClick: true
 								});
 							}
 							
-							let indexNum = 0;
-							let currentSpan = 0;
-							for (let i in plantAttackTypes){
-								let currentPlant = scientificNames[alphabeticalPlantNames[i]];
-								
-								let currentColor = "#ffffff";
-								
-								if (plantInfoSelectedPlant != ""){
-									currentColor = (plantsData[plantInfoSelectedPlant].attackTypes.includes(i)) ? "#ffffff" : colors.grayedOut;
-								}
-								if (plantInfoSelectedAttack != ""){
-									currentColor = (plantInfoSelectedAttack == i) ? "#ffffff" : colors.grayedOut;
-								}
-								
-								buttonsArr.push({
-									text: i, pos: {x: 0.1, y: 0.05 + 0.04*indexNum + 0.02*currentSpan, w: 0.1, h: 0.04},
-									textSize: 0.14, marginY: 0.075, downscaleTextLength: 11, isAbsolutePositioned: true, color: currentColor, borderSize: 0.001,
-									onclick: ["<<plantInfoSelectedAttack = (plantInfoSelectedAttack != '"+i+"') ? '"+i+"' : ''; plantInfoSelectedPlant='';>>", "refreshPlantsInfo"],
-								});
-								indexNum++;
-								if (indexNum >= 7){
-									currentSpan = 1;
-								}
-							}
+							let currentEnemyPos = {x: 0, y: 0};
+							let rarityColor = rarityColors[fightData.plantValues?.plantNum ?? 0];
+							let enemyLevel = 1;
+							let alliesPos = [];
+							let allyLevels = [];
 							
-							let descriptionText = "";
-							
-							if (plantInfoSelectedAttack != ""){
-								if (plantAttackTypes[plantInfoSelectedAttack]?.text != undefined){
-									descriptionText += plantInfoSelectedAttack + " boost: " + plantAttackTypes[plantInfoSelectedAttack].text;
-								} else{
-									descriptionText += plantInfoSelectedAttack + " attack type advantages:\\n";
-									
-									let currentTypeIndex = plantTypeAdvantages.typesIndex.indexOf(plantInfoSelectedAttack);
-									
-									for (let i in plantTypeAdvantages.values[currentTypeIndex]){
-										descriptionText += (plantTypeAdvantages.values[currentTypeIndex][i]*100) + "% " + plantTypeAdvantages.typesIndex[i];
+							if (fightData.tilePos.x == -1){
+								for (let i in entities){
+									if (entities[i].plantPos?.x == pos.x && entities[i].plantPos?.y == pos.y){
+										entities[i].isVisible = true;
 										
-										if (i != plantTypeAdvantages.values[currentTypeIndex].length - 1){
-											descriptionText += ", ";
+										if (entities[i].isAlly){
+											alliesPos.push(entities[i].boxPos ?? entities[i].pos);
+											allyLevels.push(entities[i].plantLevel);
+										} else{
+											currentEnemyPos = entities[i].boxPos ?? entities[i].pos;
+											
+											rarityColor = entities[i].rarityColor;
+											enemyLevel = entities[i].plantLevel;
 										}
 									}
 								}
-							} else if (plantInfoSelectedPlant != ""){
-								descriptionText += plantsData[plantInfoSelectedPlant].name + " (" + plantInfoSelectedPlant + ")";
+							} else{
+								for (let i in entities){
+									if (entities[i].plantPos?.x == fightData.tilePos.x && entities[i].plantPos?.y == fightData.tilePos.y){
+										if (!entities[i].isAlly){
+											entities[i].isVisible = true;
+											
+											currentEnemyPos = entities[i].boxPos ?? entities[i].pos;
+										}
+									}
+									
+									if (entities[i].plantPos?.x == fightData.attackingTilePos?.x && entities[i].plantPos?.y == fightData.attackingTilePos?.y){
+										if (entities[i].isAlly && entities[i].plantNum == fightData.attackingPlantNum){
+											alliesPos.push(entities[i].boxPos ?? entities[i].pos);
+											allyLevels.push(entities[i].plantLevel);
+											
+											entities[i].isVisible = true;
+										}
+									}
+								}
 							}
 							
-							buttonsArr.push({
-								text: descriptionText, pos: {x: 0.55, y: 0.1, w: 0.6, h: 0.15},
-								textSize: 0.1375, marginY: 0.125, downscaleTextLength: 11, isAbsolutePositioned: true,
-								disableClick: true,
-							});
+							/*Fight buttons*/
 							
-							buttons.plantsInfo = [
-								...buttonsArr,
+							enemyLevel = fightData.plantValues?.level ?? ((hasStarterPlant) ? enemyLevel : 5);
+							
+							let currentText = (hasStarterPlant) ? "Fight" : "Choose";
+							
+							if (fightData.attackingTilePos?.x != -1){
+								currentText = "Flee";
+							}
+							
+							if (fightData.tilePos?.x == -1 || fightData.attackingTilePos?.x != -1){
+								if ((arr != null || fightData.tilePos?.x != -1) && !fightData.isFightOver){
+									hudButtons.push({
+										text: currentText, pos: {x: currentEnemyPos.x, y: currentEnemyPos.y + 0.175*1.75, w: 0.4, h: 0.175}, textSize: 0.3,
+										color: "#222222", textColor: rarityColor,
+										downscaleTextLength: 5, drawLayer: 2, onclick: ["startFight"]
+									});
+									
+									hudButtons.push({
+										text: "lv "+enemyLevel, pos: {x: currentEnemyPos.x, y: currentEnemyPos.y - 0.26, w: 0.4, h: 0.175}, textSize: 0.3,
+										textColor: "#ffffff", outlineColor: rarityColor,
+										outlineSize: 0.005, downscaleTextLength: 5, drawLayer: 3, ...gamePresets.textButton
+									});
+									
+									for (let i in alliesPos){
+										let currentLevel = allyLevels[i];
+										
+										if (currentLevel > 0 || developmentMode){
+											/*let currentRarityColor = rarityColors[((fightData.attackingTilePos.x == -1) ? i : fightData.attackingPlantNum)];*/
+											hudButtons.push({
+												text: "lv "+currentLevel, pos: {x: alliesPos[i].x, y: alliesPos[i].y - 0.26, w: 0.4, h: 0.175}, textSize: 0.3,
+												textColor: "#ffffff", outlineColor: "#000000", outlineSize: 0.005, downscaleTextLength: 5, drawLayer: 0, ...gamePresets.textButton
+											});
+										}
+									}
+								}
+							} else{
+								hudButtons.push({
+									text: "Cancel Selection", pos: {x: 0.5, y: 0.9, w: 0.15, h: 0.05}, textSize: 0.3, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", downscaleTextLength: 5, drawLayer: 4,
+									onclick: ["<<fightData.attackingTilePos.x = 0;>>", "startFight"],
+								});
+							}
+							
+							
+							/*Plant selection against enemy plant*/
+							if (fightData.tilePos.x != -1 && fightData.attackingTilePos.x == -1){
+								for (let i in plantEntities){
+									let gridPos = plantEntities[i].pos;
+									let pos = getGridTilePos(gridPos);
+									
+									let currentPos = {
+										x: pos.x + 0.2 * pos.w,
+										y: pos.y + 0.5 * pos.h
+									};
+									
+									let currentArr = plantOccurencesGrid[gridPos.y][gridPos.x];
+									
+									for (let j in currentArr){
+										let currentLevel = currentArr[j].level;
+										
+										if (currentLevel > 0 || developmentMode){
+											let currentSprite = (hiddenPlants[currentArr[j].name]) ? gameSprites.questionMark : (gameSprites[currentArr[j].name] ?? gameSprites[defaultPlantName]);
+											
+											hudButtons.push({
+												text: "🕴\\n", subtext: currentLevel, subtextPos: {x: 0, y: 0.25},
+												sprites: [{...(currentSprite), shadowColor: ["#ffffff", "#000000"], shadowPos: [{x: -0.003, y: -0.003}, {x: 0.003, y: 0.003}]}],
+												pos: {x: currentPos.x, y: currentPos.y, w: 0.5, h: 1.5}, textSize: 1, subtextSize: 1,
+												color: "#222222", textColor: rarityColors[j], downscaleSubtextLength: 1, drawLayer: 3,
+												borderColor: rarityColors[j], borderSize: 0.01,
+												onclick: ["<<runEvent('selectAttackerPlant', {pos: {x: "+gridPos.x+", y: "+gridPos.y+"}, i: "+j+"});>>"],
+											});
+										}
+										
+										currentPos.x += 0.3 * pos.w;
+									}
+								}
+							} else{
+								/*Fight Hud*/
+								if (fightData.plantValues != undefined){
+									let enemyArr = fightData.plantValues;
+									let enemyName = plantsData[enemyArr.name].name;
+									let allyArr = fightData.attackingPlantValues;
+									let allyName = plantsData[allyArr.name].name;
+									
+									hudButtons.push({
+										text: "Enemy Plant: "+enemyName+" (lv "+enemyArr.level+")\\n"+ "Health: "+getNumWithTruncatedDecimals(enemyArr.health*100, 2),
+										pos: {x: 0.8, y: 0.3, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
+										color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3, disableClick: true
+									});
+									
+									hudButtons.push({
+										text: "Ally Plant: "+allyName+" (lv "+allyArr.level+")\\n"+ "Health: "+getNumWithTruncatedDecimals(allyArr.health*100, 2),
+										pos: {x: 0.2, y: 0.3, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
+										color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3, disableClick: true
+									});
+									
+									
+									let fightSides = [{attacks: plantsData[allyArr.name].attackTypes}, {attacks: plantsData[enemyArr.name].attackTypes}];
+									for (let j = 0; j < fightSides.length; j++){
+										let currentAttacks = fightSides[j].attacks;
+										
+										for (let i = 0; i < currentAttacks.length; i++){
+											let attackName = currentAttacks[i];
+											
+											let isAttack = plantAttackTypes[attackName].isAttack;
+											let currentName = attackName + ((isAttack) ? " attack" : " boost");
+											
+											hudButtons.push({
+												text: currentName, pos: {x: 0.2 + (j*0.6) + (Math.max(i-3, 0)*0.175*(j > 0 ? -1 : 1)), y: 0.5 + Math.min(i, 3)*0.15, w: 0.15, h: 0.1}, textSize: 0.3, isAbsolutePositioned: true,
+												color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3,
+												isLocked: fightData.isFightOver || j > 0,
+												onclick: ["<<runEvent('attackPlant', {attackName: '"+attackName+"'})>>"],
+											});
+										}
+									}
+									
+									
+									hudButtons.push({
+										text: fightData.attackLogText ?? "",
+										pos: {x: 0.5, y: 0.1, w: 0.8, h: 0.2}, textSize: 0.08, isAbsolutePositioned: true,
+										color: "#ffffff88", textColor: "#000000", downscaleTextLength: 20, drawLayer: 3, disableClick: true
+									});
+									
+									if (fightData.isFightOver){
+										let currentSubtext = (fightData.levelGain != undefined) ? enemyName+" gained "+fightData.levelGain+" level"+((fightData.levelGain>1)?"s":"")+"!" : "loss :(";
+										hudButtons.push({
+											text: "Finish Fight",
+											pos: {x: 0.5, y: 0.75, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
+											subtext: currentSubtext,
+											subtextPos: {x: 0, y: 0.33}, subtextSize: 0.05,
+											color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, downscaleSubtextLength: 30, drawLayer: 3, onclick: ["finishFight"]
+										});
+										
+									}
+								}
+							}
+							
+							
+							buttons.game = [
+								...hudButtons,
 								
-								{text: "Back", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
-									color: "#222222", textColor: "#ffffff", drawLayer: 2, onclick: ["togglePlantsInfo"]},
+								{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
 									
 								{text: "Citation", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
 								
-								{...gamePresets.quitButton}
+								
+								{...gamePresets.quitButton, drawLayer: 10}
 							];
-						}
-					}>>`],
+						}>>`],
+						
+						toggleCitation: [`<<{
+							gameState.currentState = (gameState.currentState != "citation") ? "citation" : "game";
+						}>>`],
+						togglePlantsInfo: [`<<{
+							gameState.currentState = (gameState.currentState != "plantsInfo") ? "plantsInfo" : "game";
+							
+							runEvent("refreshPlantsInfo");
+						}>>`],
+						refreshPlantsInfo: [`<<{
+							if (gameState.currentState == "plantsInfo"){
+								let buttonsArr = [];
+								
+								let alphabeticalPlantNames = [];
+								let scientificNames = {};
+								
+								for (let i in plantsData){
+									alphabeticalPlantNames.push(plantsData[i].name);
+									scientificNames[plantsData[i].name] = i;
+								}
+								alphabeticalPlantNames.sort();
+								
+								for (let i = 0; i < alphabeticalPlantNames.length; i++){
+									let currentPlant = scientificNames[alphabeticalPlantNames[i]];
+									
+									let currentColor = "#ffffff";/*plantTypes[plantsData[currentPlant].type].color;*/
+									
+									if (plantInfoSelectedAttack != ""){
+										currentColor = (plantsData[currentPlant].attackTypes.includes(plantInfoSelectedAttack)) ? "#ffffff" : colors.grayedOut;
+									}
+									if (plantInfoSelectedPlant != ""){
+										currentColor = (plantInfoSelectedPlant == currentPlant) ? "#ffffff" : colors.grayedOut;
+									}
+									
+									let isHidden = (hiddenPlants[currentPlant]);
+									
+									let currentText = (isHidden) ? "???" : (plantInfoSpritesMode ? "🕴" : plantsData[currentPlant].name.replaceAll(" ", "\\n"));
+									
+									let currentSprite = [];
+									
+									if (plantInfoSpritesMode){
+										currentSprite = (hiddenPlants[currentPlant]) ? gameSprites.questionMark : (gameSprites[currentPlant] ?? gameSprites[defaultPlantName]);
+									
+										currentSprite = [{...(currentSprite), shadowColor: ["#000000"], shadowPos: [{x: 0.005, y: 0.005}]}];
+									}
+									
+									buttonsArr.push({
+										text: currentText, pos: {x: 0.225 + 0.05*(i%14), y: 0.24 + 0.06*Math.floor(i/14), w: 0.05, h: 0.06}, sprites: currentSprite,
+										textSize: 0.14 + 0.5*(plantInfoSpritesMode&&!hiddenPlants[currentPlant]), marginY: 0.075, downscaleTextLength: 11, isAbsolutePositioned: true,
+										color: currentColor, borderSize: 0.0005, isLocked: isHidden,
+										onclick: ["<<plantInfoSelectedPlant = (plantInfoSelectedPlant != '"+currentPlant+"') ? '"+currentPlant+"' : ''; plantInfoSelectedAttack='';>>", "refreshPlantsInfo"],
+									});
+								}
+								
+								let indexNum = 0;
+								let currentSpan = 0;
+								for (let i in plantAttackTypes){
+									let currentPlant = scientificNames[alphabeticalPlantNames[i]];
+									
+									let currentColor = "#ffffff";
+									
+									if (plantInfoSelectedPlant != ""){
+										currentColor = (plantsData[plantInfoSelectedPlant].attackTypes.includes(i)) ? "#ffffff" : colors.grayedOut;
+									}
+									if (plantInfoSelectedAttack != ""){
+										currentColor = (plantInfoSelectedAttack == i) ? "#ffffff" : colors.grayedOut;
+									}
+									
+									buttonsArr.push({
+										text: i, pos: {x: 0.1, y: 0.05 + 0.04*indexNum + 0.02*currentSpan, w: 0.1, h: 0.04},
+										textSize: 0.14, marginY: 0.075, downscaleTextLength: 11, isAbsolutePositioned: true, color: currentColor, borderSize: 0.001,
+										onclick: ["<<plantInfoSelectedAttack = (plantInfoSelectedAttack != '"+i+"') ? '"+i+"' : ''; plantInfoSelectedPlant='';>>", "refreshPlantsInfo"],
+									});
+									indexNum++;
+									if (indexNum >= 7){
+										currentSpan = 1;
+									}
+								}
+								
+								let descriptionText = "";
+								let currentSprite = [];
+								
+								if (plantInfoSelectedAttack != ""){
+									if (plantAttackTypes[plantInfoSelectedAttack]?.text != undefined){
+										descriptionText += plantInfoSelectedAttack + " boost: " + plantAttackTypes[plantInfoSelectedAttack].text;
+									} else{
+										descriptionText += plantInfoSelectedAttack + " attack type advantages:\\n";
+										
+										let currentTypeIndex = plantTypeAdvantages.typesIndex.indexOf(plantInfoSelectedAttack);
+										
+										for (let i in plantTypeAdvantages.values[currentTypeIndex]){
+											descriptionText += (plantTypeAdvantages.values[currentTypeIndex][i]*100) + "% " + plantTypeAdvantages.typesIndex[i];
+											
+											if (i != plantTypeAdvantages.values[currentTypeIndex].length - 1){
+												descriptionText += ", ";
+											}
+										}
+									}
+								} else if (plantInfoSelectedPlant != ""){
+									descriptionText += "🕴 " + plantsData[plantInfoSelectedPlant].name + " (" + plantInfoSelectedPlant + ") 🕴";
+									
+									currentSprite = (hiddenPlants[plantInfoSelectedPlant]) ? gameSprites.questionMark : (gameSprites[plantInfoSelectedPlant] ?? gameSprites[defaultPlantName]);
+									
+									currentSprite = [{...(currentSprite), shadowColor: ["#000000"], shadowPos: [{x: 0.005, y: 0.005}]}];
+								}
+								
+								buttonsArr.push({
+									text: descriptionText, pos: {x: 0.55, y: 0.1, w: 0.6, h: 0.15}, sprites: currentSprite,
+									textSize: 0.1375, marginY: 0.125, downscaleTextLength: 11, isAbsolutePositioned: true,
+									disableClick: true,
+								});
+								
+								buttons.plantsInfo = [
+									...buttonsArr,
+									
+									{text: "Back", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 2, onclick: ["togglePlantsInfo"]},
+										
+										
+									{text: "Icons: "+(plantInfoSpritesMode ? "on" : "off"), pos: {x: 0.95, y: 0.3, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 2, onclick: ["<<plantInfoSpritesMode = !plantInfoSpritesMode;>>", "refreshPlantsInfo"]},
+										
+									{text: "Citation", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
+									
+									{...gamePresets.quitButton}
+								];
+							}
+						}>>`],
+					},
 					
 					fightEvents: {
 						startFight: [`<<{
@@ -5469,8 +5709,8 @@
 									let currentEnemyValues = {name: "", level: 1};
 									
 									for (let i in entities){
-										if (entities[i].plantPos?.x == pos.x && entities[i].plantPos?.y == pos.y){
-											currentEnemyValues = {name: entities[i].plantName, level: entities[i].plantLevel, health: 1};
+										if (entities[i].plantPos?.x == pos.x && entities[i].plantPos?.y == pos.y && !entities[i].isAlly){
+											currentEnemyValues = {name: entities[i].plantName, level: entities[i].plantLevel, health: 1, plantNum: entities[i].plantNum};
 											
 											hiddenPlants[currentEnemyValues.name] = false;
 										}
@@ -5651,12 +5891,12 @@
 				entities: [
 					{
 						pos: {x: 0, y: 0.2, w: 0.09, shape: "circle"}, hitboxShape: "circle", isPlayer: true, isStoppedByWalls: true,
-						speed: 0.01625, runMultiplier: 3, color: "#ffffff", drawLayer: 1, gameState: "game", shouldFocusCamera: true,
+						speed: 0.01625, runMultiplier: 3, color: "#ffffff", drawLayer: 1, gameState: "game", shouldFocusCamera: true, isTouchScreenControlled: true
 					},
 				],
 			},
 			createdVariables: {
-				developmentMode: false,
+				developmentMode: !false,
 				
 				plantEntities: [],
 				
@@ -5672,7 +5912,7 @@
 				
 				hiddenPlants: {},
 				
-				plantTypes: {
+				plantTypes: { //todo: remove the colors?
 					"rosids": {color: "#ff0000", isPentapetalae: true},
 					"asterids": {color: "#00ff00", isPentapetalae: true},
 					"Caryophyllales": {color: "#0000ff", isPentapetalae: true},
@@ -5708,6 +5948,7 @@
 								=		8			9.5				6.5				 7.5			 3.25			  6				5*/
 				},
 				
+				plantInfoSpritesMode: false,
 				plantInfoSelectedPlant: "",
 				plantInfoSelectedAttack: "",
 				plantAttackTypes: {
@@ -5722,7 +5963,7 @@
 					"Anti-Pentapetalae": {value: "args.isOpponentPentapetalae + 1", isPentapetalae: false,
 					text: "x2 boost against Pentapetalae plants\nRequirements to use: can only be used by non-pentapetalae plants"},
 					
-					"Short-Named": {value: "args.opponentName.length / 10", maxLetters: 5,
+					"Short-Named": {value: "args.opponentName.length / 9", maxLetters: 5,
 					text: "More boost the longer the opponent's name is\nRequirements to use: only 5 or fewer letters in plant's name"},
 					"Long-Named": {value: "15 / args.opponentName.length", minWords: 3,
 					text: "More boost the shorter the opponent's name is\nRequirements to use: at least 3 words in plant's name"},
@@ -5765,7 +6006,7 @@
 				
 				
 				layoutSymbols: {
-					"-": {mainLayer: {type: "empty"}, data: {drawTile: {color: "#646464"}}},
+					"-": {mainLayer: {type: "empty"}, data: {drawTile: {color: "#64646400", borderSize: 0}}},
 					"o": {mainLayer: {type: "land"}, data: {drawTile: {color: "#5ca257"}}},
 				},
 				
