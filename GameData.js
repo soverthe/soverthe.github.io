@@ -5896,7 +5896,7 @@
 				],
 			},
 			createdVariables: {
-				developmentMode: !false,
+				developmentMode: false,
 				
 				plantEntities: [],
 				
