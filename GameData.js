@@ -5376,35 +5376,35 @@
 									pos: {x: 0.1, y: 0.9, w: 0.15, h: 0.1}, textSize: 0.065, marginY: 0.15, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<touchScreenButtons = !touchScreenButtons;>>"]
 								});
-							}
-							
-							if (touchScreenButtons){
-								hudButtons.push({
-									text: "Auto Run: " + (entities[0].inverseRun ? "On" : "Off"),
-									pos: {x: 0.1, y: 0.775, w: 0.15, h: 0.1}, textSize: 0.1, marginY: 0.15, isAbsolutePositioned: true,
-									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<entities[0].inverseRun = !entities[0].inverseRun;>>"]
-								});
 								
-								hudButtons.push({
-									text: "x4", pos: {x: 0.21, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
-									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.4;>>"]
-								});
-								hudButtons.push({
-									text: "x2", pos: {x: 0.27, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
-									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.2;>>"]
-								});
-								hudButtons.push({
-									text: "x1", pos: {x: 0.33, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
-									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.1;>>"]
-								});
-								hudButtons.push({
-									text: "x0.5", pos: {x: 0.39, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
-									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.05;>>"]
-								});
-								hudButtons.push({
-									text: "x0.2", pos: {x: 0.45, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
-									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.025;>>"]
-								});
+								if (touchScreenButtons){
+									hudButtons.push({
+										text: "Auto Run: " + (entities[0].inverseRun ? "On" : "Off"),
+										pos: {x: 0.1, y: 0.775, w: 0.15, h: 0.1}, textSize: 0.1, marginY: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<entities[0].inverseRun = !entities[0].inverseRun;>>"]
+									});
+									
+									hudButtons.push({
+										text: "x4", pos: {x: 0.21, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.4;>>"]
+									});
+									hudButtons.push({
+										text: "x2", pos: {x: 0.27, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.2;>>"]
+									});
+									hudButtons.push({
+										text: "x1", pos: {x: 0.33, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.1;>>"]
+									});
+									hudButtons.push({
+										text: "x0.5", pos: {x: 0.39, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.05;>>"]
+									});
+									hudButtons.push({
+										text: "x0.2", pos: {x: 0.45, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.025;>>"]
+									});
+								}
 							}
 							
 							
