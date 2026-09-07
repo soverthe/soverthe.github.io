@@ -5338,6 +5338,9 @@
 							for (let i in entities){
 								if (entities[i].plantPos != undefined){
 									entities[i].isVisible = false;
+									
+									entities[i].boxPos.w = 0.4 + (touchScreenButtons*0.2);
+									entities[i].boxPos.h = 0.4 + (touchScreenButtons*0.2);
 								}
 							}
 							
@@ -5359,10 +5362,53 @@
 								}
 								
 								hudButtons.push({
-									text: text, pos: {x: 0.1, y: 0.1, w: 0.15, h: 0.15}, textSize: 0.065, marginY: 0.15, isAbsolutePositioned: true,
+									text: text, pos: ((touchScreenButtons) ? {x: 0.15, y: 0.15, w: 0.25, h: 0.25} : {x: 0.1, y: 0.1, w: 0.15, h: 0.15}),
+									textSize: 0.065, marginY: 0.15, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, disableClick: true
 								});
 							}
+							
+							/*Touch Screen Buttons*/
+							
+							if (fightData.attackingPlantValues == undefined){
+								hudButtons.push({
+									text: "Touch Screen Buttons: " + (touchScreenButtons ? "On" : "Off"),
+									pos: {x: 0.1, y: 0.9, w: 0.15, h: 0.1}, textSize: 0.065, marginY: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<touchScreenButtons = !touchScreenButtons;>>"]
+								});
+							}
+							
+							if (touchScreenButtons){
+								hudButtons.push({
+									text: "Auto Run: " + (entities[0].inverseRun ? "On" : "Off"),
+									pos: {x: 0.1, y: 0.775, w: 0.15, h: 0.1}, textSize: 0.1, marginY: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<entities[0].inverseRun = !entities[0].inverseRun;>>"]
+								});
+								
+								hudButtons.push({
+									text: "x4", pos: {x: 0.21, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.4;>>"]
+								});
+								hudButtons.push({
+									text: "x2", pos: {x: 0.27, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.2;>>"]
+								});
+								hudButtons.push({
+									text: "x1", pos: {x: 0.33, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.1;>>"]
+								});
+								hudButtons.push({
+									text: "x0.5", pos: {x: 0.39, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.05;>>"]
+								});
+								hudButtons.push({
+									text: "x0.2", pos: {x: 0.45, y: 0.9, w: 0.05, h: 0.1}, textSize: 0.3, marginY: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<camera.zoom.level = 0.025;>>"]
+								});
+							}
+							
+							
+							/*Plant entities refresh*/
 							
 							let currentEnemyPos = {x: 0, y: 0};
 							let rarityColor = rarityColors[fightData.plantValues?.plantNum ?? 0];
@@ -5419,15 +5465,17 @@
 							
 							if (fightData.tilePos?.x == -1 || fightData.attackingTilePos?.x != -1){
 								if ((arr != null || fightData.tilePos?.x != -1) && !fightData.isFightOver){
+									let currentSize = (touchScreenButtons) ? {w: 0.8, h: 0.3} : {w: 0.4, h: 0.175};
+									
 									hudButtons.push({
-										text: currentText, pos: {x: currentEnemyPos.x, y: currentEnemyPos.y + 0.175*1.75, w: 0.4, h: 0.175}, textSize: 0.3,
-										color: "#222222", textColor: rarityColor,
+										text: currentText, pos: {x: currentEnemyPos.x, y: currentEnemyPos.y + 0.175*1.75 + (touchScreenButtons*0.19), w: currentSize.w, h: currentSize.h},
+										textSize: 0.3, color: "#222222", textColor: rarityColor,
 										downscaleTextLength: 5, drawLayer: 2, onclick: ["startFight"]
 									});
 									
 									hudButtons.push({
-										text: "lv "+enemyLevel, pos: {x: currentEnemyPos.x, y: currentEnemyPos.y - 0.26, w: 0.4, h: 0.175}, textSize: 0.3,
-										textColor: "#ffffff", outlineColor: rarityColor,
+										text: "lv "+enemyLevel, pos: {x: currentEnemyPos.x, y: currentEnemyPos.y - 0.26 - (touchScreenButtons*0.15), w: currentSize.w, h: currentSize.h},
+										textSize: 0.3, textColor: "#ffffff", outlineColor: rarityColor,
 										outlineSize: 0.005, downscaleTextLength: 5, drawLayer: 3, ...gamePresets.textButton
 									});
 									
@@ -5437,15 +5485,16 @@
 										if (currentLevel > 0 || developmentMode){
 											/*let currentRarityColor = rarityColors[((fightData.attackingTilePos.x == -1) ? i : fightData.attackingPlantNum)];*/
 											hudButtons.push({
-												text: "lv "+currentLevel, pos: {x: alliesPos[i].x, y: alliesPos[i].y - 0.26, w: 0.4, h: 0.175}, textSize: 0.3,
-												textColor: "#ffffff", outlineColor: "#000000", outlineSize: 0.005, downscaleTextLength: 5, drawLayer: 0, ...gamePresets.textButton
+												text: "lv "+currentLevel, pos: {x: alliesPos[i].x, y: alliesPos[i].y - 0.26 - (touchScreenButtons*0.15), w: currentSize.w, h: currentSize.h},
+												textSize: 0.3, textColor: "#ffffff", outlineColor: "#000000",
+												outlineSize: 0.005, downscaleTextLength: 5, drawLayer: 0, ...gamePresets.textButton
 											});
 										}
 									}
 								}
 							} else{
 								hudButtons.push({
-									text: "Cancel Selection", pos: {x: 0.5, y: 0.9, w: 0.15, h: 0.05}, textSize: 0.3, isAbsolutePositioned: true,
+									text: "Cancel Selection", pos: {x: 0.5, y: 0.9, w: 0.2, h: 0.075}, textSize: 0.3, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", downscaleTextLength: 5, drawLayer: 4,
 									onclick: ["<<fightData.attackingTilePos.x = 0;>>", "startFight"],
 								});
@@ -5494,18 +5543,20 @@
 									
 									hudButtons.push({
 										text: "Enemy Plant: "+enemyName+" (lv "+enemyArr.level+")\\n"+ "Health: "+getNumWithTruncatedDecimals(enemyArr.health*100, 2),
-										pos: {x: 0.8, y: 0.3, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
+										pos: ((touchScreenButtons) ? {x: 0.8, y: 0.315, w: 0.35, h: 0.2} : {x: 0.8, y: 0.3, w: 0.2, h: 0.15}),
+										textSize: 0.3, isAbsolutePositioned: true,
 										color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3, disableClick: true
 									});
 									
 									hudButtons.push({
 										text: "Ally Plant: "+allyName+" (lv "+allyArr.level+")\\n"+ "Health: "+getNumWithTruncatedDecimals(allyArr.health*100, 2),
-										pos: {x: 0.2, y: 0.3, w: 0.2, h: 0.15}, textSize: 0.3, isAbsolutePositioned: true,
+										pos: ((touchScreenButtons) ? {x: 0.2, y: 0.315, w: 0.35, h: 0.2} : {x: 0.2, y: 0.3, w: 0.2, h: 0.15}),
+										textSize: 0.3, isAbsolutePositioned: true,
 										color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3, disableClick: true
 									});
 									
 									
-									let fightSides = [{attacks: plantsData[allyArr.name].attackTypes}, {attacks: plantsData[enemyArr.name].attackTypes}];
+									let fightSides = [{attacks: plantsData[enemyArr.name].attackTypes}, {attacks: plantsData[allyArr.name].attackTypes}];
 									for (let j = 0; j < fightSides.length; j++){
 										let currentAttacks = fightSides[j].attacks;
 										
@@ -5516,9 +5567,15 @@
 											let currentName = attackName + ((isAttack) ? " attack" : " boost");
 											
 											hudButtons.push({
-												text: currentName, pos: {x: 0.2 + (j*0.6) + (Math.max(i-3, 0)*0.175*(j > 0 ? -1 : 1)), y: 0.5 + Math.min(i, 3)*0.15, w: 0.15, h: 0.1}, textSize: 0.3, isAbsolutePositioned: true,
+												pos: {
+													x: 0.8 - (j*0.6) + (Math.max(i-3, 0)*(0.175+touchScreenButtons*0.125)*(j == 0 ? -1 : 1)),
+													y: 0.5 + Math.min(i, 3)*0.15,
+													w: 0.15 + (touchScreenButtons * 0.125),
+													h: 0.1 + (touchScreenButtons * 0.04),
+												},
+												text: currentName, textSize: 0.3 + (touchScreenButtons * 0.045), isAbsolutePositioned: true,
 												color: "#ffffff", textColor: "#000000", downscaleTextLength: 5, drawLayer: 3,
-												isLocked: fightData.isFightOver || j > 0,
+												isLocked: fightData.isFightOver || j == 0,
 												onclick: ["<<runEvent('attackPlant', {attackName: '"+attackName+"'})>>"],
 											});
 										}
@@ -5549,19 +5606,26 @@
 							buttons.game = [
 								...hudButtons,
 								
-								{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+								{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									textSize: 0.15, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
-									
-								{text: "Citation", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
-									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
-								
 								
 								{...gamePresets.quitButton, drawLayer: 10}
 							];
+							
+							if (fightData.attackingPlantValues == undefined || !touchScreenButtons){
+								buttons.game.push({
+									text: "Citation", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]
+								});
+							}
 						}>>`],
 						
 						toggleCitation: [`<<{
 							gameState.currentState = (gameState.currentState != "citation") ? "citation" : "game";
+							
+							runEvent("refreshCitation");
 						}>>`],
 						togglePlantsInfo: [`<<{
 							gameState.currentState = (gameState.currentState != "plantsInfo") ? "plantsInfo" : "game";
@@ -5674,19 +5738,39 @@
 								buttons.plantsInfo = [
 									...buttonsArr,
 									
-									{text: "Back", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+									{text: "Back", pos: {x: 0.95, y: 0.15, w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+										textSize: 0.15, isAbsolutePositioned: true,
 										color: "#222222", textColor: "#ffffff", drawLayer: 2, onclick: ["togglePlantsInfo"]},
 										
 										
-									{text: "Icons: "+(plantInfoSpritesMode ? "on" : "off"), pos: {x: 0.95, y: 0.3, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+									{text: "Icons: "+(plantInfoSpritesMode ? "on" : "off"), textSize: 0.15, isAbsolutePositioned: true,
+										pos: {x: 0.95, y: 0.3, w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
 										color: "#222222", textColor: "#ffffff", drawLayer: 2, onclick: ["<<plantInfoSpritesMode = !plantInfoSpritesMode;>>", "refreshPlantsInfo"]},
 										
-									{text: "Citation", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
+									{text: "Citation", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+										textSize: 0.15, isAbsolutePositioned: true,
 										color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
 									
 									{...gamePresets.quitButton}
 								];
 							}
+						}>>`],
+						
+						refreshCitation: [`<<{
+							buttons.citation = [
+								{...gamePresets.quitButton},
+								{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)}, 
+									textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
+								
+								{text: "Back", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
+								
+								{text: "Map of most commonly observed plants is from Pl@ntNet, citation:\\n\\nAFFOUARD A, JOLY A, LOMBARDO J, CHAMP J, GOEAU H, CHOUET M, GRESSE H, BOTELLA C,\\nBONNET P (2023). Pl@ntNet automatically identified occurrences. Version 1.8. Pl@ntNet.\\nOccurrence dataset https://doi.org/10.15468/mma2ec accessed via GBIF.org on 2026-08-21.",
+									pos: {x: 0.5, y: 0.5, w: 0.75, h: 0.75}, textSize: 0.28, downscaleTextLength: 6, isAbsolutePositioned: true,
+									drawLayer: 10, onclick: ["<<window.open('https://doi.org/10.15468/mma2ec')>>"]},
+							];
 						}>>`],
 					},
 					
@@ -5876,27 +5960,17 @@
 					game: [
 						{...gamePresets.quitButton}
 					],
-					citation: [
-						{...gamePresets.quitButton},
-						{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
-								color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
-						{text: "Back", pos: {x: 0.95, y: 0.95, w: 0.05, h: 0.05}, textSize: 0.15, isAbsolutePositioned: true,
-								color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
-						
-						{text: "Map of most commonly observed plants is from Pl@ntNet, citation:\n\nAFFOUARD A, JOLY A, LOMBARDO J, CHAMP J, GOEAU H, CHOUET M, GRESSE H, BOTELLA C,\nBONNET P (2023). Pl@ntNet automatically identified occurrences. Version 1.8. Pl@ntNet.\nOccurrence dataset https://doi.org/10.15468/mma2ec accessed via GBIF.org on 2026-08-21.",
-						pos: {x: 0.5, y: 0.5, w: 0.75, h: 0.75}, textSize: 0.28, downscaleTextLength: 6, isAbsolutePositioned: true,
-								drawLayer: 10, onclick: ["<<window.open('https://doi.org/10.15468/mma2ec')>>"]},
-					],
 				},
 				entities: [
 					{
-						pos: {x: 0, y: 0.2, w: 0.09, shape: "circle"}, hitboxShape: "circle", isPlayer: true, isStoppedByWalls: true,
+						pos: {x: 0, y: 0.2, w: 0.09, shape: "circle"}, hitboxShape: "circle", isPlayer: true, isStoppedByWalls: true, inverseRun: false,
 						speed: 0.01625, runMultiplier: 3, color: "#ffffff", drawLayer: 1, gameState: "game", shouldFocusCamera: true, isTouchScreenControlled: true
 					},
 				],
 			},
 			createdVariables: {
 				developmentMode: false,
+				touchScreenButtons: false,
 				
 				plantEntities: [],
 				

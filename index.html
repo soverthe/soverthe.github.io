@@ -4067,7 +4067,7 @@
 	
 	
 	function movePlayer(args){
-		let speed = args.speed * ((inputButtonStates.run) ? args.runMultiplier : 1);
+		let speed = args.speed * (((args.inverseRun) ? !inputButtonStates.run : inputButtonStates.run) ? args.runMultiplier : 1);
 		
 		if (!inputButtonStates.dash){
 			moveEntityByInputDistance(args, speed, undefined, true);
