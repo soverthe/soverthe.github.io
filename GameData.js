@@ -5094,10 +5094,59 @@
 				},
 				
 				events: {
-					onload: ["generateMainLayout", "generatePlantAttacks", "generateGrids", "generateEarthEntity", "refreshPlantEntities"],
+					onload: ["generateMainLayout", "loadSave", "generatePlantAttacks", "generateGrids", "generateEarthEntity", "refreshPlantEntities"],
 					onNextFrame: ["moveEntities", "teleportPlayer", "refreshHudButtons", "draw"],
 					
 					//refreshScrollbars: [{f: "setScrollbarsToGrids", args: {state: "graph", margin: {left: 0.25, right: 0.25, up: 0.25, down: 0.25}}}],
+					
+					saveEvents: {
+						saveGame: [`<<{
+							let saveArr = {levels: [[]]};
+							
+							for (let i = 0; i < plantOccurencesGrid.length; i++){
+								saveArr.levels[0][i] = [];
+								for (let j = 0; j < plantOccurencesGrid[i].length; j++){
+									if (plantOccurencesGrid[i][j] != null){
+										let currentArr = [];
+										
+										for (let k = 0; k < plantOccurencesGrid[i][j].length; k++){
+											if (plantOccurencesGrid[i][j][k].level > 0){
+												currentArr[k] = plantOccurencesGrid[i][j][k].level;
+											}
+										}
+										saveArr.levels[0][i][j] = currentArr;
+									}
+								}
+							}
+							
+							plantSaves = stringify(saveArr).replaceAll("[]", "").replaceAll("null", "");
+							
+							localStorage.setItem("soverthe.PlantCatcher", plantSaves);
+						}>>`],
+						
+						loadSave: [`<<{
+							plantSaves = localStorage.getItem("soverthe.PlantCatcher");
+							
+							if (plantSaves != null){
+								let correctedPlantSaves = plantSaves.replaceAll("],[", "]temp[").replaceAll("[,", "[[],").replaceAll(",", ",[]").replaceAll("[][", "[").replaceAll("]temp[", "],[");
+								let currentSave = parse(correctedPlantSaves).levels;
+								
+								for (let i = 0; i < currentSave[0].length; i++){
+									for (let j = 0; j < currentSave[0][i].length; j++){
+										for (let k = 0; k < currentSave[0][i][j].length; k++){
+											plantOccurencesGrid[i][j][k].level = currentSave[0][i][j][k];
+											
+											hiddenPlants[plantOccurencesGrid[i][j][k].name] = false;
+											
+											if (plantOccurencesGrid[i][j][k].level > 0){
+												hasStarterPlant = true;
+											}
+										}
+									}
+								}
+							}
+						}>>`],
+					},
 					
 					teleportPlayer: [`<<{
 						if (entities[0].pos.x < -21.955){
@@ -5615,13 +5664,24 @@
 							
 							if (fightData.attackingPlantValues == undefined || !touchScreenButtons){
 								buttons.game.push({
-									text: "Citation", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									text: "Citation", pos: {x: 0.95, y: 0.875-(touchScreenButtons*0.06), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
 									textSize: 0.15, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]
+								});
+								
+								buttons.game.push({
+									text: "Saves", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleSaves"]
 								});
 							}
 						}>>`],
 						
+						toggleSaves: [`<<{
+							gameState.currentState = (gameState.currentState != "saves") ? "saves" : "game";
+							
+							runEvent("refreshSaves");
+						}>>`],
 						toggleCitation: [`<<{
 							gameState.currentState = (gameState.currentState != "citation") ? "citation" : "game";
 							
@@ -5747,9 +5807,13 @@
 										pos: {x: 0.95, y: 0.3, w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
 										color: "#222222", textColor: "#ffffff", drawLayer: 2, onclick: ["<<plantInfoSpritesMode = !plantInfoSpritesMode;>>", "refreshPlantsInfo"]},
 										
-									{text: "Citation", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									{text: "Citation", pos: {x: 0.95, y: 0.875-(touchScreenButtons*0.06), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
 										textSize: 0.15, isAbsolutePositioned: true,
 										color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
+										
+									{text: "Saves", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+										textSize: 0.15, isAbsolutePositioned: true,
+										color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleSaves"]},
 									
 									{...gamePresets.quitButton}
 								];
@@ -5759,17 +5823,48 @@
 						refreshCitation: [`<<{
 							buttons.citation = [
 								{...gamePresets.quitButton},
+								
 								{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)}, 
 									textSize: 0.15, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
 								
-								{text: "Back", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+								{text: "Back", pos: {x: 0.95, y: 0.875-(touchScreenButtons*0.06), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
 									textSize: 0.15, isAbsolutePositioned: true,
 									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
+									
+								{text: "Saves", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleSaves"]},
 								
 								{text: "Map of most commonly observed plants is from Pl@ntNet, citation:\\n\\nAFFOUARD A, JOLY A, LOMBARDO J, CHAMP J, GOEAU H, CHOUET M, GRESSE H, BOTELLA C,\\nBONNET P (2023). Pl@ntNet automatically identified occurrences. Version 1.8. Pl@ntNet.\\nOccurrence dataset https://doi.org/10.15468/mma2ec accessed via GBIF.org on 2026-08-21.",
 									pos: {x: 0.5, y: 0.5, w: 0.75, h: 0.75}, textSize: 0.28, downscaleTextLength: 6, isAbsolutePositioned: true,
 									drawLayer: 10, onclick: ["<<window.open('https://doi.org/10.15468/mma2ec')>>"]},
+							];
+						}>>`],
+						
+						refreshSaves: [`<<{
+							buttons.saves = [
+								{...gamePresets.quitButton},
+								
+								{text: "Plants Info", pos: {x: 0.95, y: 0.15, w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)}, 
+									textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["togglePlantsInfo"]},
+								
+								{text: "Citation", pos: {x: 0.95, y: 0.875-(touchScreenButtons*0.06), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleCitation"]},
+									
+								{text: "Back", pos: {x: 0.95, y: 0.95-(touchScreenButtons*0.02), w: 0.05+(touchScreenButtons*0.03), h: 0.05+(touchScreenButtons*0.04)},
+									textSize: 0.15, isAbsolutePositioned: true,
+									color: "#222222", textColor: "#ffffff", drawLayer: 10, onclick: ["toggleSaves"]},
+								
+								{text: "Plant Catcher saves your progress after each fight,\\nyou can click this button to delete it.\\n(only comes into effect after you refresh the site)",
+									pos: {x: 0.5, y: 0.4, w: 0.7, h: 0.2}, textSize: 0.28, downscaleTextLength: 6, isAbsolutePositioned: true,
+									drawLayer: 10, ...gamePresets.textButton},
+								
+								{text: "DELETE SAVE FILE", pos: {x: 0.5, y: 0.75, w: 0.3, h: 0.2}, textSize: 0.28, downscaleTextLength: 6, isAbsolutePositioned: true,
+									color: "#ff0000", textColor: "#ffffff",
+									drawLayer: 10, onclick: ["<<if(confirm('Are you sure you want to delete your Plant Catcher save?')){localStorage.removeItem('soverthe.PlantCatcher')}>>"]},
 							];
 						}>>`],
 					},
@@ -5950,6 +6045,8 @@
 						finishFight: [`<<{
 							fightData = {tilePos: {x: -1, y: -1}, attackingTilePos: {x: -1, y: -1}, attackingPlantNum: 0};
 							runEvent("refreshPlantEntities");
+							
+							runEvent("saveGame");
 						}>>`],
 					},
 				},
@@ -5971,6 +6068,8 @@
 			createdVariables: {
 				developmentMode: false,
 				touchScreenButtons: false,
+				
+				plantSaves: null,
 				
 				plantEntities: [],
 				
@@ -6120,7 +6219,7 @@
 			modifiedVariables: {
 				camera: {zoom: {level: 0.1}, y: 0, areDimentionsEqual: true, minWidthToHeightRatio: 2, ...gamePresets["zoomCamera"]},
 				
-				gameState: {currentState: "game", states: ["game", "plantsInfo", "citation"]},
+				gameState: {currentState: "game", states: ["game", "plantsInfo", "saves", "citation"]},
 				
 				colors: {
 					grayedOut: "#aaaaaa",

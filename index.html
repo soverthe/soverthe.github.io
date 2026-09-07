@@ -18,6 +18,9 @@
 		left: 0;
 	}
 	
+	* {
+		touch-action: manipulation;
+	}
 </style>
 </head>
 <body>
@@ -7236,7 +7239,7 @@
 			}
 		}
 		
-		localStorage.setItem('soverthe.saves', JSON.stringify(savedData));
+		localStorage.setItem('soverthe.saves', stringify(savedData));
 	}
 	refreshSaves();
 	
