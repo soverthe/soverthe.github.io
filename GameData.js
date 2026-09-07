@@ -5379,7 +5379,7 @@
 								
 								if (touchScreenButtons){
 									hudButtons.push({
-										text: "Auto Run: " + (entities[0].inverseRun ? "On" : "Off"),
+										text: "Always Run: " + (entities[0].inverseRun ? "On" : "Off"),
 										pos: {x: 0.1, y: 0.775, w: 0.15, h: 0.1}, textSize: 0.1, marginY: 0.15, isAbsolutePositioned: true,
 										color: "#222222", textColor: "#ffffff", drawLayer: 5, downscaleTextLength: 27, onclick: ["<<entities[0].inverseRun = !entities[0].inverseRun;>>"]
 									});
