@@ -5483,11 +5483,11 @@
 										let currentLevel = allyLevels[i];
 										
 										if (currentLevel > 0 || developmentMode){
-											/*let currentRarityColor = rarityColors[((fightData.attackingTilePos.x == -1) ? i : fightData.attackingPlantNum)];*/
 											hudButtons.push({
-												text: "lv "+currentLevel, pos: {x: alliesPos[i].x, y: alliesPos[i].y - 0.26 - (touchScreenButtons*0.15), w: currentSize.w, h: currentSize.h},
+												text: "lv "+currentLevel,
+												pos: {x: alliesPos[i].x, y: alliesPos[i].y - 0.26 - (touchScreenButtons*0.15), w: currentSize.w - (touchScreenButtons*0.15), h: currentSize.h},
 												textSize: 0.3, textColor: "#ffffff", outlineColor: "#000000",
-												outlineSize: 0.005, downscaleTextLength: 5, drawLayer: 0, ...gamePresets.textButton
+												outlineSize: 0.005, downscaleTextLength: 4, drawLayer: 0, ...gamePresets.textButton
 											});
 										}
 									}
