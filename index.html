@@ -3470,6 +3470,8 @@
 	function getTouchScreenMovementAxes(axes, entity){
 		if (entity.isTouchScreenControlled){
 			if (wasEmptyMouseDown){
+				scaledMousePos = getScaledPositionInverted(mousePos)
+				
 				axes = getVertexToVertexDirection(entity.pos, scaledMousePos);
 			}
 		}
