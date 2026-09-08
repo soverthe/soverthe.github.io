@@ -5128,18 +5128,20 @@
 							plantSaves = localStorage.getItem("soverthe.PlantCatcher");
 							
 							if (plantSaves != null){
-								let correctedPlantSaves = plantSaves.replaceAll("],[", "]temp[").replaceAll("[,", "[[],").replaceAll(",", ",[]").replaceAll("[][", "[").replaceAll("]temp[", "],[");
+								let correctedPlantSaves = plantSaves.replaceAll(",,", ",[],").replaceAll(",,", ",[],").replaceAll("[,", "[[],").replaceAll(",]", ",[]]");
 								let currentSave = parse(correctedPlantSaves).levels;
 								
 								for (let i = 0; i < currentSave[0].length; i++){
 									for (let j = 0; j < currentSave[0][i].length; j++){
 										for (let k = 0; k < currentSave[0][i][j].length; k++){
-											plantOccurencesGrid[i][j][k].level = currentSave[0][i][j][k];
+											if (!isArray(currentSave[0][i][j][k])){
+												plantOccurencesGrid[i][j][k].level = currentSave[0][i][j][k];
 											
-											hiddenPlants[plantOccurencesGrid[i][j][k].name] = false;
-											
-											if (plantOccurencesGrid[i][j][k].level > 0){
-												hasStarterPlant = true;
+												hiddenPlants[plantOccurencesGrid[i][j][k].name] = false;
+												
+												if (plantOccurencesGrid[i][j][k].level > 0){
+													hasStarterPlant = true;
+												}
 											}
 										}
 									}
